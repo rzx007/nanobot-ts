@@ -673,3 +673,40 @@ class CustomChannel extends BaseChannel {
   }
 }
 ```
+
+
+
+区别可以这样理解：
+
+---
+
+## Gateway 方式（`nanobot gateway`）
+
+- **常驻进程**：启动后一直运行，Agent 在后台 `agent.run()`，不断从 bus 取入站消息并处理。
+- **走 ChannelManager**：有出站循环 `runOutboundLoop()`，消费 `bus.consumeOutbound()`，按 `msg.channel` 分发给各渠道的 `send()`（例如 CLI 渠道就打印）。
+- **异步、多轮**：你输入后只做 `bus.publishInbound()`，然后立刻又能输入下一句；回复由出站循环异步取到后，由对应渠道打印出来。
+- **用途**：为「多轮对话 + 多渠道」准备的网关形态，以后可以在同一进程里加 HTTP、飞书等渠道，所有入站/出站都经 bus 和 ChannelManager。
+
+---
+
+## Chat 方式（`nanobot chat [prompt]` / `nanobot chat -i`）
+
+- **按次调用**：不启动常驻的 `agent.run()`，每次对话都是直接调 **`agent.process(msg)` 一次**，同步等待这条消息处理完并拿到 `out`。
+- **不经过 ChannelManager**：没有出站队列、没有渠道分发，结果由命令里直接 `console.log(out.content)`。
+- **两种用法**：
+  - **单条**：`nanobot chat "你好"` → 发一条 → 等这一条跑完 → 打印 → 进程退出。
+  - **交互**：`nanobot chat -i` → readline 循环，每次输入 → `agent.process(msg)` → 等这条结束 → 打印 → 再问下一句。
+- **用途**：一次性或简单多轮对话，脚本/命令行里「发一句拿一句」最方便。
+
+---
+
+## 对比小结
+
+| 维度         | Gateway                    | Chat                          |
+|--------------|----------------------------|-------------------------------|
+| 进程         | 常驻                       | 单次或简单交互循环后退出       |
+| 消息路径     | Bus → Agent → Bus → ChannelManager → 各渠道 `send()` | 直接 `agent.process()` → 返回值 |
+| 回复方式     | 异步，由渠道打印           | 同步，命令里直接打印          |
+| 多渠道扩展   | 是（同一 bus + 多渠道）    | 否，仅当前 CLI 输出           |
+
+简单记：**Gateway = 常驻网关 + 总线 + 渠道分发**；**Chat = 按次调用 Agent，同步拿回复**。

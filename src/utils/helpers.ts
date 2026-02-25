@@ -119,8 +119,8 @@ export function parseModelString(model: string): {
 } {
   const [provider, modelName] = model.split(':');
   return {
-    provider: provider || 'openai',
-    modelName: modelName || 'gpt-4o',
+    provider: provider ?? 'openai',
+    modelName: modelName ?? 'gpt-4o',
   };
 }
 

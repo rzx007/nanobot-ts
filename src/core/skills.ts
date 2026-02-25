@@ -99,12 +99,12 @@ export class SkillLoader {
             _meta: skillMeta,
             _frontmatter: frontmatter,
           });
-          logger.info(`已加载技能: ${entry}`);
+          logger.info(`Loaded skill: ${entry}`);
         }
       }
-      logger.info(`共加载 ${this.skills.size} 个技能`);
+      logger.info(`Loaded ${this.skills.size} skills`);
     } catch (error) {
-      logger.error({ err: error }, '初始化技能加载器失败');
+      logger.error({ err: error }, 'Failed to initialize skill loader');
     }
   }
 
@@ -252,6 +252,6 @@ export class SkillLoader {
 
   clear(): void {
     this.skills.clear();
-    logger.info('技能缓存已清空');
+    logger.info('Skill cache cleared');
   }
 }

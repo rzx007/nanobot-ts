@@ -105,39 +105,39 @@ export class AgentLoop {
    */
   async run(): Promise<void> {
     if (this.running) {
-      logger.warn('Agent 已在运行中');
+      logger.warn('Agent already running');
       return;
     }
 
     this.running = true;
-    logger.info('Agent 主循环已启动');
+    logger.info('Agent main loop started');
 
     try {
       // 持续处理入站消息
       while (this.running) {
         try {
           // 消费入站消息 (超时 1 秒以允许检查 running 状态)
-          const msg = await Promise.race([
-            this.bus.consumeInbound(),
-            new Promise((_, resolve) => setTimeout(resolve, 1000)),
-          ]);
+          const msg = await this.bus.consumeInbound();
 
-          // 如果超时且未运行，退出循环
-          if (!msg || msg instanceof Error) {
-            continue;
-          }
+          logger.info({ channel: (msg as InboundMessage).channel, chatId: (msg as InboundMessage).chatId }, 'Processing inbound message');
 
-          // 处理消息
-          await this._processMessage(msg);
-        } catch (err) {
-          logger.error({ err }, '处理消息时出错');
+          const response = await this._processMessage(msg);
+
+          if (response) await this.bus.publishOutbound(response);
+        } catch (rawErr) {
+          const err =
+            rawErr ??
+            new Error('Rejected with undefined/null (unhandled from SDK or bus.publishOutbound). Run with LOG_LEVEL=debug and check stack.');
+          const message = err instanceof Error ? err.message : String(err);
+          const stack = err instanceof Error ? err.stack : (err as { stack?: string })?.stack;
+          logger.error({ err, message, stack }, 'Error processing message');
         }
       }
     } catch (err) {
-      logger.error({ err }, 'Agent 主循环出错');
+      logger.error({ err }, 'Agent main loop error');
     } finally {
       this.running = false;
-      logger.info('Agent 主循环已停止');
+      logger.info('Agent main loop stopped');
     }
   }
 
@@ -146,7 +146,7 @@ export class AgentLoop {
    */
   stop(): void {
     this.running = false;
-    logger.info('Agent 正在停止...');
+    logger.info('Agent stopping...');
   }
 
   /**
@@ -160,12 +160,14 @@ export class AgentLoop {
     msg: InboundMessage,
     onProgress?: (content: string, options?: ProgressOptions) => Promise<void>
   ): Promise<OutboundMessage | null> {
-    logger.info(`处理消息: ${msg.channel}:${msg.chatId}`);
+    logger.info(`Processing message: ${msg.channel}:${msg.chatId}`);
 
+    // CLI 单次调用时未走 run()，this.running 一直为 false，会导致 _processMessage 内 while 不执行
+    const wasRunning = this.running;
+    this.running = true;
     try {
       // 执行消息处理流程
       const response = await this._processMessage(msg, onProgress);
-
       // 发布到出站队列
       if (response) {
         await this.bus.publishOutbound(response);
@@ -173,8 +175,10 @@ export class AgentLoop {
 
       return response;
     } catch (err) {
-      logger.error({ err }, '处理消息失败');
+      logger.error({ err }, 'Failed to process message');
       return null;
+    } finally {
+      this.running = wasRunning;
     }
   }
 
@@ -213,7 +217,7 @@ export class AgentLoop {
       return { channel, chatId, content: '已开启新会话。' };
     }
     if (trimmed === '/help') {
-      const help = `**Nanobot 命令**
+      const help = `**Nanobot-ts 命令**
 - \`/new\` - 开启新会话，归档后清空当前对话历史
 - \`/help\` - 显示此帮助`;
       return { channel, chatId, content: help };
@@ -227,13 +231,12 @@ export class AgentLoop {
     });
 
     // 获取会话历史
-    const history = await this.sessions.getHistory(
-      sessionKey,
-      this.memoryWindow
-    );
+    const history = await this.sessions.getHistory(sessionKey, this.memoryWindow);
 
     // 构建系统提示词 (Identity + Bootstrap + Memory + Skills)
-    const memoryContext = this.memory ? await this.memory.readLongTerm() : '';
+    const memoryContext = this.memory
+      ? await this.memory.readLongTerm()
+      : '';
     const buildOpts: import('./context').BuildSystemPromptOptions = {
       workspace: this.config.agents.defaults.workspace,
       alwaysSkills: this.skills?.getAlwaysSkills() ?? [],
@@ -265,7 +268,6 @@ export class AgentLoop {
 
     while (iterations < this.maxIterations && this.running) {
       iterations++;
-
       // 调用 LLM
       const llmResponse = await this.provider.chat({
         messages,
@@ -334,7 +336,7 @@ export class AgentLoop {
     return {
       channel,
       chatId,
-      content: assistantContent,
+      content: typeof assistantContent === 'string' ? assistantContent : '',
     };
   }
 
@@ -348,13 +350,13 @@ export class AgentLoop {
     const results: string[] = [];
 
     for (const toolCall of toolCalls) {
-      logger.info(`执行工具: ${toolCall.name}`);
+      logger.info(`Executing tool: ${toolCall.name}`);
 
       let result = await this.tools.execute(toolCall.name, toolCall.arguments);
       if (result.length > AgentLoop.TOOL_RESULT_MAX_CHARS) {
         result = result.slice(0, AgentLoop.TOOL_RESULT_MAX_CHARS) + '\n... (truncated)';
       }
-      results.push(`工具 "${toolCall.name}" 返回:\n${result}`);
+      results.push(`Tool "${toolCall.name}" returned:\n${result}`);
     }
 
     return results;

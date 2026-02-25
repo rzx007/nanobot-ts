@@ -45,13 +45,13 @@ export class MemoryConsolidator {
     let toConsolidate: typeof messages;
     if (archiveAll) {
       toConsolidate = messages;
-      logger.info(`整合会话记忆 (archive_all): ${key}, ${messages.length} 条`);
+      logger.info(`Consolidating session memory (archive_all): ${key}, ${messages.length} messages`);
     } else {
       const keepCount = Math.floor(this.consolidationThreshold / 2);
       if (messages.length - lastConsolidated <= keepCount) return;
       toConsolidate = messages.slice(lastConsolidated, -keepCount);
       if (toConsolidate.length === 0) return;
-      logger.info(`整合会话记忆: ${key}, ${toConsolidate.length} 条待整合`);
+      logger.info(`Consolidating session memory: ${key}, ${toConsolidate.length} to consolidate`);
     }
 
     try {
@@ -117,9 +117,9 @@ ${toConsolidate.map(msg => `**${msg.role}**: ${msg.content}`).join('\n\n')}
       // 更新 lastConsolidated
       session.lastConsolidated = archiveAll ? 0 : session.messages.length - Math.floor(this.consolidationThreshold / 2);
 
-      logger.info(`记忆整合成功: ${key}`);
+      logger.info(`Memory consolidation success: ${key}`);
     } catch (error) {
-      logger.error(`记忆整合失败: ${session.key}, 错误: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(`Memory consolidation failed: ${session.key}, error: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

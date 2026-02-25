@@ -58,7 +58,7 @@ export class MessageTool extends Tool {
     try {
       const { channel, chatId, content } = params;
 
-      logger.info(`发送消息到 ${channel}:${chatId}`);
+      logger.info(`Sending message to ${channel}:${chatId}`);
 
       // 发布到消息总线
       await this.bus.publishOutbound({
@@ -67,9 +67,9 @@ export class MessageTool extends Tool {
         content,
       });
 
-      return `消息已发送到 ${channel}`;
+      return `Message sent to ${channel}`;
     } catch (error) {
-      const errorMsg = `发送消息失败: ${error instanceof Error ? error.message : String(error)}`;
+      const errorMsg = `Send message failed: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(errorMsg);
       return `Error: ${errorMsg}`;
     }

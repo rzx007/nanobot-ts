@@ -77,17 +77,17 @@ export class ReadFileTool extends FileTool {
 
       // 检查权限
       if (!this.isPathAllowed(fullPath)) {
-        return `错误: 路径 "${params.path}" 不在工作区内`;
+        return `Error: Path "${params.path}" is outside workspace`;
       }
 
-      logger.info(`读取文件: ${fullPath}`);
+      logger.info(`Reading file: ${fullPath}`);
 
       // 读取文件
       const content = await fs.readFile(fullPath, 'utf-8');
 
       return content;
     } catch (error) {
-      const errorMsg = `读取文件 "${params.path}" 失败: ${error instanceof Error ? error.message : String(error)}`;
+      const errorMsg = `Read file "${params.path}" failed: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(errorMsg);
       return `Error: ${errorMsg}`;
     }
@@ -124,10 +124,10 @@ export class WriteFileTool extends FileTool {
 
       // 检查权限
       if (!this.isPathAllowed(fullPath)) {
-        return `错误: 路径 "${params.path}" 不在工作区内`;
+        return `Error: Path "${params.path}" is outside workspace`;
       }
 
-      logger.info(`写入文件: ${fullPath}`);
+      logger.info(`Writing file: ${fullPath}`);
 
       // 确保目录存在
       const dirPath = path.dirname(fullPath);
@@ -136,9 +136,9 @@ export class WriteFileTool extends FileTool {
       // 写入文件
       await fs.writeFile(fullPath, params.content, 'utf-8');
 
-      return `文件 "${params.path}" 写入成功`;
+      return `File "${params.path}" written successfully`;
     } catch (error) {
-      const errorMsg = `写入文件 "${params.path}" 失败: ${error instanceof Error ? error.message : String(error)}`;
+      const errorMsg = `Write file "${params.path}" failed: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(errorMsg);
       return `Error: ${errorMsg}`;
     }
@@ -183,10 +183,10 @@ export class EditFileTool extends FileTool {
 
       // 检查权限
       if (!this.isPathAllowed(fullPath)) {
-        return `错误: 路径 "${params.path}" 不在工作区内`;
+        return `Error: Path "${params.path}" is outside workspace`;
       }
 
-      logger.info(`编辑文件: ${fullPath}`);
+      logger.info(`Editing file: ${fullPath}`);
 
       // 读取文件
       const content = await fs.readFile(fullPath, 'utf-8');
@@ -197,9 +197,9 @@ export class EditFileTool extends FileTool {
       // 写入文件
       await fs.writeFile(fullPath, newContent, 'utf-8');
 
-      return `文件 "${params.path}" 编辑成功`;
+      return `File "${params.path}" edited successfully`;
     } catch (error) {
-      const errorMsg = `编辑文件 "${params.path}" 失败: ${error instanceof Error ? error.message : String(error)}`;
+      const errorMsg = `Edit file "${params.path}" failed: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(errorMsg);
       return `Error: ${errorMsg}`;
     }
@@ -232,10 +232,10 @@ export class ListDirTool extends FileTool {
 
       // 检查权限
       if (!this.isPathAllowed(fullPath)) {
-        return `错误: 路径 "${params.path}" 不在工作区内`;
+        return `Error: Path "${params.path}" is outside workspace`;
       }
 
-      logger.info(`列出目录: ${fullPath}`);
+      logger.info(`Listing directory: ${fullPath}`);
 
       // 读取目录
       const entries = await fs.readdir(fullPath, { withFileTypes: true });
@@ -250,7 +250,7 @@ export class ListDirTool extends FileTool {
 
       return output;
     } catch (error) {
-      const errorMsg = `列出目录 "${params.path}" 失败: ${error instanceof Error ? error.message : String(error)}`;
+      const errorMsg = `List directory "${params.path}" failed: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(errorMsg);
       return `Error: ${errorMsg}`;
     }

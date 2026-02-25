@@ -10,7 +10,7 @@ import type {
   InboundMessage,
   OutboundMessage,
 } from './events';
-
+import { createLogger } from '../utils/logger';
 /**
  * 消息总线事件
  */
@@ -46,17 +46,16 @@ export class MessageBus extends EventEmitter<MessageBusEvents> {
    * @param msg - 入站消息
    */
   async publishInbound(msg: InboundMessage): Promise<void> {
-    // 添加到队列
     this.inboundQueue.push(msg);
-
-    // 触发事件
     this.emit('inbound', msg);
-
-    // 如果有等待的消费者，立即处理
-    if (this.inboundConsumers.length > 0) {
+    const hadConsumer = this.inboundConsumers.length > 0;
+    if (hadConsumer) {
       const consumer = this.inboundConsumers.shift()!;
       const nextMsg = this.inboundQueue.shift()!;
       consumer(nextMsg);
+    }
+    if (typeof process !== 'undefined' && process.env.LOG_LEVEL === 'debug') {
+      createLogger('bus').debug({ hadConsumer, queueLen: this.inboundQueue.length }, 'publishInbound');
     }
   }
 

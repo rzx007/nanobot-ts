@@ -70,10 +70,10 @@ export class WebSearchTool extends Tool {
       const apiKey = this.config.tools.web.search.apiKey;
 
       if (!apiKey) {
-        return 'Error: 未配置 Brave Search API 密钥';
+        return 'Error: Brave Search API key not configured';
       }
 
-      logger.info(`搜索网络: ${query}`);
+      logger.info(`Web search: ${query}`);
 
       // 调用 Brave Search API
       const response = await fetch('https://api.search.brave.com/res/v1/web/search', {
@@ -89,7 +89,7 @@ export class WebSearchTool extends Tool {
       const data = await response.json() as SearchResponse;
 
       if (!response.ok) {
-        throw new Error(data.error?.message ?? '搜索请求失败');
+        throw new Error(data.error?.message ?? 'Search request failed');
       }
 
       // 格式化搜索结果
@@ -99,7 +99,7 @@ export class WebSearchTool extends Tool {
 
       return results.join('\n\n');
     } catch (error) {
-      const errorMsg = `网络搜索失败: ${error instanceof Error ? error.message : String(error)}`;
+      const errorMsg = `Web search failed: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(errorMsg);
       return `Error: ${errorMsg}`;
     }
@@ -139,7 +139,7 @@ export class WebFetchTool extends Tool {
     try {
       const { url } = params;
 
-      logger.info(`获取网页: ${url}`);
+      logger.info(`Fetching page: ${url}`);
 
       // 获取网页内容
       const response = await fetch(url, {
@@ -170,7 +170,7 @@ export class WebFetchTool extends Tool {
         // 限制长度
         const maxLength = 5000;
         if (text.length > maxLength) {
-          return text.substring(0, maxLength) + '\n\n... (内容已截断)';
+          return text.substring(0, maxLength) + '\n\n... (truncated)';
         }
 
         return text;
@@ -180,12 +180,12 @@ export class WebFetchTool extends Tool {
       const content = await response.text();
       const maxLength = 10000;
       if (content.length > maxLength) {
-        return content.substring(0, maxLength) + '\n\n... (内容已截断)';
+        return content.substring(0, maxLength) + '\n\n... (truncated)';
       }
 
       return content;
     } catch (error) {
-      const errorMsg = `获取网页失败: ${error instanceof Error ? error.message : String(error)}`;
+      const errorMsg = `Fetch page failed: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(errorMsg);
       return `Error: ${errorMsg}`;
     }

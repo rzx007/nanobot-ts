@@ -107,12 +107,9 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
     channel?: string,
     chatId?: string
   ): string {
-    const now = new Date().toLocaleString('zh-CN', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-      weekday: 'long',
-    });
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const d = new Date();
+    const now = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const tz = Intl.DateTimeFormat?.().resolvedOptions?.().timeZone ?? 'UTC';
     const lines = [`Current Time: ${now} (${tz})`];
     if (channel && chatId) {
       lines.push(`Channel: ${channel}`, `Chat ID: ${chatId}`);

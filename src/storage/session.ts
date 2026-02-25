@@ -80,7 +80,7 @@ export class SessionManager {
    */
   async init(): Promise<void> {
     await ensureDir(this.sessionsDir);
-    logger.info(`会话管理器已初始化: ${this.sessionsDir}`);
+    logger.info(`Session manager initialized: ${this.sessionsDir}`);
   }
 
   /**
@@ -117,7 +117,7 @@ export class SessionManager {
         metadata: {},
       };
       await this.save(session);
-      logger.info(`创建新会话: ${key}`);
+      logger.info(`Created new session: ${key}`);
     }
 
     // 缓存会话
@@ -178,7 +178,7 @@ export class SessionManager {
     session.updatedAt = new Date().toISOString();
     await this.save(session);
     this.invalidate(key);
-    logger.info(`已清除会话历史: ${key}`);
+    logger.info(`Cleared session history: ${key}`);
   }
 
   /**
@@ -192,9 +192,9 @@ export class SessionManager {
     // 删除文件
     try {
       await fs.unlink(filepath);
-      logger.info(`已删除会话: ${key}`);
+      logger.info(`Deleted session: ${key}`);
     } catch (err) {
-      logger.error({ err }, `删除会话失败: ${key}`);
+      logger.error({ err }, `Failed to delete session: ${key}`);
     }
 
     // 清除缓存
@@ -274,7 +274,7 @@ export class SessionManager {
       }
       return session;
     } catch (err) {
-      logger.error({ err }, `加载会话失败: ${key}`);
+      logger.error({ err }, `Failed to load session: ${key}`);
       return null;
     }
   }

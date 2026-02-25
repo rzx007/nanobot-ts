@@ -5,12 +5,12 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "nanobot": "dist/cli/index.js"
+    "nanobot": "dist/cli/run.js"
   },
   "scripts": {
     "build": "tsup",
-    "dev": "tsx watch src/cli/index.ts",
-    "start": "node dist/cli/index.js",
+    "dev": "tsx watch src/cli/run.ts",
+    "start": "node dist/cli/run.js",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
@@ -19,10 +19,10 @@
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
-    "onboard": "node dist/cli/index.js init",
-    "agent": "node dist/cli/index.js agent",
-    "gateway": "node dist/cli/index.js gateway",
-    "status": "node dist/cli/index.js status"
+    "onboard": "node dist/cli/run.js init",
+    "agent": "node dist/cli/run.js chat --interactive",
+    "gateway": "node dist/cli/run.js gateway",
+    "status": "node dist/cli/run.js status"
   },
   "keywords": [
     "ai",
@@ -54,6 +54,7 @@
     "eventemitter3": "^5.0.4",
     "execa": "^9.6.1",
     "fs-extra": "^11.3.3",
+    "iconv-lite": "^0.7.2",
     "imapflow": "^1.2.10",
     "inquirer": "^13.3.0",
     "markdown-it": "^14.1.1",

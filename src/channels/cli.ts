@@ -12,7 +12,7 @@ import { logger } from '../utils/logger';
  * CLI 渠道配置
  */
 export interface CLIConfig extends BaseChannelConfig {
-  // CLI 没有额外配置
+  // CLI 渠道不需要额外的配置选项
 }
 
 /**
@@ -54,14 +54,14 @@ export class CLIChannel implements BaseChannel {
    * 启动 CLI 渠道
    */
   async start(): Promise<void> {
-    logger.info('CLI 渠道已启动');
+    logger.info('CLI channel started');
   }
 
   /**
    * 停止 CLI 渠道
    */
   async stop(): Promise<void> {
-    logger.info('CLI 渠道已停止');
+    logger.info('CLI channel stopped');
   }
 
   /**
@@ -70,7 +70,9 @@ export class CLIChannel implements BaseChannel {
    * @param msg - 出站消息
    */
   async send(msg: any): Promise<void> {
-    logger.info(`[响应]: ${msg.content}`);
+    if (msg?.content != null) {
+      console.log('\nBot>', msg.content);
+    }
   }
 
   /**
@@ -100,6 +102,6 @@ export class CLIChannel implements BaseChannel {
     // 发布到消息总线
     await this.bus.publishInbound(msg);
 
-    logger.info(`[用户]: ${content}`);
+    logger.info(`[user]: ${content}`);
   }
 }

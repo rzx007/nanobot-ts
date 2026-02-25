@@ -53,20 +53,20 @@ export class ExecTool extends Tool {
       const { command } = params;
       const timeoutMs = this.config.tools.exec.timeout * 1000;
 
-      logger.info(`执行命令: ${command}`);
+      logger.info(`Executing command: ${command}`);
 
       // 检查命令是否在允许列表中
       const commandName = command.split(' ')[0] ?? command;
       const allowedCommands = this.config.tools.exec.allowedCommands;
       if (allowedCommands.length > 0 && !allowedCommands.includes(commandName)) {
-        return `Error: 命令 "${commandName}" 不在允许列表中`;
+        return `Error: Command "${commandName}" not in allowlist`;
       }
 
       // 执行命令 (带超时)
       const result = await withTimeout(
         execa('sh', ['-c', command]),
         timeoutMs,
-        `命令执行超时 (${this.config.tools.exec.timeout}秒)`
+        `Command execution timeout (${this.config.tools.exec.timeout}s)`
       );
 
       // 组合输出
@@ -82,12 +82,12 @@ export class ExecTool extends Tool {
 
       // 包含退出码
       if (result.exitCode !== 0) {
-        output += `\n[退出码: ${result.exitCode}]`;
+        output += `\n[exit code: ${result.exitCode}]`;
       }
 
       return output.trim();
     } catch (error) {
-      const errorMsg = `执行命令失败: ${error instanceof Error ? error.message : String(error)}`;
+      const errorMsg = `Command execution failed: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(errorMsg);
       return `Error: ${errorMsg}`;
     }

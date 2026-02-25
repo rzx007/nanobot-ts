@@ -4,39 +4,54 @@
  * 使用 cosmiconfig 加载配置文件，支持多种格式和路径
  */
 
+import path from 'path';
+import fs from 'fs/promises';
 import { cosmiconfig } from 'cosmiconfig';
 import type { Config } from './schema';
+
+const NANOBOT_HOME =
+  process.env.NANOBOT_HOME ??
+  path.join(process.env.HOME ?? process.env.USERPROFILE ?? '~', '.nanobot');
+const DEFAULT_CONFIG_PATH = path.join(NANOBOT_HOME, 'config.json');
+
+function expandTilde(p: string): string {
+  if (p.startsWith('~')) {
+    return path.join(process.env.HOME ?? process.env.USERPROFILE ?? '', p.slice(1));
+  }
+  return p;
+}
 
 /**
  * 加载配置文件
  * 
  * 搜索路径 (按顺序):
- * 1. ~/.nanobot/config.json
- * 2. ./config.json
- * 3. ./config.ts (如果存在)
+ * 1. NANOBOT_HOME/config.json 或 ~/.nanobot/config.json
+ * 2. cosmiconfig 从 cwd 向上搜索
  * 
  * @returns 配置对象，如果未找到则返回 null
  */
 export async function loadConfig(): Promise<Config | null> {
   try {
+    const defaultPath = expandTilde(DEFAULT_CONFIG_PATH);
+    try {
+      const raw = await fs.readFile(defaultPath, 'utf-8');
+      const config = JSON.parse(raw) as Config;
+      return config;
+    } catch {
+      // 继续尝试 cosmiconfig
+    }
+
     const result = await cosmiconfig('nanobot', {
-      // 搜索路径
-      searchPlaces: [
-        '~/.nanobot/config.json',
-        './config.json',
-        './config.ts',
-      ],
+      searchPlaces: ['config.json', 'config.ts', '.nanobotrc'],
     }).search();
 
     if (result) {
-      console.log(`配置加载成功: ${result.filepath}`);
       return result.config as Config;
     }
 
-    console.log('未找到配置文件');
     return null;
   } catch (error) {
-    console.error('加载配置文件失败:', error);
+    console.error('Failed to load config:', error);
     throw error;
   }
 }
@@ -66,9 +81,9 @@ export async function saveConfig(
       'utf-8'
     );
 
-    console.log(`配置已保存: ${filepath}`);
+    console.log(`Config saved: ${filepath}`);
   } catch (error) {
-    console.error('保存配置文件失败:', error);
+    console.error('Failed to save config:', error);
     throw error;
   }
 }

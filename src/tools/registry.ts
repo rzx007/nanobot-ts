@@ -24,10 +24,10 @@ export class ToolRegistry {
    */
   register(tool: Tool): void {
     if (this.tools.has(tool.name)) {
-      logger.warn(`工具 "${tool.name}" 已存在，将被覆盖`);
+      logger.warn(`Tool "${tool.name}" already exists, will be overwritten`);
     }
     this.tools.set(tool.name, tool);
-    logger.info(`工具注册成功: ${tool.name}`);
+    logger.info(`Tool registered: ${tool.name}`);
   }
 
   /**
@@ -38,10 +38,10 @@ export class ToolRegistry {
    */
   unregister(name: string): boolean {
     if (this.tools.delete(name)) {
-      logger.info(`工具注销成功: ${name}`);
+      logger.info(`Tool unregistered: ${name}`);
       return true;
     } else {
-      logger.warn(`工具不存在: ${name}`);
+      logger.warn(`Tool not found: ${name}`);
       return false;
     }
   }
@@ -95,12 +95,12 @@ export class ToolRegistry {
    */
   async execute(name: string, params: Record<string, unknown>): Promise<string> {
     // 错误提示后缀
-    const ERROR_HINT = '\n\n[请分析上面的错误并尝试不同的方法。]';
+    const ERROR_HINT = '\n\n[Please analyze the error above and try a different approach.]';
 
     // 查找工具
     const tool = this.tools.get(name);
     if (!tool) {
-      const errorMsg = `错误: 工具 "${name}" 不存在。可用工具: ${this.getToolNames().join(', ')}`;
+      const errorMsg = `Error: Tool "${name}" not found. Available tools: ${this.getToolNames().join(', ')}`;
       logger.error(errorMsg);
       return errorMsg + ERROR_HINT;
     }
@@ -108,14 +108,14 @@ export class ToolRegistry {
     // 验证参数
     const validationErrors = tool.validateParams(params);
     if (validationErrors.length > 0) {
-      const errorMsg = `错误: 工具 "${name}" 的参数无效: ${validationErrors.join('; ')}`;
+      const errorMsg = `Error: Invalid params for tool "${name}": ${validationErrors.join('; ')}`;
       logger.error(errorMsg);
       return errorMsg + ERROR_HINT;
     }
 
     // 执行工具
     try {
-      logger.info(`执行工具: ${name}`);
+      logger.info(`Executing tool: ${name}`);
       const result = await tool.execute(params);
 
       // 检查结果是否为错误
@@ -123,10 +123,10 @@ export class ToolRegistry {
         return result + ERROR_HINT;
       }
 
-      logger.info(`工具 "${name}" 执行成功`);
+      logger.info(`Tool "${name}" executed successfully`);
       return result;
     } catch (error) {
-      const errorMsg = `执行工具 "${name}" 时出错: ${error instanceof Error ? error.message : String(error)}`;
+      const errorMsg = `Error executing tool "${name}": ${error instanceof Error ? error.message : String(error)}`;
       logger.error(errorMsg);
       return errorMsg + ERROR_HINT;
     }
@@ -147,6 +147,6 @@ export class ToolRegistry {
   clear(): void {
     const count = this.tools.size;
     this.tools.clear();
-    logger.info(`已清空 ${count} 个工具`);
+    logger.info(`Cleared ${count} tools`);
   }
 }
