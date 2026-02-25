@@ -100,6 +100,23 @@ export class LLMProvider {
   }
 
   /**
+   * 为每个 tool 注入 execute，供 SDK 自动执行
+   */
+  private buildToolsWithExecute(
+    tools: ToolSet,
+    executeTool: (name: string, args: Record<string, unknown>) => Promise<string>
+  ): ToolSet {
+    const out: ToolSet = {};
+    for (const [name, def] of Object.entries(tools)) {
+      out[name] = {
+        ...def,
+        execute: async (args: Record<string, unknown>) => executeTool(name, args ?? {}),
+      } as (typeof tools)[string];
+    }
+    return out;
+  }
+
+  /**
    * 获取当前请求对应的 model 实例
    */
   private getModel(providerName: string, modelName: string): LanguageModel {
@@ -134,6 +151,8 @@ export class LLMProvider {
 
   /**
    * 调用 LLM (使用 generateText)
+   * 若传入 executeTool，则 tools 会带上 execute，由 SDK 在内部多步循环中自动执行工具；
+   * 否则仅一轮，不执行工具（兼容旧用法）。
    */
   async chat(params: {
     messages: Array<{ role: string; content: unknown; timestamp?: string }>;
@@ -141,9 +160,15 @@ export class LLMProvider {
     model: string;
     temperature?: number;
     maxTokens?: number;
+    /** 工具执行器；传入后 SDK 会自动执行工具并循环直到无 tool call 或达到 maxSteps */
+    executeTool?: (name: string, args: Record<string, unknown>) => Promise<string>;
+    /** 最大步数（每步一次 LLM 调用 + 可选工具执行），默认 1；与 executeTool 配合使用 */
+    maxSteps?: number;
+    /** 每步结束回调（如用于进度） */
+    onStepFinish?: (step: { text?: string; toolCalls?: unknown[] }) => void;
   }): Promise<LLMResponse> {
     try {
-      const { messages, tools, model: modelStr, temperature, maxTokens } = params;
+      const { messages, tools, model: modelStr, temperature, maxTokens, executeTool, maxSteps = 1, onStepFinish } = params;
       const { provider, modelName } = parseModelString(modelStr);
 
       logger.info(`Calling LLM: ${provider}:${modelName}`);
@@ -151,25 +176,25 @@ export class LLMProvider {
       const model = this.getModel(provider, modelName);
       const normalizedMessages = normalizeMessages(messages);
 
+      const toolsToUse =
+        executeTool != null
+          ? this.buildToolsWithExecute(tools, executeTool)
+          : tools;
+
       const result = await generateText({
         model,
         messages: normalizedMessages,
-        tools,
+        tools: toolsToUse,
         temperature: temperature ?? 0.7,
         maxOutputTokens: maxTokens ?? 4096,
-        stopWhen: [stepCountIs(3)],
+        stopWhen: [stepCountIs(maxSteps ?? 3)],
+        ...(onStepFinish && { onStepFinish }),
       }).then((r) => r, (e: unknown) => {
         if (e === undefined || e === null) {
           throw new Error('generateText rejected with undefined/null (often fetch/network or SDK bug)');
         }
         throw e;
       });
-
-      const toolCalls: ToolCall[] = (result.toolCalls ?? []).map((tc) => ({
-        id: tc.toolCallId,
-        name: tc.toolName,
-        arguments: (tc as { input?: Record<string, unknown> }).input ?? {},
-      }));
 
       const content = typeof result.text === 'string' ? result.text : '';
 
@@ -183,16 +208,13 @@ export class LLMProvider {
 
       return {
         content,
-        hasToolCalls: toolCalls.length > 0,
-        toolCalls,
+        hasToolCalls: false,
+        toolCalls: [],
         ...(usage && { usage }),
       };
     } catch (error) {
-      const normalized =
-        error === undefined || error === null
-          ? new Error('LLM call failed (rejected with undefined/null); check generateText/tools.')
-          : error;
-      const errorMsg = `LLM call failed: ${normalized instanceof Error ? normalized.message : String(normalized)}`;
+      const err = error ?? new Error('LLM call failed (rejected with undefined/null); check generateText/tools.');
+      const errorMsg = `LLM call failed: ${err instanceof Error ? err.message : String(err)}`;
       logger.error(errorMsg);
       throw new ProviderError(errorMsg);
     }

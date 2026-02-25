@@ -3,13 +3,17 @@
  * 按 config 加载渠道，消费 outbound 并分发到各渠道的 send()
  */
 
-import type { OutboundMessage } from '../bus/events';
+import type { InboundMessage, OutboundMessage } from '../bus/events';
 import type { BaseChannel } from './base';
 import type { Config } from '../config/schema';
 import { logger } from '../utils/logger';
 
 export interface MessageBusLike {
   consumeOutbound(): Promise<OutboundMessage>;
+}
+
+export interface MessageBusWithInbound extends MessageBusLike {
+  publishInbound(msg: InboundMessage): Promise<void>;
 }
 
 /**
@@ -47,6 +51,48 @@ export class ChannelManager {
    */
   getChannel(name: string): BaseChannel | undefined {
     return this.channels.get(name);
+  }
+
+  /**
+   * 按 config.channels 加载并注册已启用的渠道（WhatsApp、Feishu、Email）
+   * 需传入带 publishInbound 的 bus，供渠道上报入站消息。
+   * 单个渠道依赖缺失时只打 log 不抛错。
+   */
+  async loadChannelsFromConfig(bus: MessageBusWithInbound): Promise<void> {
+    const { whatsapp, feishu, email } = this.config.channels;
+
+    if (whatsapp.enabled) {
+      try {
+        const { WhatsAppChannel } = await import('./whatsapp');
+        this.registerChannel('whatsapp', new WhatsAppChannel(whatsapp, bus));
+      } catch (err) {
+        logger.warn({ err, name: 'whatsapp' }, 'Channel not available (missing dependency?)');
+      }
+    }
+    if (feishu.enabled && feishu.appId && feishu.appSecret) {
+      try {
+        const { FeishuChannel } = await import('./feishu');
+        this.registerChannel('feishu', new FeishuChannel(feishu, bus));
+      } catch (err) {
+        logger.warn({ err, name: 'feishu' }, 'Channel not available (missing dependency?)');
+      }
+    }
+    if (
+      email.enabled &&
+      email.consentGranted &&
+      email.imapHost &&
+      email.imapUsername &&
+      email.smtpHost &&
+      email.smtpUsername &&
+      email.fromAddress
+    ) {
+      try {
+        const { EmailChannel } = await import('./email');
+        this.registerChannel('email', new EmailChannel(email, bus));
+      } catch (err) {
+        logger.warn({ err, name: 'email' }, 'Channel not available (missing dependency?)');
+      }
+    }
   }
 
   /**

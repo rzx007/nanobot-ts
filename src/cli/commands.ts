@@ -27,7 +27,10 @@ import {
   WebSearchTool,
   WebFetchTool,
   MessageTool,
+  SpawnTool,
+  CronTool,
 } from '../tools';
+import { CronService } from '@/cron';
 import { success, error, info } from './ui';
 import { logger } from '../utils/logger';
 
@@ -221,6 +224,26 @@ async function cmdGateway(_port: string): Promise<void> {
   tools.register(new WebFetchTool());
   tools.register(new MessageTool(config, bus));
 
+  const cronStorePath = path.join(workspace, 'cron.json');
+  const cronService = new CronService({
+    storePath: cronStorePath,
+    onJob: async (job) => {
+      const ch = job.payload.channel ?? 'cli';
+      const to = job.payload.to ?? 'direct';
+      await bus.publishInbound({
+        channel: ch,
+        senderId: 'cron',
+        chatId: to,
+        content: job.payload.message,
+        timestamp: new Date(),
+      });
+      return null;
+    },
+  });
+  await cronService.start();
+  tools.register(new SpawnTool());
+  tools.register(new CronTool(cronService));
+
   const memory = new MemoryConsolidator(config);
   const skills = new SkillLoader(config);
   await skills.init();
@@ -237,6 +260,7 @@ async function cmdGateway(_port: string): Promise<void> {
 
   const channelManager = new ChannelManager(config, bus);
   channelManager.registerChannel('cli', new CLIChannel({}, bus));
+  await channelManager.loadChannelsFromConfig(bus);
   await channelManager.startAll();
   channelManager.runOutboundLoop();
 
@@ -297,6 +321,26 @@ async function cmdChat(promptArg: string | undefined, interactive?: boolean): Pr
   tools.register(new WebSearchTool(config));
   tools.register(new WebFetchTool());
   tools.register(new MessageTool(config, bus));
+
+  const cronStorePath = path.join(workspace, 'cron.json');
+  const cronService = new CronService({
+    storePath: cronStorePath,
+    onJob: async (job) => {
+      const ch = job.payload.channel ?? 'cli';
+      const to = job.payload.to ?? 'direct';
+      await bus.publishInbound({
+        channel: ch,
+        senderId: 'cron',
+        chatId: to,
+        content: job.payload.message,
+        timestamp: new Date(),
+      });
+      return null;
+    },
+  });
+  await cronService.start();
+  tools.register(new SpawnTool());
+  tools.register(new CronTool(cronService));
 
   const memory = new MemoryConsolidator(config);
   const skills = new SkillLoader(config);

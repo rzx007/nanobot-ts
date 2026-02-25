@@ -7,7 +7,6 @@
 import type {
   InboundMessage,
   OutboundMessage,
-  ToolCall,
   ProgressOptions,
 } from '../bus/events';
 import { getSessionKey } from '../bus/events';
@@ -223,6 +222,14 @@ export class AgentLoop {
       return { channel, chatId, content: help };
     }
 
+    // 为需要上下文的工具设置 channel/chatId（如 spawn、cron）
+    for (const name of this.tools.getToolNames()) {
+      const t = this.tools.get(name);
+      if (t && 'setContext' in t && typeof (t as { setContext?: (ch: string, cid: string) => void }).setContext === 'function') {
+        (t as { setContext: (ch: string, cid: string) => void }).setContext(channel, chatId);
+      }
+    }
+
     // 添加用户消息到会话
     await this.sessions.addMessage(sessionKey, {
       role: 'user',
@@ -259,58 +266,35 @@ export class AgentLoop {
       }),
     ];
 
-    // 获取工具定义
+    // 获取工具定义，由 SDK 自动执行工具（executeTool + maxSteps）
     const tools = this.tools.getDefinitions();
 
-    // 迭代处理 LLM 响应和工具调用
-    let iterations = 0;
-    let assistantContent = '';
-
-    while (iterations < this.maxIterations && this.running) {
-      iterations++;
-      // 调用 LLM
-      const llmResponse = await this.provider.chat({
-        messages,
-        tools,
-        model: this.config.agents.defaults.model,
-        temperature: this.config.agents.defaults.temperature,
-        maxTokens: this.config.agents.defaults.maxTokens,
-      });
-
-      // 检查是否有工具调用
-      if (!llmResponse.hasToolCalls) {
-        assistantContent = AgentLoop._stripThink(llmResponse.content);
-        break;
-      }
-
-      // 发送进度更新 (工具调用提示)
-      if (onProgress) {
-        await onProgress(llmResponse.content, { toolHint: true });
-      }
-
-      // 执行工具调用
-      const toolResults = await this._executeToolCalls(llmResponse.toolCalls);
-
-      // 添加工具结果到消息列表 (AI SDK 格式: ToolResultPart[])
-      const toolCallParts = toolResults.map((output, i) => {
-        const tc = llmResponse.toolCalls[i]!;
-        return { type: 'tool-result' as const, toolCallId: tc.id, toolName: tc.name, output };
-      });
-      messages.push({ role: 'tool', content: toolCallParts });
-
-      // 保存工具调用到会话
-      for (const toolCall of llmResponse.toolCalls) {
-        await this.sessions.addMessage(sessionKey, {
-          role: 'assistant',
-          content: '', // 工具调用没有内容
-          timestamp: new Date().toISOString(),
-          toolCalls: toolCall,
-          toolCallId: toolCall.id,
-        });
-      }
+    const chatParams: Parameters<LLMProvider['chat']>[0] = {
+      messages,
+      tools,
+      model: this.config.agents.defaults.model,
+      temperature: this.config.agents.defaults.temperature,
+      maxTokens: this.config.agents.defaults.maxTokens,
+      maxSteps: this.maxIterations,
+      executeTool: async (name, args) => {
+        let result = await this.tools.execute(name, args);
+        if (result.length > AgentLoop.TOOL_RESULT_MAX_CHARS) {
+          result = result.slice(0, AgentLoop.TOOL_RESULT_MAX_CHARS) + '\n... (truncated)';
+        }
+        return `Tool "${name}" returned:\n${result}`;
+      },
+    };
+    if (onProgress) {
+      chatParams.onStepFinish = (step) => {
+        if (step?.text != null && step.text !== '') {
+          onProgress(step.text, { toolHint: true }).catch(() => {});
+        }
+      };
     }
+    const llmResponse = await this.provider.chat(chatParams);
 
-    // 添加最终响应到会话
+    const assistantContent = AgentLoop._stripThink(llmResponse.content ?? '');
+
     if (assistantContent) {
       await this.sessions.addMessage(sessionKey, {
         role: 'assistant',
@@ -338,28 +322,6 @@ export class AgentLoop {
       chatId,
       content: typeof assistantContent === 'string' ? assistantContent : '',
     };
-  }
-
-  /**
-   * 执行工具调用
-   * 
-   * @param toolCalls - 工具调用列表
-   * @returns 工具执行结果列表
-   */
-  private async _executeToolCalls(toolCalls: ToolCall[]): Promise<string[]> {
-    const results: string[] = [];
-
-    for (const toolCall of toolCalls) {
-      logger.info(`Executing tool: ${toolCall.name}`);
-
-      let result = await this.tools.execute(toolCall.name, toolCall.arguments);
-      if (result.length > AgentLoop.TOOL_RESULT_MAX_CHARS) {
-        result = result.slice(0, AgentLoop.TOOL_RESULT_MAX_CHARS) + '\n... (truncated)';
-      }
-      results.push(`Tool "${toolCall.name}" returned:\n${result}`);
-    }
-
-    return results;
   }
 
 }
