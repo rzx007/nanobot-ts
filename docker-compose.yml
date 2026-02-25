@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  nanobot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nanobot-ts:latest
+    container_name: nanobot
+    restart: unless-stopped
+    volumes:
+      # Mount config directory
+      - ~/.nanobot:/home/nanobot/.nanobot
+      # Mount workspace directory (for tools to access)
+      - ~/nanobot-workspace:/home/nanobot/workspace
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai
+    # Optional: Resource limits
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '1.0'
+    #       memory: 512M
+    #     reservations:
+    #       cpus: '0.5'
+    #       memory: 256M
+    networks:
+      - nanobot-network
+
+  # Optional: Watchtower for automatic updates
+  # watchtower:
+  #   image: containrrr/watchtower
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   environment:
+  #     - WATCHTOWER_CLEANUP=true
+  #     - WATCHTOWER_POLL_INTERVAL=3600
+
+networks:
+  nanobot-network:
+    driver: bridge

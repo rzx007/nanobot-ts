@@ -1,0 +1,148 @@
+/**
+ * Shell 执行工具测试
+ */
+
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+import { ExecTool } from '../../../src/tools/shell';
+import type { Config } from '../../../src/config/schema';
+
+describe('ExecTool', () => {
+  let config: Config;
+  let mockExeca: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    config = {
+      agents: {
+        defaults: {
+          workspace: '~/.nanobot/workspace',
+          model: 'openai:gpt-4o',
+          temperature: 0.1,
+          maxTokens: 8192,
+          maxIterations: 40,
+          memoryWindow: 100,
+        },
+      },
+      providers: {
+        openai: {
+          apiKey: 'test-key',
+          apiBase: 'https://api.openai.com/v1',
+        },
+        anthropic: {
+          apiKey: 'test-key',
+        },
+        openrouter: {
+          apiKey: 'test-key',
+        },
+      },
+      channels: {
+        whatsapp: { enabled: false, allowFrom: [] },
+        feishu: { enabled: false, appId: '', appSecret: '', encryptKey: '', verificationToken: '', allowFrom: [] },
+        email: { enabled: false, consentGranted: false, imapHost: '', imapPort: 993, imapUsername: '', imapPassword: '', imapMailbox: 'INBOX', smtpHost: '', smtpPort: 587, smtpUsername: '', smtpPassword: '', fromAddress: 'test@example.com', allowFrom: [], autoReplyEnabled: true },
+      },
+      tools: {
+        restrictToWorkspace: false,
+        exec: { timeout: 60, allowedCommands: [] },
+        web: { search: { apiKey: '' } },
+      },
+    };
+  });
+
+  describe('execute', () => {
+    it('should execute command successfully', async () => {
+      const tool = new ExecTool(config);
+
+      // Mock execa 返回成功
+      mockExeca = vi.fn();
+      vi.doMock('execa', () => mockExeca);
+      
+      mockExeca.mockResolvedValue({
+        stdout: 'test',
+        stderr: '',
+        exitCode: 0,
+        failed: false,
+        timedOut: false,
+        isCanceled: false,
+        killed: false,
+      });
+
+      const result = await tool.execute({ command: 'echo "test"' });
+
+      expect(result).toBe('test');
+    });
+
+    it('should include stderr in result', async () => {
+      const tool = new ExecTool(config);
+
+      mockExeca = vi.fn();
+      vi.doMock('execa', () => mockExeca);
+
+      mockExeca.mockResolvedValue({
+        stdout: '',
+        stderr: 'error message',
+        exitCode: 1,
+        failed: false,
+        timedOut: false,
+        isCanceled: false,
+        killed: false,
+      });
+
+      const result = await tool.execute({ command: 'command' });
+
+      expect(result).toContain('error message');
+      expect(result).toContain('[退出码: 1]');
+    });
+
+    it('should timeout after configured time', async () => {
+      const tool = new ExecTool({
+        ...config,
+        tools: {
+          ...config.tools,
+          exec: {
+            timeout: 1,
+            allowedCommands: [],
+          },
+        },
+      });
+
+      mockExeca = vi.fn();
+      vi.doMock('execa', () => mockExeca);
+
+      mockExeca.mockRejectedValue(new Error('Command timed out'));
+
+      const result = await tool.execute({ command: 'sleep 5' });
+
+      expect(result).toContain('命令执行超时 (超过 1000ms)');
+    });
+
+    it('should return error for disallowed command', async () => {
+      const tool = new ExecTool({
+        ...config,
+        tools: {
+          ...config.tools,
+          exec: {
+            timeout: 60,
+            allowedCommands: ['ls', 'cat'],
+          },
+        },
+      });
+
+      const result = await tool.execute({ command: 'rm -rf /' });
+
+      expect(result).toContain('错误: 命令 "rm" 不在允许列表中');
+    });
+
+    it('should include tool hint in errors', async () => {
+      const tool = new ExecTool(config);
+
+      mockExeca = vi.fn();
+      vi.doMock('execa', () => mockExeca);
+
+      mockExeca.mockRejectedValue(new Error('Command failed'));
+
+      const result = await tool.execute({ command: 'failing command' });
+
+      expect(result).toContain('[请分析上面的错误并尝试不同的方法。]');
+    });
+  });
+});
