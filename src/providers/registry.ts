@@ -10,7 +10,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createDeepSeek } from "@ai-sdk/deepseek";
-import type { LLMResponse, ToolCall, ToolSet } from '../bus/events';
+import type { LLMResponse, ToolSet } from '../bus/events';
 import type { Config } from '../config/schema';
 import { parseModelString } from '../utils/helpers';
 import { logger } from '../utils/logger';
