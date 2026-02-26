@@ -391,8 +391,8 @@ graph TB
 
     subgraph 处理 [错误处理]
         Log[记录错误日志]
-        Notify[通知LLM<br/>(如果是工具错误)]
-        Retry[重试<br/>(部分错误)]
+        Notify[通知LLM 若是工具错误]
+        Retry[重试 仅部分错误]
         Skip[跳过当前消息]
     end
 
