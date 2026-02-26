@@ -92,17 +92,68 @@ Edit `~/.nanobot/config.json`:
 # Start gateway (all channels)
 nanobot gateway
 
-# Start agent in CLI mode
-nanobot agent --message "Hello!"
+# Single-shot message
+nanobot chat "Hello!"
 
 # Interactive mode
-nanobot agent
+nanobot chat --interactive
+```
+
+## 💻 CLI Commands
+
+| Command                                              | Description                                                                  |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `nanobot init`                                       | Initialize config & workspace in `~/.nanobot`, use `-f/--force` to overwrite |
+| `nanobot chat [prompt]`                              | Send a prompt and get reply; add `-i/--interactive` for interactive mode     |
+| `nanobot gateway`                                    | Start message bus and Agent (default port: `--port 18790`)                   |
+| `nanobot status`                                     | View configuration and runtime status                                        |
+| `nanobot session`                                    | List all sessions                                                            |
+| `nanobot config [key] [value]`                       | View or set config (e.g., `agents.defaults.model`)                           |
+| `nanobot channels status`                            | Check channel status                                                         |
+| `nanobot logs`                                       | View logs, use `-t/--tail <n>` (default 50)                                  |
+| `nanobot whatsapp:auth`                              | WhatsApp QR code / pairing code login                                        |
+| `nanobot whatsapp:status`                            | Check WhatsApp login status                                                  |
+| `nanobot whatsapp:logout`                            | Clear WhatsApp credentials                                                   |
+| `nanobot mcp:list`                                   | List connected MCP servers and tools                                         |
+| `nanobot mcp:tools`                                  | List MCP tools in nanobot format                                             |
+| `nanobot mcp:test <serverName> <toolName> [args...]` | Test specific MCP tool                                                       |
+
+### Examples
+
+```bash
+# Initialize or reinitialize
+nanobot init
+nanobot init --force
+
+# Chat with AI
+nanobot chat "Help me write a Python function"
+nanobot chat -i
+
+# Start gateway with custom port
+nanobot gateway --port 8080
 
 # Check status
 nanobot status
+nanobot channels status
 
-# List sessions
-nanobot session
+# View logs
+nanobot logs
+nanobot logs --tail 100
+
+# Configure model
+nanobot config get
+nanobot config set agents.defaults.model openai:gpt-4o
+
+# WhatsApp authentication
+nanobot whatsapp:auth
+nanobot whatsapp:auth --pairing-code --phone 86123456789
+nanobot whatsapp:status
+nanobot whatsapp:logout
+
+# MCP operations
+nanobot mcp:list
+nanobot mcp:tools
+nanobot mcp:test filesystem read_file '{"path":"~/test.txt"}'
 ```
 
 ### WhatsApp Authentication
@@ -122,17 +173,6 @@ nanobot whatsapp:status
 
 # Clear authentication (logout)
 nanobot whatsapp:logout
-```
-
-# Check channels status
-
-nanobot channels status
-
-# View logs
-
-nanobot logs
-nanobot logs --tail 100
-
 ```
 
 ## 📦 Architecture
@@ -159,7 +199,7 @@ Message Bus
 │ OpenAI │ Anthropic │OpenRouter│
 └───────────┴───────────┴────────┘
 
-````
+```
 
 ## 🔌 Channels
 
@@ -191,8 +231,8 @@ nanobot whatsapp:logout
 
 1. Run `nanobot whatsapp:auth`
 2. Scan QR code with WhatsApp on your phone
-    - Open WhatsApp → Settings → Linked Devices → Link a Device
-    - Or use pairing code mode
+   - Open WhatsApp → Settings → Linked Devices → Link a Device
+   - Or use pairing code mode
 3. Credentials are saved to `~/.nanobot/whatsapp_auth/`
 4. Enable WhatsApp in config and start gateway
 
@@ -379,4 +419,7 @@ MIT
 ---
 
 **Made with ❤️ by the nanobot-ts team**
-````
+
+```
+
+```
