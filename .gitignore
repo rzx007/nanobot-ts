@@ -7,6 +7,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 nanobot/
+.history/*
 
 # Config and workspace
 .nanobot/

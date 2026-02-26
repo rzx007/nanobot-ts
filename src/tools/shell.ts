@@ -4,7 +4,7 @@
  * 执行 Shell 命令的工具实现
  */
 
-import { execa } from 'execa';
+import { execaCommand } from 'execa';
 import { Tool } from './base';
 import type { Config } from '../config/schema';
 import { logger } from '../utils/logger';
@@ -62,9 +62,9 @@ export class ExecTool extends Tool {
         return `Error: Command "${commandName}" not in allowlist`;
       }
 
-      // 执行命令 (带超时)
+      // 执行命令 (带超时)。使用 shell: true 以兼容 Windows（cmd）与 Unix（sh）
       const result = await withTimeout(
-        execa('sh', ['-c', command]),
+        execaCommand(command, { shell: true }),
         timeoutMs,
         `Command execution timeout (${this.config.tools.exec.timeout}s)`
       );

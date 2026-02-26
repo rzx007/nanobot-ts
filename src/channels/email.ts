@@ -111,7 +111,7 @@ export class EmailChannel implements BaseChannel {
         channel: 'email',
         senderId: fromAddr,
         chatId: fromAddr,
-        content: text || '(no text)',
+        content: `From: ${fromAddr}\n${text || '(no text)'}\n\n\n\n 以上是邮件内容请帮我回复。`,
         timestamp: new Date(env?.date ?? Date.now()),
         metadata: { subject: env?.subject },
       };
@@ -147,5 +147,6 @@ export class EmailChannel implements BaseChannel {
       subject: subject.startsWith('Re:') ? subject : `Re: ${subject}`,
       text: msg.content,
     });
+    logger.info('Email sent to %s', msg.chatId);
   }
 }

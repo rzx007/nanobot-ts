@@ -261,7 +261,7 @@ export class SessionManager {
    * 加载会话
    * 
    * @param key - 会话密钥
-   * @returns 会话对象或 null
+   * @returns 会话对象或 null（文件不存在或读取失败时返回 null）
    */
   private async load(key: string): Promise<Session | null> {
     const filepath = this.getSessionPath(key);
@@ -274,6 +274,11 @@ export class SessionManager {
       }
       return session;
     } catch (err) {
+      const nodeErr = err as NodeJS.ErrnoException;
+      // 文件不存在为预期情况（新会话），仅记录 debug，不当作错误
+      if (nodeErr?.code === 'ENOENT') {
+        return null;
+      }
       logger.error({ err }, `Failed to load session: ${key}`);
       return null;
     }

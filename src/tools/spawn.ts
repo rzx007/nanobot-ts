@@ -3,7 +3,7 @@
  * PRD F3：后台子代理 / 启动子进程并返回结果或句柄
  */
 
-import { execa } from 'execa';
+import { execaCommand } from 'execa';
 import { Tool } from './base';
 import { logger } from '../utils/logger';
 
@@ -53,7 +53,8 @@ export class SpawnTool extends Tool {
     try {
       logger.info({ command, label }, 'Spawning background process');
 
-      const subprocess = execa('sh', ['-c', command], {
+      const subprocess = execaCommand(command, {
+        shell: true,
         detached: true,
         stdio: 'ignore',
       });
