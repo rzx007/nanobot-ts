@@ -45,6 +45,7 @@
     "@ai-sdk/groq": "^3.0.24",
     "@ai-sdk/openai": "^2.0.94",
     "@larksuiteoapi/node-sdk": "^1.59.0",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "@openrouter/ai-sdk-provider": "^2.2.3",
     "ai": "^6.0.99",
     "baileys": "7.0.0-rc.9",

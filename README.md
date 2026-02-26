@@ -357,6 +357,15 @@ nanobot-ts/
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
+### MCP Tools
+
+Connect to external MCP (Model Context Protocol) servers to extend nanobot's capabilities:
+
+- ✅ Supports both local (STDIO) and remote (HTTP) servers
+- ✅ OAuth authentication for protected endpoints
+- ✅ Automatic tool loading and registration
+- ✅ See [MCP.md](MCP.md) for configuration details
+
 ## 📄 License
 
 MIT

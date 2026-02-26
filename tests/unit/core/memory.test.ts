@@ -85,7 +85,9 @@ describe('MemoryConsolidator', () => {
   afterEach(async () => {
     try {
       await fs.rm(testWorkspace, { recursive: true, force: true });
-    } catch {}
+    } catch {
+      // ignore cleanup errors
+    }
   });
 
   describe('needsConsolidation', () => {

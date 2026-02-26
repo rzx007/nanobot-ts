@@ -9,5 +9,6 @@ export * from './providers';
 export * from './config';
 export * from './storage';
 export * from './utils';
+export * from './mcp';
 
 export { version } from '../package.json';

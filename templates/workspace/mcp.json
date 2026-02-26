@@ -1,0 +1,44 @@
+{
+  "enabled": false,
+  "servers": [
+    {
+      "name": "filesystem",
+      "type": "stdio",
+      "stdio": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/directory"]
+      }
+    },
+    {
+      "name": "brave-search",
+      "type": "stdio",
+      "stdio": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+        "env": {
+          "BRAVE_API_KEY": "your-brave-api-key"
+        }
+      }
+    },
+    {
+      "name": "context7",
+      "type": "http",
+      "http": {
+        "url": "https://mcp.context7.com/mcp"
+      }
+    },
+    {
+      "name": "github",
+      "type": "http",
+      "http": {
+        "url": "https://mcp.github.com/mcp",
+        "oauth": {
+          "clientId": "your-client-id",
+          "clientSecret": "your-client-secret",
+          "authorizationEndpoint": "https://github.com/login/oauth/authorize",
+          "tokenEndpoint": "https://github.com/login/oauth/access_token"
+        }
+      }
+    }
+  ]
+}

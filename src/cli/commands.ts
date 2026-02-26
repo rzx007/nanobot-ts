@@ -8,6 +8,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { loadConfig, saveConfig, createDefaultConfig } from '../config/loader';
+import { saveMCPConfig, createDefaultMCPConfig } from '../mcp/loader';
 import { expandHome, ensureDir } from '../utils/helpers';
 import { MessageBus } from '../bus/queue';
 import { ChannelManager } from '../channels';
@@ -34,6 +35,8 @@ import { CronService } from '@/cron';
 import { success, error, info } from './ui';
 import { logger } from '../utils/logger';
 import { registerWhatsAppAuthCommand } from './whatsapp-auth';
+import { registerMCPCommands } from './mcp';
+import { MCPToolLoader } from '../mcp/loader';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -57,8 +60,9 @@ export async function runCLI(argv: string[]): Promise<void> {
   program
     .command('init')
     .description('Initialize config and workspace at ~/.nanobot')
-    .action(async () => {
-      await cmdInit();
+    .option('-f, --force', 'Force reinitialize even if config exists')
+    .action(async (opts: { force?: boolean }) => {
+      await cmdInit(opts.force);
     });
 
   program
@@ -152,11 +156,12 @@ export async function runCLI(argv: string[]): Promise<void> {
     });
 
   registerWhatsAppAuthCommand(program);
+  registerMCPCommands(program);
 
   await program.parseAsync(argv);
 }
 
-async function cmdInit(): Promise<void> {
+async function cmdInit(force?: boolean): Promise<void> {
   await ensureDir(NANOBOT_HOME);
   const workspacePath = expandHome('~/.nanobot/workspace');
   await ensureDir(workspacePath);
@@ -164,15 +169,31 @@ async function cmdInit(): Promise<void> {
   await ensureDir(path.join(workspacePath, 'sessions'));
   await ensureDir(path.join(workspacePath, 'skills'));
 
-  const configPath = path.join(NANOBOT_HOME, 'config.json');
+  // 创建默认的 mcp.json 配置文件
+  const mcpConfigPath = path.join(workspacePath, 'mcp.json');
   try {
-    await fs.access(configPath);
-    info(`Config already exists: ${configPath}`);
+    await fs.access(mcpConfigPath);
   } catch {
-    const config = createDefaultConfig();
-    await saveConfig(config, configPath);
-    success(`Created ${configPath}`);
+    await saveMCPConfig(createDefaultMCPConfig(), workspacePath);
+    info(`Created ${mcpConfigPath}`);
   }
+
+  const configPath = path.join(NANOBOT_HOME, 'config.json');
+
+  if (!force) {
+    try {
+      await fs.access(configPath);
+      info(`Config already exists: ${configPath}`);
+      info('Use --force to overwrite.');
+      return;
+    } catch {
+      // 配置不存在，继续创建
+    }
+  }
+
+  const config = createDefaultConfig();
+  await saveConfig(config, configPath);
+  success(`Created ${configPath}`);
 
   // Copy workspace templates if not present
   try {
@@ -244,6 +265,10 @@ async function cmdGateway(_port: string): Promise<void> {
   tools.register(new WebSearchTool(config));
   tools.register(new WebFetchTool());
   tools.register(new MessageTool(config, bus));
+
+  // 加载并注册MCP工具
+  const mcpToolLoader = new MCPToolLoader();
+  await mcpToolLoader.load(config, tools);
 
   const cronStorePath = path.join(workspace, 'cron.json');
   const cronService = new CronService({
@@ -343,6 +368,10 @@ async function cmdChat(promptArg: string | undefined, interactive?: boolean): Pr
   tools.register(new WebSearchTool(config));
   tools.register(new WebFetchTool());
   tools.register(new MessageTool(config, bus));
+
+  // 加载并注册MCP工具
+  const mcpToolLoader = new MCPToolLoader();
+  await mcpToolLoader.load(config, tools);
 
   const cronStorePath = path.join(workspace, 'cron.json');
   const cronService = new CronService({
