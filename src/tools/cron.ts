@@ -28,6 +28,13 @@ export class CronTool extends Tool {
     this.chatId = chatId;
   }
 
+  /**
+   * 
+   * every_seconds → 	间隔执行，每 N 秒触发一次（周期任务）
+   * cron_expr → Cron 表达式执行（可搭配 tz 设置时区）
+   * at → 一次性执行时间，ISO 格式如 2026-02-12T10:30:00
+   * job_id → 任务 ID（用于删除）
+   */
   parameters = {
     type: 'object',
     properties: {
@@ -50,7 +57,7 @@ export class CronTool extends Tool {
       },
       tz: {
         type: 'string',
-        description: "IANA timezone for cron expressions e.g. 'America/Vancouver'",
+        description: "IANA timezone for cron expressions e.g. 'Asia/Shanghai'",
       },
       at: {
         type: 'string',

@@ -64,6 +64,9 @@ export class CronService {
     this.onJob = options.onJob;
   }
 
+  /**
+   * 加载任务存储，如果已加载则直接返回缓存的存储
+   */
   private async loadStore(): Promise<CronStore> {
     if (this.store) return this.store;
     try {
@@ -87,6 +90,9 @@ export class CronService {
     return this.store;
   }
 
+  /**
+   * 保存当前任务存储到文件
+   */
   private async saveStore(): Promise<void> {
     if (!this.store) return;
     await fs.mkdir(path.dirname(this.storePath), { recursive: true });
@@ -107,6 +113,10 @@ export class CronService {
     await fs.writeFile(this.storePath, JSON.stringify(data, null, 2), 'utf-8');
   }
 
+  /**
+   * 获取下一次唤醒的时间戳
+   * @returns 最近的任务执行时间戳或null
+   */
   private getNextWakeMs(): number | null {
     if (!this.store) return null;
     const times = this.store.jobs
@@ -115,6 +125,9 @@ export class CronService {
     return times.length > 0 ? Math.min(...times) : null;
   }
 
+  /**
+   * 设置定时器以在下一个任务执行时间唤醒
+   */
   private armTimer(): void {
     if (this.timer) {
       clearTimeout(this.timer);
@@ -129,6 +142,9 @@ export class CronService {
     }, delay);
   }
 
+  /**
+   * 定时器回调函数，检查并执行到期的任务
+   */
   private async onTimer(): Promise<void> {
     const store = await this.loadStore();
     const now = nowMs();
@@ -142,6 +158,10 @@ export class CronService {
     this.armTimer();
   }
 
+  /**
+   * 执行指定的定时任务
+   * @param job 需要执行的任务
+   */
   private async executeJob(job: CronJob): Promise<void> {
     const start = nowMs();
     logger.info({ name: job.name, id: job.id }, 'Cron: executing job');
@@ -171,6 +191,10 @@ export class CronService {
     }
   }
 
+  /**
+   * 启动 Cron 服务
+   * 加载存储、计算任务下次运行时间并设置定时器
+   */
   async start(): Promise<void> {
     this.running = true;
     await this.loadStore();
@@ -184,6 +208,10 @@ export class CronService {
     logger.info({ count: this.store!.jobs.length }, 'Cron service started');
   }
 
+  /**
+   * 停止 Cron 服务
+   * 清除定时器并重置运行状态
+   */
   stop(): void {
     this.running = false;
     if (this.timer) {
@@ -192,12 +220,22 @@ export class CronService {
     }
   }
 
+  /**
+   * 列出所有定时任务
+   * @param includeDisabled 是否包含已禁用的任务
+   * @returns 任务列表，按下次执行时间排序
+   */
   async listJobs(includeDisabled = false): Promise<CronJob[]> {
     const store = await this.loadStore();
     const list = includeDisabled ? store.jobs : store.jobs.filter((j) => j.enabled);
     return list.sort((a, b) => (a.state.nextRunAtMs ?? Infinity) - (b.state.nextRunAtMs ?? Infinity));
   }
 
+  /**
+   * 添加新的定时任务
+   * @param opts 任务选项，包括名称、调度规则、消息内容等
+   * @returns 创建的任务对象
+   */
   async addJob(opts: {
     name: string;
     schedule: CronSchedule;
@@ -240,6 +278,11 @@ export class CronService {
     return job;
   }
 
+  /**
+   * 删除指定 ID 的定时任务
+   * @param jobId 需要删除的任务 ID
+   * @returns 是否成功删除
+   */
   async removeJob(jobId: string): Promise<boolean> {
     const store = await this.loadStore();
     const before = store.jobs.length;
@@ -252,3 +295,22 @@ export class CronService {
     return removed;
   }
 }
+
+// 添加任务 (addJob)
+//     ↓
+// computeNextRun() 计算下次执行时间
+//     ↓
+// 保存到 cron.json
+//     ↓
+// armTimer() 设置 setTimeout(delay)
+//     ↓
+// 到期 → onTimer() → executeJob()
+//     ↓
+// 执行 onJob 回调 (publishInbound)
+//     ↓
+// 根据 schedule.kind 处理：
+//   at → 删除/禁用
+//   every → 重新计算 now + everyMs
+//   cron → croner.nextRun()
+//     ↓
+// 重新 armTimer()
