@@ -16,6 +16,7 @@ import type { InboundMessage, OutboundMessage } from '../bus/events';
 import type { BaseChannel } from './base';
 import type { WhatsAppConfig } from '../config/schema';
 import { logger } from '../utils/logger';
+import { MessageBus } from '@/bus/queue';
 
 export interface WhatsAppChannelConfig extends WhatsAppConfig {
   /** 认证状态存储目录（默认 ~/.nanobot/whatsapp_auth） */
@@ -38,7 +39,7 @@ export class WhatsAppChannel implements BaseChannel {
 
   constructor(
     private readonly config: WhatsAppChannelConfig,
-    private readonly bus: { publishInbound: (msg: InboundMessage) => Promise<void> }
+    private readonly bus: MessageBus
   ) {
     this.authDir = config.authDir ?? path.join(process.env.HOME ?? process.env.USERPROFILE ?? '', '.nanobot', 'whatsapp_auth');
   }

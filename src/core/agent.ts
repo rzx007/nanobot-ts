@@ -287,7 +287,7 @@ export class AgentLoop {
     if (onProgress) {
       chatParams.onStepFinish = (step) => {
         if (step?.text != null && step.text !== '') {
-          onProgress(step.text, { toolHint: true }).catch(() => {});
+          onProgress(step.text, { toolHint: true }).catch(() => { });
         }
       };
     }

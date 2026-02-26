@@ -3,18 +3,10 @@
  * 按 config 加载渠道，消费 outbound 并分发到各渠道的 send()
  */
 
-import type { InboundMessage, OutboundMessage } from '../bus/events';
 import type { BaseChannel } from './base';
 import type { Config } from '../config/schema';
 import { logger } from '../utils/logger';
-
-export interface MessageBusLike {
-  consumeOutbound(): Promise<OutboundMessage>;
-}
-
-export interface MessageBusWithInbound extends MessageBusLike {
-  publishInbound(msg: InboundMessage): Promise<void>;
-}
+import { MessageBus } from '@/bus/queue';
 
 /**
  * 渠道管理器
@@ -27,8 +19,8 @@ export class ChannelManager {
 
   constructor(
     private readonly config: Config,
-    private readonly bus: MessageBusLike
-  ) {}
+    private readonly bus: MessageBus
+  ) { }
 
   /** 获取配置（供按 config.channels 加载渠道时使用） */
   getConfig(): Config {
@@ -58,7 +50,7 @@ export class ChannelManager {
    * 需传入带 publishInbound 的 bus，供渠道上报入站消息。
    * 单个渠道依赖缺失时只打 log 不抛错。
    */
-  async loadChannelsFromConfig(bus: MessageBusWithInbound): Promise<void> {
+  async loadChannelsFromConfig(bus: MessageBus): Promise<void> {
     const { whatsapp, feishu, email } = this.config.channels;
 
     if (whatsapp.enabled) {

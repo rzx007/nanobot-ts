@@ -8,6 +8,7 @@ import type { InboundMessage, OutboundMessage } from '../bus/events';
 import type { BaseChannel } from './base';
 import type { FeishuConfig } from '../config/schema';
 import { logger } from '../utils/logger';
+import { MessageBus } from '@/bus/queue';
 
 export interface FeishuChannelConfig extends FeishuConfig { }
 
@@ -17,7 +18,7 @@ export class FeishuChannel implements BaseChannel {
 
   constructor(
     private readonly config: FeishuChannelConfig,
-    private readonly bus: { publishInbound: (msg: InboundMessage) => Promise<void> }
+    private readonly bus: MessageBus
   ) { }
 
   async start(): Promise<void> {

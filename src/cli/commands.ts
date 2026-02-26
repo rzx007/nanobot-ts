@@ -286,6 +286,7 @@ async function cmdGateway(_port: string): Promise<void> {
         rl.close();
         process.exit(0);
       }
+      // 发布入站消息到消息总线
       await bus.publishInbound({
         channel: 'cli',
         senderId: 'user',

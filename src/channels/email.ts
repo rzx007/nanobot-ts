@@ -9,8 +9,9 @@ import type { InboundMessage, OutboundMessage } from '../bus/events';
 import type { BaseChannel } from './base';
 import type { EmailConfig } from '../config/schema';
 import { logger } from '../utils/logger';
+import { MessageBus } from '@/bus/queue';
 
-export interface EmailChannelConfig extends EmailConfig {}
+export interface EmailChannelConfig extends EmailConfig { }
 
 const EMAIL_POLL_INTERVAL_MS = 60_000;
 
@@ -22,8 +23,8 @@ export class EmailChannel implements BaseChannel {
 
   constructor(
     private readonly config: EmailChannelConfig,
-    private readonly bus: { publishInbound: (msg: InboundMessage) => Promise<void> }
-  ) {}
+    private readonly bus: MessageBus
+  ) { }
 
   async start(): Promise<void> {
     const {
