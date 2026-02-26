@@ -9,21 +9,23 @@ import { generateText, stepCountIs, type LanguageModel, type ModelMessage } from
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { createDeepSeek } from "@ai-sdk/deepseek";
+import { createDeepSeek } from '@ai-sdk/deepseek';
+import { createGroq } from '@ai-sdk/groq';
 import type { LLMResponse, ToolSet } from '../bus/events';
 import type { Config } from '../config/schema';
 import { parseModelString } from '../utils/helpers';
 import { logger } from '../utils/logger';
 import { ProviderError } from '../utils/errors';
+import { withRetryAndRateLimit, createRetryState } from '../utils/retry';
 
 /**
  * 将 agent 的 messages 转换为 AI SDK ModelMessage 格式
  * agent 的 tool 消息可能是 { role:'tool', content: string } 或 { role:'tool', content: ToolResultPart[] }
  */
 function normalizeMessages(
-  messages: Array<{ role: string; content: unknown; timestamp?: string }>
+  messages: Array<{ role: string; content: unknown; timestamp?: string }>,
 ): ModelMessage[] {
-  return messages.map((msg) => {
+  return messages.map(msg => {
     if (msg.role === 'system') {
       return { role: 'system' as const, content: String(msg.content) };
     }
@@ -65,6 +67,12 @@ export class LLMProvider {
   /** OpenRouter Provider */
   private openrouterProvider: ReturnType<typeof createOpenRouter> | null = null;
 
+  /** Groq Provider */
+  private groqProvider: ReturnType<typeof createGroq> | null = null;
+
+  /** 重试状态 */
+  private retryState = createRetryState();
+
   /**
    * 构造函数
    */
@@ -72,7 +80,7 @@ export class LLMProvider {
     if (config.providers.openai.apiKey) {
       const openaiConfig = {
         apiKey: config.providers.openai.apiKey,
-        ...(config.providers.openai.apiBase && { baseURL: config.providers.openai.apiBase })
+        ...(config.providers.openai.apiBase && { baseURL: config.providers.openai.apiBase }),
       };
       this.openaiProvider = createOpenAI(openaiConfig);
       logger.info('OpenAI Provider initialized');
@@ -97,6 +105,12 @@ export class LLMProvider {
       });
       logger.info('OpenRouter Provider initialized');
     }
+    if (config.providers.groq?.apiKey) {
+      this.groqProvider = createGroq({
+        apiKey: config.providers.groq.apiKey,
+      });
+      logger.info('Groq Provider initialized');
+    }
   }
 
   /**
@@ -104,7 +118,7 @@ export class LLMProvider {
    */
   private buildToolsWithExecute(
     tools: ToolSet,
-    executeTool: (name: string, args: Record<string, unknown>) => Promise<string>
+    executeTool: (name: string, args: Record<string, unknown>) => Promise<string>,
   ): ToolSet {
     const out: ToolSet = {};
     for (const [name, def] of Object.entries(tools)) {
@@ -131,6 +145,12 @@ export class LLMProvider {
         throw new Error('DeepSeek Provider not initialized');
       }
       return this.deepseekProvider(modelName);
+    }
+    if (providerName === 'groq') {
+      if (!this.groqProvider) {
+        throw new Error('Groq Provider not initialized');
+      }
+      return this.groqProvider(modelName);
     }
     if (providerName === 'openrouter') {
       if (!this.openrouterProvider) {
@@ -168,7 +188,16 @@ export class LLMProvider {
     onStepFinish?: (step: { text?: string; toolCalls?: unknown[] }) => void;
   }): Promise<LLMResponse> {
     try {
-      const { messages, tools, model: modelStr, temperature, maxTokens, executeTool, maxSteps = 1, onStepFinish } = params;
+      const {
+        messages,
+        tools,
+        model: modelStr,
+        temperature,
+        maxTokens,
+        executeTool,
+        maxSteps = 1,
+        onStepFinish,
+      } = params;
       const { provider, modelName } = parseModelString(modelStr);
 
       logger.info(`Calling LLM: ${provider}:${modelName}`);
@@ -177,33 +206,33 @@ export class LLMProvider {
       const normalizedMessages = normalizeMessages(messages);
 
       const toolsToUse =
-        executeTool != null
-          ? this.buildToolsWithExecute(tools, executeTool)
-          : tools;
+        executeTool != null ? this.buildToolsWithExecute(tools, executeTool) : tools;
 
-      const result = await generateText({
-        model,
-        messages: normalizedMessages,
-        tools: toolsToUse,
-        temperature: temperature ?? 0.7,
-        maxOutputTokens: maxTokens ?? 4096,
-        stopWhen: [stepCountIs(maxSteps ?? 3)],
-        ...(onStepFinish && { onStepFinish }),
-      }).then((r) => r, (e: unknown) => {
-        if (e === undefined || e === null) {
-          throw new Error('generateText rejected with undefined/null (often fetch/network or SDK bug)');
-        }
-        throw e;
-      });
+      const result = await withRetryAndRateLimit(
+        () =>
+          generateText({
+            model,
+            messages: normalizedMessages,
+            tools: toolsToUse,
+            temperature: temperature ?? 0.7,
+            maxOutputTokens: maxTokens ?? 4096,
+            stopWhen: [stepCountIs(maxSteps ?? 3)],
+            ...(onStepFinish && { onStepFinish }),
+          }),
+        `LLM call: ${provider}:${modelName}`,
+        this.retryState,
+      );
 
       const content = typeof result.text === 'string' ? result.text : '';
 
       const usage = result.usage
         ? {
-          promptTokens: result.usage.inputTokens ?? 0,
-          completionTokens: result.usage.outputTokens ?? 0,
-          totalTokens: result.usage.totalTokens ?? (result.usage.inputTokens ?? 0) + (result.usage.outputTokens ?? 0),
-        }
+            promptTokens: result.usage.inputTokens ?? 0,
+            completionTokens: result.usage.outputTokens ?? 0,
+            totalTokens:
+              result.usage.totalTokens ??
+              (result.usage.inputTokens ?? 0) + (result.usage.outputTokens ?? 0),
+          }
         : undefined;
 
       return {
@@ -213,7 +242,9 @@ export class LLMProvider {
         ...(usage && { usage }),
       };
     } catch (error) {
-      const err = error ?? new Error('LLM call failed (rejected with undefined/null); check generateText/tools.');
+      const err =
+        error ??
+        new Error('LLM call failed (rejected with undefined/null); check generateText/tools.');
       const errorMsg = `LLM call failed: ${err instanceof Error ? err.message : String(err)}`;
       logger.error(errorMsg);
       throw new ProviderError(errorMsg);

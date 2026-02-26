@@ -18,15 +18,15 @@ nanobot-ts is the TypeScript version of [nanobot](https://github.com/HKUDS/nanob
 
 ### Comparison with Python Version
 
-| Feature | Python Version | TypeScript Version |
-|----------|----------------|-------------------|
-| Lines of Code | ~4,000 | ~5,000 |
-| Runtime | Python 3.11+ | Node.js 18+ |
-| Type Safety | Optional | ✅ Full |
-| Performance | Good | ✅ Better (async I/O) |
-| Ecosystem | PyPI | ✅ npm (larger) |
-| Channels | 9+ | 4 (WhatsApp, Feishu, Email, QQ) |
-| LLM SDK | LiteLLM | ✅ Vercel AI SDK |
+| Feature       | Python Version | TypeScript Version              |
+| ------------- | -------------- | ------------------------------- |
+| Lines of Code | ~4,000         | ~5,000                          |
+| Runtime       | Python 3.11+   | Node.js 18+                     |
+| Type Safety   | Optional       | ✅ Full                         |
+| Performance   | Good           | ✅ Better (async I/O)           |
+| Ecosystem     | PyPI           | ✅ npm (larger)                 |
+| Channels      | 9+             | 4 (WhatsApp, Feishu, Email, QQ) |
+| LLM SDK       | LiteLLM        | ✅ Vercel AI SDK                |
 
 ## 🚀 Quick Start
 
@@ -52,6 +52,7 @@ pnpm run onboard
 ```
 
 This will create:
+
 - `~/.nanobot/config.json` - Configuration file
 - `~/.nanobot/workspace/` - Workspace directory
 - Template files in workspace
@@ -88,7 +89,7 @@ Edit `~/.nanobot/config.json`:
 ### Run
 
 ```bash
-# Start the gateway (all channels)
+# Start gateway (all channels)
 nanobot gateway
 
 # Start agent in CLI mode
@@ -99,45 +100,125 @@ nanobot agent
 
 # Check status
 nanobot status
+
+# List sessions
+nanobot session
+```
+
+### WhatsApp Authentication
+
+```bash
+# Authenticate with QR code (default)
+nanobot whatsapp:auth
+
+# Authenticate with pairing code
+nanobot whatsapp:auth --pairing-code --phone 86123456789
+
+# Force re-authentication
+nanobot whatsapp:auth --force
+
+# Check authentication status
+nanobot whatsapp:status
+
+# Clear authentication (logout)
+nanobot whatsapp:logout
+```
+
+# Check channels status
+
+nanobot channels status
+
+# View logs
+
+nanobot logs
+nanobot logs --tail 100
+
 ```
 
 ## 📦 Architecture
 
 ```
+
 ┌─────────────────────────────────┐
-│          CLI / Gateway          │
+│ CLI / Gateway │
 ├─────────────────────────────────┤
-│        Channel Manager          │
+│ Channel Manager │
 ├───────────┬───────────┬────────┤
-│  WhatsApp │  Feishu   │ Email  │
+│ WhatsApp │ Feishu │ Email │
 └───────────┴───────────┴────────┘
-                  ↕
-           Message Bus
-                  ↕
+↕
+Message Bus
+↕
 ┌─────────────────────────────────┐
-│           Agent Loop            │
+│ Agent Loop │
 ├─────────────────────────────────┤
-│     Context | Memory | Tools    │
+│ Context | Memory | Tools │
 ├─────────────────────────────────┤
-│       Vercel AI SDK          │
+│ Vercel AI SDK │
 ├───────────┬───────────┬────────┤
-│   OpenAI  │ Anthropic │OpenRouter│
+│ OpenAI │ Anthropic │OpenRouter│
 └───────────┴───────────┴────────┘
-```
+
+````
 
 ## 🔌 Channels
 
 ### WhatsApp
 
 - **Library**: `baileys`
-- **Features**: QR code login, message handling, media support
+- **Features**: QR code login, pairing code login, message handling, media support
+
+**Authentication**:
+
+```bash
+# QR code login (default)
+nanobot whatsapp:auth
+
+# Pairing code login
+nanobot whatsapp:auth --pairing-code --phone 86123456789
+
+# Force re-authentication
+nanobot whatsapp:auth --force
+
+# Check authentication status
+nanobot whatsapp:status
+
+# Clear authentication (logout)
+nanobot whatsapp:logout
+```
+
+**Authentication Flow**:
+
+1. Run `nanobot whatsapp:auth`
+2. Scan QR code with WhatsApp on your phone
+    - Open WhatsApp → Settings → Linked Devices → Link a Device
+    - Or use pairing code mode
+3. Credentials are saved to `~/.nanobot/whatsapp_auth/`
+4. Enable WhatsApp in config and start gateway
+
+**Timeout Handling**:
+
+- **Auto-retry**: Up to 5 automatic retries on timeout
+- **Exponential backoff**: 3s, 6s, 9s, 12s, 15s delays
+- **Retry info**: Shows current retry count and delay
+
+```bash
+# Example retry output
+⚠️  二维码已超时，3 秒后重试 (1/5)...
+```
+
+**Recommendation**: Use pairing code mode for better timeout handling (longer validity period).
+
+**Configuration**:
 
 ```json
 {
   "channels": {
     "whatsapp": {
       "enabled": true,
-      "allowFrom": ["+1234567890"]
+      "allowFrom": ["+1234567890"],
+      "usePairingCode": false,
+      "phoneNumber": "86123456789"
     }
   }
 }
@@ -215,17 +296,17 @@ Supported providers (powered by Vercel AI SDK):
 
 Built-in tools:
 
-| Tool | Description |
-|------|-------------|
-| `read_file` | Read file contents |
-| `write_file` | Write to file |
-| `edit_file` | Edit specific lines in file |
-| `list_dir` | List directory contents |
-| `exec` | Execute shell commands |
+| Tool         | Description                       |
+| ------------ | --------------------------------- |
+| `read_file`  | Read file contents                |
+| `write_file` | Write to file                     |
+| `edit_file`  | Edit specific lines in file       |
+| `list_dir`   | List directory contents           |
+| `exec`       | Execute shell commands            |
 | `web_search` | Search the web (Brave Search API) |
-| `web_fetch` | Fetch web page content |
-| `message` | Send message to specific channel |
-| `spawn` | Spawn background sub-agent |
+| `web_fetch`  | Fetch web page content            |
+| `message`    | Send message to specific channel  |
+| `spawn`      | Spawn background sub-agent        |
 
 ## 🎨 Development
 
@@ -289,3 +370,4 @@ MIT
 ---
 
 **Made with ❤️ by the nanobot-ts team**
+````

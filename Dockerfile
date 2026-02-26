@@ -3,21 +3,27 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Install pnpm
+RUN npm install -g pnpm@10.30.2
+
 # Install dependencies
 COPY package*.json ./
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY tsconfig.json tsup.config.ts ./
 COPY src/ ./src/
 
 # Build
-RUN npm run build
+RUN pnpm run build
 
 # Production stage
 FROM node:20-alpine
 
 WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm@10.30.2
 
 # Copy built files
 COPY --from=builder /app/dist ./dist
@@ -38,9 +44,9 @@ ENV NANOBOT_HOME=/home/nanobot/.nanobot
 # Expose port (for any HTTP server in the future)
 EXPOSE 18790
 
-# Health check
+# Health check - check if the node process is running
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:18790/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))" || exit 0
+    CMD pgrep -f "node.*dist/cli/index.js" || exit 1
 
 # Run
-CMD ["node", "dist/cli/index.js", "gateway"]
+CMD ["node", "dist/cli/run.js", "gateway"]

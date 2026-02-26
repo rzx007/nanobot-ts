@@ -4,7 +4,16 @@
 
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { Tool } from '../../../src/tools/base';
-import { ReadFileTool, WriteFileTool, EditFileTool, ListDirTool, ExecTool, WebSearchTool, WebFetchTool, MessageTool } from '../../../src/tools';
+import {
+  ReadFileTool,
+  WriteFileTool,
+  EditFileTool,
+  ListDirTool,
+  ExecTool,
+  WebSearchTool,
+  WebFetchTool,
+  MessageTool,
+} from '../../../src/tools';
 import type { Config } from '../../../src/config/schema';
 import { MessageBus } from '../../../src/bus/queue';
 
@@ -37,11 +46,36 @@ describe('Tools', () => {
         openrouter: {
           apiKey: 'test-key',
         },
+        deepseek: {
+          apiKey: 'test-key',
+        },
       },
       channels: {
-        whatsapp: { enabled: false, allowFrom: [] },
-        feishu: { enabled: false, appId: '', appSecret: '', encryptKey: '', verificationToken: '', allowFrom: [] },
-        email: { enabled: false, consentGranted: false, imapHost: '', imapPort: 993, imapUsername: '', imapPassword: '', imapMailbox: 'INBOX', smtpHost: '', smtpPort: 587, smtpUsername: '', smtpPassword: '', fromAddress: 'test@example.com', allowFrom: [], autoReplyEnabled: true },
+        whatsapp: { enabled: false, allowFrom: [], usePairingCode: false },
+        feishu: {
+          enabled: false,
+          appId: '',
+          appSecret: '',
+          encryptKey: '',
+          verificationToken: '',
+          allowFrom: [],
+        },
+        email: {
+          enabled: false,
+          consentGranted: false,
+          imapHost: '',
+          imapPort: 993,
+          imapUsername: '',
+          imapPassword: '',
+          imapMailbox: 'INBOX',
+          smtpHost: '',
+          smtpPort: 587,
+          smtpUsername: '',
+          smtpPassword: '',
+          fromAddress: 'test@example.com',
+          allowFrom: [],
+          autoReplyEnabled: true,
+        },
       },
       tools: {
         restrictToWorkspace: false,
@@ -116,13 +150,10 @@ describe('Tools', () => {
       const tool = new TestTool();
       const schema = tool.toSchema();
 
-      expect(schema).toEqual({
-        type: 'function',
-        function: {
-          name: 'test_tool',
-          description: '测试工具',
-          parameters: tool.parameters,
-          required: tool.parameters.required,
+      expect(schema).toMatchObject({
+        description: '测试工具',
+        inputSchema: {
+          jsonSchema: tool.parameters,
         },
       });
     });
@@ -139,9 +170,8 @@ describe('Tools', () => {
 
       it('should require path parameter', () => {
         const tool = new ReadFileTool(config);
-        const schema = tool.toSchema();
 
-        expect(schema.function.required).toContain('path');
+        expect(tool.parameters.required).toContain('path');
       });
     });
 
@@ -155,10 +185,9 @@ describe('Tools', () => {
 
       it('should require path and content parameters', () => {
         const tool = new WriteFileTool(config);
-        const schema = tool.toSchema();
 
-        expect(schema.function.required).toContain('path');
-        expect(schema.function.required).toContain('content');
+        expect(tool.parameters.required).toContain('path');
+        expect(tool.parameters.required).toContain('content');
       });
     });
 
@@ -172,11 +201,10 @@ describe('Tools', () => {
 
       it('should require all three parameters', () => {
         const tool = new EditFileTool(config);
-        const schema = tool.toSchema();
 
-        expect(schema.function.required).toContain('path');
-        expect(schema.function.required).toContain('oldStr');
-        expect(schema.function.required).toContain('newStr');
+        expect(tool.parameters.required).toContain('path');
+        expect(tool.parameters.required).toContain('oldStr');
+        expect(tool.parameters.required).toContain('newStr');
       });
     });
 
@@ -190,9 +218,8 @@ describe('Tools', () => {
 
       it('should require path parameter', () => {
         const tool = new ListDirTool(config);
-        const schema = tool.toSchema();
 
-        expect(schema.function.required).toContain('path');
+        expect(tool.parameters.required).toContain('path');
       });
     });
   });
@@ -207,9 +234,8 @@ describe('Tools', () => {
 
     it('should require command parameter', () => {
       const tool = new ExecTool(config);
-      const schema = tool.toSchema();
 
-      expect(schema.function.required).toContain('command');
+      expect(tool.parameters.required).toContain('command');
     });
   });
 
@@ -223,9 +249,8 @@ describe('Tools', () => {
 
     it('should require query parameter', () => {
       const tool = new WebSearchTool(config);
-      const schema = tool.toSchema();
 
-      expect(schema.function.required).toContain('query');
+      expect(tool.parameters.required).toContain('query');
     });
   });
 
@@ -239,9 +264,8 @@ describe('Tools', () => {
 
     it('should require url parameter', () => {
       const tool = new WebFetchTool(config);
-      const schema = tool.toSchema();
 
-      expect(schema.function.required).toContain('url');
+      expect(tool.parameters.required).toContain('url');
     });
   });
 
@@ -255,11 +279,10 @@ describe('Tools', () => {
 
     it('should require channel and chatId parameters', () => {
       const tool = new MessageTool(config, bus);
-      const schema = tool.toSchema();
 
-      expect(schema.function.required).toContain('channel');
-      expect(schema.function.required).toContain('chatId');
-      expect(schema.function.required).toContain('content');
+      expect(tool.parameters.required).toContain('channel');
+      expect(tool.parameters.required).toContain('chatId');
+      expect(tool.parameters.required).toContain('content');
     });
   });
 });

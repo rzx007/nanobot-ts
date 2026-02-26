@@ -19,8 +19,8 @@ export class ChannelManager {
 
   constructor(
     private readonly config: Config,
-    private readonly bus: MessageBus
-  ) { }
+    private readonly bus: MessageBus,
+  ) {}
 
   /** 获取配置（供按 config.channels 加载渠道时使用） */
   getConfig(): Config {
@@ -160,5 +160,27 @@ export class ChannelManager {
    */
   stop(): void {
     this.running = false;
+  }
+
+  /**
+   * 获取渠道状态
+   */
+  getStatus(): Array<{ name: string; registered: boolean; enabled: boolean }> {
+    const { whatsapp, feishu, email } = this.config.channels;
+
+    return [
+      { name: 'cli', registered: this.channels.has('cli'), enabled: true },
+      { name: 'whatsapp', registered: this.channels.has('whatsapp'), enabled: whatsapp.enabled },
+      {
+        name: 'feishu',
+        registered: this.channels.has('feishu'),
+        enabled: feishu.enabled && !!feishu.appId,
+      },
+      {
+        name: 'email',
+        registered: this.channels.has('email'),
+        enabled: email.enabled && email.consentGranted,
+      },
+    ];
   }
 }

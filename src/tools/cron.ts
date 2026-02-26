@@ -88,7 +88,7 @@ export class CronTool extends Tool {
     at?: string;
   }): Promise<string> {
     const { message, every_seconds, cron_expr, tz, at } = params;
-    if (!message || !message.trim()) {
+    if (!message?.trim()) {
       return 'Error: message is required for add';
     }
     if (!this.channel || !this.chatId) {

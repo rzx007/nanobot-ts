@@ -1,6 +1,6 @@
 /**
  * 配置文件加载器
- * 
+ *
  * 使用 cosmiconfig 加载配置文件，支持多种格式和路径
  */
 
@@ -23,11 +23,11 @@ function expandTilde(p: string): string {
 
 /**
  * 加载配置文件
- * 
+ *
  * 搜索路径 (按顺序):
  * 1. NANOBOT_HOME/config.json 或 ~/.nanobot/config.json
  * 2. cosmiconfig 从 cwd 向上搜索
- * 
+ *
  * @returns 配置对象，如果未找到则返回 null
  */
 export async function loadConfig(): Promise<Config | null> {
@@ -58,14 +58,11 @@ export async function loadConfig(): Promise<Config | null> {
 
 /**
  * 保存配置到文件
- * 
+ *
  * @param config - 配置对象
  * @param filepath - 文件路径
  */
-export async function saveConfig(
-  config: Config,
-  filepath: string
-): Promise<void> {
+export async function saveConfig(config: Config, filepath: string): Promise<void> {
   try {
     const fs = await import('fs/promises');
     const path = await import('path');
@@ -75,11 +72,7 @@ export async function saveConfig(
     await fs.mkdir(dir, { recursive: true });
 
     // 写入配置文件 (格式化 JSON)
-    await fs.writeFile(
-      filepath,
-      JSON.stringify(config, null, 2),
-      'utf-8'
-    );
+    await fs.writeFile(filepath, JSON.stringify(config, null, 2), 'utf-8');
 
     console.log(`Config saved: ${filepath}`);
   } catch (error) {
@@ -90,7 +83,7 @@ export async function saveConfig(
 
 /**
  * 创建默认配置
- * 
+ *
  * @returns 默认配置对象
  */
 export function createDefaultConfig(): Config {
@@ -126,6 +119,7 @@ export function createDefaultConfig(): Config {
       whatsapp: {
         enabled: false,
         allowFrom: [],
+        usePairingCode: false,
       },
       feishu: {
         enabled: false,

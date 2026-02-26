@@ -3,7 +3,12 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { ReadFileTool, WriteFileTool, EditFileTool, ListDirTool } from '../../../src/tools/filesystem';
+import {
+  ReadFileTool,
+  WriteFileTool,
+  EditFileTool,
+  ListDirTool,
+} from '../../../src/tools/filesystem';
 import type { Config } from '../../../src/config/schema';
 import { logger } from '../../../src/utils/logger';
 
@@ -34,11 +39,36 @@ describe('FileSystem Tools', () => {
         openrouter: {
           apiKey: 'test-key',
         },
+        deepseek: {
+          apiKey: 'test-key',
+        },
       },
       channels: {
-        whatsapp: { enabled: false, allowFrom: [] },
-        feishu: { enabled: false, appId: '', appSecret: '', encryptKey: '', verificationToken: '', allowFrom: [] },
-        email: { enabled: false, consentGranted: false, imapHost: '', imapPort: 993, imapUsername: '', imapPassword: '', imapMailbox: 'INBOX', smtpHost: '', smtpPort: 587, smtpUsername: '', smtpPassword: '', fromAddress: 'test@example.com', allowFrom: [], autoReplyEnabled: true },
+        whatsapp: { enabled: false, allowFrom: [], usePairingCode: false },
+        feishu: {
+          enabled: false,
+          appId: '',
+          appSecret: '',
+          encryptKey: '',
+          verificationToken: '',
+          allowFrom: [],
+        },
+        email: {
+          enabled: false,
+          consentGranted: false,
+          imapHost: '',
+          imapPort: 993,
+          imapUsername: '',
+          imapPassword: '',
+          imapMailbox: 'INBOX',
+          smtpHost: '',
+          smtpPort: 587,
+          smtpUsername: '',
+          smtpPassword: '',
+          fromAddress: 'test@example.com',
+          allowFrom: [],
+          autoReplyEnabled: true,
+        },
       },
       tools: {
         restrictToWorkspace: false,
@@ -81,7 +111,7 @@ describe('FileSystem Tools', () => {
 
       const result = await tool.execute({ path: '/nonexistent.txt' });
 
-      expect(result).toContain('Error: 读取文件 "/nonexistent.txt" 失败');
+      expect(result).toContain('Error: Read file "/nonexistent.txt" failed');
     });
 
     it('should work when restrictToWorkspace is disabled', async () => {
@@ -114,7 +144,7 @@ describe('FileSystem Tools', () => {
 
       const result = await tool.execute({ path: '/etc/passwd' });
 
-      expect(result).toContain('错误: 路径 "/etc/passwd" 不在工作区内');
+      expect(result).toContain('Error: Path "/etc/passwd" is outside workspace');
     });
   });
 
@@ -128,7 +158,7 @@ describe('FileSystem Tools', () => {
         content: 'test content',
       });
 
-      expect(result).toContain('写入成功');
+      expect(result).toContain('written successfully');
     });
 
     it('should overwrite existing file', async () => {
@@ -143,7 +173,7 @@ describe('FileSystem Tools', () => {
         content: 'new content',
       });
 
-      expect(result1).toContain('写入成功');
+      expect(result1).toContain('written successfully');
 
       const fs2 = await import('fs/promises');
       const finalContent = await fs2.readFile(testFile, 'utf-8');
@@ -165,7 +195,7 @@ describe('FileSystem Tools', () => {
         newStr: 'TypeScript',
       });
 
-      expect(result).toContain('编辑成功');
+      expect(result).toContain('edited successfully');
 
       const fs2 = await import('fs/promises');
       const finalContent = await fs2.readFile(testFile, 'utf-8');
@@ -185,7 +215,7 @@ describe('FileSystem Tools', () => {
         newStr: 'Replacement',
       });
 
-      expect(result).toContain('编辑成功');
+      expect(result).toContain('edited successfully');
       // 注意：因为字符串不存在，工具仍然会成功执行，这是符合预期行为的
     });
   });
@@ -217,7 +247,7 @@ describe('FileSystem Tools', () => {
 
       const result = await tool.execute({ path: '/nonexistent' });
 
-      expect(result).toContain('Error: 列出目录 "/nonexistent" 失败');
+      expect(result).toContain('Error: List directory "/nonexistent" failed');
     });
   });
 });

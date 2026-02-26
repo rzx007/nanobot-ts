@@ -3,19 +3,16 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { execa } from 'execa';
 
-// 使用 vi.hoisted 创建 mock
-const { execaMock } = vi.hoisted(() => {
-  const mockFn = vi.fn();
-  return { execaMock: mockFn };
-});
-
-vi.doMock('execa', () => ({
-  default: execaMock,
+vi.mock('execa', () => ({
+  execa: vi.fn(),
 }));
 
 import { ExecTool } from '../../../src/tools/shell';
 import type { Config } from '../../../src/config/schema';
+
+const mockedExeca = vi.mocked(execa);
 
 describe('ExecTool', () => {
   let config: Config;
@@ -37,11 +34,34 @@ describe('ExecTool', () => {
         openai: { apiKey: 'test-key', apiBase: 'https://api.openai.com/v1' },
         anthropic: { apiKey: 'test-key' },
         openrouter: { apiKey: 'test-key' },
+        deepseek: { apiKey: 'test-key' },
       },
       channels: {
-        whatsapp: { enabled: false, allowFrom: [] },
-        feishu: { enabled: false, appId: '', appSecret: '', encryptKey: '', verificationToken: '', allowFrom: [] },
-        email: { enabled: false, consentGranted: false, imapHost: '', imapPort: 993, imapUsername: '', imapPassword: '', imapMailbox: 'INBOX', smtpHost: '', smtpPort: 587, smtpUsername: '', smtpPassword: '', fromAddress: 'test@example.com', allowFrom: [], autoReplyEnabled: true },
+        whatsapp: { enabled: false, allowFrom: [], usePairingCode: false },
+        feishu: {
+          enabled: false,
+          appId: '',
+          appSecret: '',
+          encryptKey: '',
+          verificationToken: '',
+          allowFrom: [],
+        },
+        email: {
+          enabled: false,
+          consentGranted: false,
+          imapHost: '',
+          imapPort: 993,
+          imapUsername: '',
+          imapPassword: '',
+          imapMailbox: 'INBOX',
+          smtpHost: '',
+          smtpPort: 587,
+          smtpUsername: '',
+          smtpPassword: '',
+          fromAddress: 'test@example.com',
+          allowFrom: [],
+          autoReplyEnabled: true,
+        },
       },
       tools: {
         restrictToWorkspace: false,
@@ -53,42 +73,61 @@ describe('ExecTool', () => {
 
   describe('execute', () => {
     it('should execute command successfully', async () => {
-      execaMock.mockResolvedValue({
-        stdout: 'test', stderr: '', exitCode: 0, failed: false, timedOut: false, isCanceled: false, killed: false,
-      });
+      mockedExeca.mockResolvedValue({
+        stdout: 'test',
+        stderr: '',
+        exitCode: 0,
+        failed: false,
+        timedOut: false,
+        isCanceled: false,
+        killed: false,
+      } as never);
       const tool = new ExecTool(config);
       const result = await tool.execute({ command: 'echo "test"' });
       expect(result).toBe('test');
     });
 
     it('should include stderr in result', async () => {
-      execaMock.mockResolvedValue({
-        stdout: '', stderr: 'error message', exitCode: 1, failed: false, timedOut: false, isCanceled: false, killed: false,
-      });
+      mockedExeca.mockResolvedValue({
+        stdout: '',
+        stderr: 'error message',
+        exitCode: 1,
+        failed: false,
+        timedOut: false,
+        isCanceled: false,
+        killed: false,
+      } as never);
       const tool = new ExecTool(config);
       const result = await tool.execute({ command: 'command' });
       expect(result).toContain('error message');
-      expect(result).toContain('[退出码: 1]');
+      expect(result).toContain('[exit code: 1]');
     });
 
     it('should timeout after configured time', async () => {
-      execaMock.mockRejectedValue(new Error('Command timed out'));
-      const tool = new ExecTool({ ...config, tools: { ...config.tools, exec: { timeout: 1, allowedCommands: [] } } });
+      mockedExeca.mockRejectedValue(new Error('Command timed out'));
+      const tool = new ExecTool({
+        ...config,
+        tools: { ...config.tools, exec: { timeout: 1, allowedCommands: [] } },
+      });
       const result = await tool.execute({ command: 'sleep 5' });
-      expect(result).toContain('命令执行超时');
+      expect(result).toContain('Error: Command execution failed');
+      expect(result).toContain('timed out');
     });
 
     it('should return error for disallowed command', async () => {
-      const tool = new ExecTool({ ...config, tools: { ...config.tools, exec: { timeout: 60, allowedCommands: ['ls', 'cat'] } } });
+      const tool = new ExecTool({
+        ...config,
+        tools: { ...config.tools, exec: { timeout: 60, allowedCommands: ['ls', 'cat'] } },
+      });
       const result = await tool.execute({ command: 'rm -rf /' });
-      expect(result).toContain('错误: 命令 "rm" 不在允许列表中');
+      expect(result).toContain('Error: Command "rm" not in allowlist');
     });
 
     it('should include tool hint in errors', async () => {
-      execaMock.mockRejectedValue(new Error('Command failed'));
+      mockedExeca.mockRejectedValue(new Error('Command failed'));
       const tool = new ExecTool(config);
       const result = await tool.execute({ command: 'failing command' });
-      expect(result).toContain('[请分析上面的错误并尝试不同的方法。]');
+      expect(result).toContain('Error: Command execution failed');
     });
   });
 });

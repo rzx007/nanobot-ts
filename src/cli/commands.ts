@@ -33,6 +33,7 @@ import {
 import { CronService } from '@/cron';
 import { success, error, info } from './ui';
 import { logger } from '../utils/logger';
+import { registerWhatsAppAuthCommand } from './whatsapp-auth';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -41,7 +42,8 @@ const packageRoot = path.resolve(__dirname, '..', '..');
 const templatesWorkspace = path.join(packageRoot, 'templates', 'workspace');
 
 const NANOBOT_HOME =
-  process.env.NANOBOT_HOME ?? path.join(process.env.HOME ?? process.env.USERPROFILE ?? '~', '.nanobot');
+  process.env.NANOBOT_HOME ??
+  path.join(process.env.HOME ?? process.env.USERPROFILE ?? '~', '.nanobot');
 const DEFAULT_CONFIG_PATH = path.join(NANOBOT_HOME, 'config.json');
 
 /**
@@ -50,10 +52,7 @@ const DEFAULT_CONFIG_PATH = path.join(NANOBOT_HOME, 'config.json');
 export async function runCLI(argv: string[]): Promise<void> {
   const program = new Command();
 
-  program
-    .name('nanobot')
-    .description('Ultra-lightweight personal AI assistant')
-    .version('0.1.0');
+  program.name('nanobot').description('Ultra-lightweight personal AI assistant').version('0.1.0');
 
   program
     .command('init')
@@ -102,7 +101,7 @@ export async function runCLI(argv: string[]): Promise<void> {
         info('No sessions.');
         return;
       }
-      list.forEach((s) => console.log(`  ${s.key}  ${s.messageCount} msgs  ${s.updatedAt}`));
+      list.forEach(s => console.log(`  ${s.key}  ${s.messageCount} msgs  ${s.updatedAt}`));
     });
 
   program
@@ -131,6 +130,28 @@ export async function runCLI(argv: string[]): Promise<void> {
       }
       info('Config set not fully implemented. Edit ~/.nanobot/config.json directly.');
     });
+
+  program
+    .command('channels')
+    .description('Manage channels')
+    .argument('[action]', 'Action: status')
+    .action(async (action?: string) => {
+      if (action !== 'status') {
+        error('Unknown action. Use "nanobot channels status".');
+        process.exit(1);
+      }
+      await cmdChannelsStatus();
+    });
+
+  program
+    .command('logs')
+    .description('Show logs')
+    .option('-t, --tail <number>', 'Number of lines to show (default: 50)', '50')
+    .action(async (opts: { tail?: string }) => {
+      await cmdLogs(parseInt(opts.tail ?? '50', 10));
+    });
+
+  registerWhatsAppAuthCommand(program);
 
   await program.parseAsync(argv);
 }
@@ -227,7 +248,7 @@ async function cmdGateway(_port: string): Promise<void> {
   const cronStorePath = path.join(workspace, 'cron.json');
   const cronService = new CronService({
     storePath: cronStorePath,
-    onJob: async (job) => {
+    onJob: async job => {
       const ch = job.payload.channel ?? 'cli';
       const to = job.payload.to ?? 'direct';
       await bus.publishInbound({
@@ -264,7 +285,7 @@ async function cmdGateway(_port: string): Promise<void> {
   await channelManager.startAll();
   channelManager.runOutboundLoop();
 
-  agent.run().catch((err) => {
+  agent.run().catch(err => {
     logger.error({ err }, 'Agent loop error');
   });
 
@@ -274,7 +295,7 @@ async function cmdGateway(_port: string): Promise<void> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
   const prompt = (): void => {
-    rl.question('\nYou> ', async (line) => {
+    rl.question('\nYou> ', async line => {
       const content = line?.trim() ?? '';
       if (!content) {
         logger.info('Gateway: skipped empty input (type a message then Enter)');
@@ -326,7 +347,7 @@ async function cmdChat(promptArg: string | undefined, interactive?: boolean): Pr
   const cronStorePath = path.join(workspace, 'cron.json');
   const cronService = new CronService({
     storePath: cronStorePath,
-    onJob: async (job) => {
+    onJob: async job => {
       const ch = job.payload.channel ?? 'cli';
       const to = job.payload.to ?? 'direct';
       await bus.publishInbound({
@@ -362,7 +383,7 @@ async function cmdChat(promptArg: string | undefined, interactive?: boolean): Pr
     const readline = await import('readline');
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     const ask = (): void => {
-      rl.question('You> ', async (line) => {
+      rl.question('You> ', async line => {
         const content = line?.trim();
         if (!content) {
           ask();
@@ -422,6 +443,57 @@ async function cmdStatus(): Promise<void> {
   info(`Workspace: ${workspace}`);
   info(`Sessions: ${list.length}`);
   if (list.length > 0) {
-    list.slice(0, 5).forEach((s) => console.log(`  - ${s.key} (${s.messageCount} messages)`));
+    list.slice(0, 5).forEach(s => console.log(`  - ${s.key} (${s.messageCount} messages)`));
+  }
+}
+
+async function cmdChannelsStatus(): Promise<void> {
+  const config = await loadConfig();
+  if (!config) {
+    error('No config found. Run "nanobot init" first.');
+    process.exit(1);
+  }
+
+  const bus = new MessageBus();
+  const channelManager = new ChannelManager(config, bus);
+  const statuses = channelManager.getStatus();
+
+  info('Channel Status:');
+  console.log('');
+  statuses.forEach(status => {
+    const registered = status.registered ? '✓' : '✗';
+    const enabled = status.enabled ? 'enabled' : 'disabled';
+    const running = status.registered ? 'running' : 'not running';
+
+    console.log(`  ${status.name.padEnd(10)}  [${registered}]  ${enabled.padEnd(10)}  ${running}`);
+  });
+  console.log('');
+  console.log('  Legend: [✓] Registered, [✗] Not registered');
+}
+
+async function cmdLogs(tailLines: number): Promise<void> {
+  const workspace = expandHome('~/.nanobot/workspace');
+  const logPath = path.join(workspace, 'logs', 'nanobot.log');
+
+  try {
+    await fs.access(logPath);
+  } catch {
+    info(`No log file found at ${logPath}`);
+    info('Logs are currently output to console only.');
+    info('To enable file logging, set up a log file in the workspace.');
+    return;
+  }
+
+  try {
+    const content = await fs.readFile(logPath, 'utf-8');
+    const lines = content.split('\n');
+    const linesToShow = lines.slice(-tailLines);
+
+    info(`Last ${linesToShow.length} lines from ${logPath}:`);
+    console.log('');
+    console.log(linesToShow.join('\n'));
+  } catch (err) {
+    error(`Failed to read log file: ${err}`);
+    process.exit(1);
   }
 }

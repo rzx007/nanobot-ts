@@ -65,7 +65,7 @@ describe('ToolRegistry', () => {
     it('should overwrite existing tool', () => {
       const tool1 = new MockTool();
       const tool2 = new MockTool();
-      
+
       registry.register(tool1);
       registry.register(tool2);
 
@@ -168,7 +168,8 @@ describe('ToolRegistry', () => {
     it('should return error for non-existent tool', async () => {
       const result = await registry.execute('nonexistent', {});
 
-      expect(result).toContain('错误: 工具 "nonexistent" 不存在');
+      expect(result).toContain('Error: Tool "nonexistent" not found');
+      expect(result).toContain('[Please analyze the error above and try a different approach.]');
     });
 
     it('should return error for invalid params', async () => {
@@ -177,7 +178,9 @@ describe('ToolRegistry', () => {
 
       const result = await registry.execute('mock_tool', {}); // 缺少必需参数
 
-      expect(result).toContain('错误: 工具 "mock_tool" 的参数无效');
+      expect(result).toContain('Error: Invalid params for tool "mock_tool"');
+      expect(result).toContain('缺少必需参数: input');
+      expect(result).toContain('[Please analyze the error above and try a different approach.]');
     });
 
     it('should include error hint in tool errors', async () => {
@@ -189,7 +192,8 @@ describe('ToolRegistry', () => {
 
       const result = await registry.execute('mock_tool', { input: 'test' });
 
-      expect(result).toContain('[请分析上面的错误并尝试不同的方法。]');
+      expect(result).toContain('Error: 模拟错误');
+      expect(result).toContain('[Please analyze the error above and try a different approach.]');
     });
   });
 

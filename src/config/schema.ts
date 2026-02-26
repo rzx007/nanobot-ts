@@ -1,6 +1,6 @@
 /**
  * 配置 Schema 定义
- * 
+ *
  * 使用 Zod 定义完整的配置结构，支持类型安全验证
  */
 
@@ -71,6 +71,8 @@ export const ProvidersConfigSchema = z.object({
   /** DeepSeek 配置 */
   deepseek: ProviderConfigSchema,
 
+  /** Groq 配置 */
+  groq: ProviderConfigSchema.optional(),
 });
 
 /**
@@ -82,6 +84,12 @@ export const WhatsAppConfigSchema = z.object({
 
   /** 允许的用户列表 */
   allowFrom: z.array(z.string()).default([]),
+
+  /** 使用配对码而非二维码 */
+  usePairingCode: z.boolean().default(false),
+
+  /** 配对码手机号 (格式: 86123456789) */
+  phoneNumber: z.string().optional(),
 });
 
 /**
