@@ -37,9 +37,6 @@ export interface AgentOptions {
 
   /** 技能加载器 (可选，用于系统提示词中的技能) */
   skills?: import('./skills').SkillLoader;
-
-  /** 确认管理器 (可选，用于消息渠道的确认) */
-  approvalManager?: import('./approval').ApprovalManager;
 }
 
 /**
@@ -69,9 +66,6 @@ export class AgentLoop {
   /** 技能加载器 (可选) */
   private skills: import('./skills').SkillLoader | null = null;
 
-  /** 确认管理器 (可选) */
-  private approvalManager: import('./approval').ApprovalManager | null = null;
-
   /** 是否正在运行 */
   private running = false;
 
@@ -97,7 +91,6 @@ export class AgentLoop {
     this.sessions = options.sessions;
     this.memory = options.memory ?? null;
     this.skills = options.skills ?? null;
-    this.approvalManager = options.approvalManager ?? null;
     this.maxIterations = this.config.agents.defaults.maxIterations;
     this.memoryWindow = this.config.agents.defaults.memoryWindow;
   }
@@ -120,24 +113,6 @@ export class AgentLoop {
         try {
           // 消费入站消息 (超时 1 秒以允许检查 running 状态)
           const msg = await this.bus.consumeInbound();
-
-          // 检查是否是确认回复（用于消息渠道）
-          if (this.approvalManager) {
-            const inboundMsg = msg as InboundMessage;
-            const isApprovalResponse = this.approvalManager.handleUserMessage(
-              inboundMsg.channel,
-              inboundMsg.chatId,
-              inboundMsg.content,
-            );
-            // 如果是确认回复，跳过处理（已由 ApprovalManager 处理）
-            if (isApprovalResponse) {
-              logger.debug(
-                { channel: inboundMsg.channel, chatId: inboundMsg.chatId },
-                'Message handled as approval response',
-              );
-              continue;
-            }
-          }
 
           logger.info(
             { channel: (msg as InboundMessage).channel, chatId: (msg as InboundMessage).chatId },

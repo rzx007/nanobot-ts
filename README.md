@@ -307,22 +307,9 @@ nanobot whatsapp:logout
 }
 ```
 
-### QQ
+### ~~QQ~~ (暂未实现)
 
-- **Library**: `botpy-ts`
-- **Features**: Official SDK, private chat support
 
-```json
-{
-  "channels": {
-    "qq": {
-      "enabled": true,
-      "appId": "YOUR_APP_ID",
-      "secret": "YOUR_APP_SECRET"
-    }
-  }
-}
-```
 
 ## 🤖 LLM Providers
 

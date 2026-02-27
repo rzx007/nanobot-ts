@@ -127,7 +127,6 @@ export class ToolRegistry {
   ): Promise<string> {
     // 错误提示后缀
     const ERROR_HINT = '\n\n[Please analyze the error above and try a different approach.]';
-    console.log("🚀 ~ ToolRegistry ~ execute ~ ERROR_HINT:", ERROR_HINT)
 
     // 查找工具
     const tool = this.tools.get(name);
@@ -145,7 +144,7 @@ export class ToolRegistry {
       return errorMsg + ERROR_HINT;
     }
 
-    // 检查是否需要确认
+    // 检查是否需要确认（人工交互确认）
     if (this.approvalManager && context?.channel && context?.chatId) {
       const needsApproval = await this.approvalManager.needsApproval(
         name,
@@ -154,7 +153,6 @@ export class ToolRegistry {
         context.channel,
         context.chatId,
       );
-
       if (needsApproval) {
         const approved = await this.approvalManager.requestApproval(
           name,

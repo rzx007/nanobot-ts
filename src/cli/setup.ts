@@ -80,6 +80,9 @@ export async function buildAgentRuntime(config: Config): Promise<AgentRuntime> {
   const approvalConfig = ApprovalConfigSchema.parse(config.tools?.approval ?? {});
   const approvalManager = new ApprovalManager(approvalConfig, bus);
   tools.setApprovalManager(approvalManager);
+  bus.setInboundApprovalCheck((m) =>
+    approvalManager.handleUserMessage(m.channel, m.chatId, m.content),
+  );
 
   logger.info(
     {
@@ -136,7 +139,6 @@ export async function buildAgentRuntime(config: Config): Promise<AgentRuntime> {
     config,
     memory,
     skills,
-    approvalManager,
   });
 
   return {

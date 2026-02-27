@@ -232,8 +232,8 @@ export class ApprovalManager {
     if (!this.messageHandler) {
       return false;
     }
-
-    return this.messageHandler.handleResponse(channel, chatId, content);
+    const result = this.messageHandler.handleResponse(channel, chatId, content);
+    return result;
   }
 
   /**

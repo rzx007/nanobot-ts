@@ -97,6 +97,8 @@ graph TD
 
 ### 消息渠道详细流程
 
+消息渠道的 yes/no 在**入队前**即被处理，避免 Agent 阻塞在 `requestConfirmation` 时无法消费队列中的回复。
+
 ```mermaid
 graph TD
     Start([Agent调用消息渠道工具]) --> NeedsConfirm{需要确认?}
@@ -105,7 +107,7 @@ graph TD
     NeedsConfirm -->|是| GenerateID[生成确认ID]
     
     GenerateID --> FormatMessage[格式化确认消息]
-    FormatMessage --> SendMessage[发送到用户设备]
+    FormatMessage --> SendMessage[通过总线发送到用户设备]
     
     SendMessage --> CreatePromise[创建Promise]
     CreatePromise --> StartTimeout[启动超时计时器]
@@ -113,37 +115,34 @@ graph TD
     StartTimeout --> StorePending[存储待处理确认]
     StorePending --> WaitForResponse[等待用户回复]
     
-    WaitForResponse --> IncomingMessage[接收到消息]
-    IncomingMessage --> IsApprovalMsg{是确认回复?}
+    WaitForResponse --> UserReply[用户在 Feishu/Email 等回复]
+    UserReply --> PublishInbound[渠道调用 bus.publishInbound]
     
-    IsApprovalMsg -->|否| NormalProcess[正常消息处理]
-    IsApprovalMsg -->|是| ParseResponse[解析回复内容]
+    PublishInbound --> InboundCheck[总线: setInboundApprovalCheck 回调]
+    InboundCheck --> HandleUserMsg[ApprovalManager.handleUserMessage]
+    HandleUserMsg --> IsApprovalMsg{是确认回复且有待处理?}
     
-    ParseResponse --> ResponseCheck{回复类型?}
-    
-    ResponseCheck -->|yes/y| ResolveTrue[Promise.resolve true]
-    ResponseCheck -->|no/n| ResolveFalse[Promise.resolve false]
-    
+    IsApprovalMsg -->|是| ResolvePromise[MessageApprovalHandler.handleResponse]
+    ResolvePromise --> ResolveTrue[Promise.resolve true/false]
     ResolveTrue --> ClearTimeout[清除超时计时器]
-    ResolveFalse --> ClearTimeout
-    
     ClearTimeout --> RemovePending[移除待处理记录]
-    RemovePending --> ExecuteCheck{执行决策}
+    RemovePending --> ExecuteOrReject[执行工具或返回拒绝]
     
-    ExecuteCheck -->|确认| Execute
-    ExecuteCheck -->|拒绝| ReturnReject[返回拒绝消息]
+    IsApprovalMsg -->|否| PushQueue[消息入队，供 Agent 正常处理]
     
+    WaitForResponse --> TimeoutTrigger[超时触发]
+    TimeoutTrigger --> RejectPromise[Promise.resolve false]
+    RejectPromise --> ReturnTimeout[返回超时/拒绝]
+    
+    ExecuteOrReject --> Execute
     Execute --> CheckMedium{MEDIUM风险?}
     CheckMedium -->|是| CacheApproval[缓存到会话记忆]
     CheckMedium -->|否| ReturnSuccess
     
     CacheApproval --> ReturnSuccess[返回执行结果]
-    NormalProcess --> [继续正常流程]
-    
-    WaitForResponse --> TimeoutTrigger[超时触发]
-    TimeoutTrigger --> RejectPromise[Promise.reject]
-    RejectPromise --> ReturnTimeout[返回超时消息]
 ```
+
+要点：yes/no 在 `publishInbound` 时经 `handleUserMessage` 识别并 resolve 对应 Promise，**不再入队**，因此不会出现「回复已发送但 Agent 阻塞在等待审批导致超时」的问题。
 
 ---
 
@@ -188,18 +187,26 @@ graph TB
 
 ### 集成到Agent主循环
 
+- **工具执行与确认**：由 ToolRegistry 在 execute 时调用 ApprovalManager（needsApproval / requestApproval），按渠道选用 CLI 或 Message 处理器。
+- **消息渠道的 yes/no**：在**入队前**由总线处理。`bus.setInboundApprovalCheck(fn)` 在 setup 中挂接为 `approvalManager.handleUserMessage`；渠道调用 `publishInbound` 时先执行该回调，若返回 true 表示已作为审批回复处理，消息**不入队**，Agent 主循环不会收到该条消息。
+- **Agent 主循环**：只消费队列中的入站消息并交给 `_processMessage`，不再参与审批回复判断（审批回复已在 publishInbound 时消费）。
+
 ```mermaid
 graph LR
-    User[用户消息] --> Agent[Agent主循环]
+    User[用户消息] --> Publish[渠道 publishInbound]
+    Publish --> CheckApproval{setInboundApprovalCheck}
+    CheckApproval -->|审批回复 yes/no| Handled[handleUserMessage 消费, 不入队]
+    CheckApproval -->|普通消息| Queue[入队]
+    Queue --> Agent[Agent主循环 consumeInbound]
     Agent --> LLM[LLM生成工具调用]
     
     LLM --> ExecuteTool[executeTool回调]
     ExecuteTool --> ToolRegistry[ToolRegistry.execute]
     
-    ToolRegistry --> CheckApproval{有确认管理器?}
+    ToolRegistry --> CheckApproval2{有确认管理器?}
     
-    CheckApproval -->|否| Execute[执行工具]
-    CheckApproval -->|是| NeedsApproval{needsApproval检查}
+    CheckApproval2 -->|否| Execute[执行工具]
+    CheckApproval2 -->|是| NeedsApproval{needsApproval检查}
     
     NeedsApproval -->|无需| Execute
     NeedsApproval -->|需要| Request[requestApproval]
@@ -208,10 +215,13 @@ graph LR
     Request --> Message{消息渠道?}
     
     CLI --> Inquirer[inquirer交互]
-    Message --> BusMessage[消息总线发送]
+    Message --> BusMessage[总线 publishOutbound 发确认]
     
     Inquirer --> UserConfirm{用户确认?}
-    BusMessage --> UserConfirm
+    BusMessage --> UserReply[用户回复 yes/no]
+    UserReply --> Publish
+    Handled --> ResolvePending[resolve 对应 Promise]
+    ResolvePending --> UserConfirm
     
     UserConfirm -->|是| Execute
     UserConfirm -->|否| Reject[返回拒绝]
@@ -222,7 +232,7 @@ graph LR
     
     LLMReturn --> NextStep[LLM继续下一步]
     NextStep --> FinalResponse[生成最终响应]
-    FinalResponse --> User[发送给用户]
+    FinalResponse --> User
 ```
 
 ---

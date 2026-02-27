@@ -47,11 +47,13 @@ src/core/approval-handlers/index.ts    # 确认处理器导出
 src/config/approval-schema.ts          # 确认配置Schema
 ```
 
-#### **修改文件** (5个)
+#### **修改文件** (7个)
 ```
 src/tools/base.ts                      # 添加riskLevel属性
 src/tools/registry.ts                  # 集成确认机制
-src/core/agent.ts                      # 修改executeTool回调
+src/core/agent.ts                      # executeTool 传递 channel/chatId，不再接收或处理 approvalManager
+src/bus/queue.ts                       # 新增 setInboundApprovalCheck、publishInbound 入队前审批检查
+src/cli/setup.ts                       # buildAgentRuntime 中 bus.setInboundApprovalCheck(approvalManager.handleUserMessage)
 src/config/schema.ts                   # 添加approval配置
 src/channels/manager.ts                # 支持确认消息处理
 ```
@@ -334,99 +336,9 @@ export class CLIApprovalHandler implements ApprovalHandler {
 ```
 
 **1.7 消息确认处理器**
-```typescript
-// 新增 src/core/approval-handlers/message.ts
-export class MessageApprovalHandler implements ApprovalHandler {
-  private bus: MessageBus;
-  private pendingApprovals: Map<string, PromiseResolver>;
-  
-  constructor(bus: MessageBus) {
-    this.bus = bus;
-    this.pendingApprovals = new Map();
-  }
-  
-  async requestConfirmation(req: ConfirmationRequest): Promise<boolean> {
-    const { toolName, params, channel, chatId, timeout } = req;
-    
-    // 生成唯一ID
-    const approvalId = this.generateApprovalId(toolName, params, channel, chatId);
-    
-    // 格式化确认消息
-    const paramsDisplay = Object.entries(params)
-      .map(([k, v]) => `${k}=${JSON.stringify(v).slice(0, 50)}`)
-      .join(', ');
-    
-    const message = `⚠️ 工具执行需要确认\n` +
-                    `工具: ${toolName}\n` +
-                    `参数: ${paramsDisplay}\n\n` +
-                    `回复 "yes" 确认，"no" 取消`;
-    
-    // 发送确认消息
-    await this.bus.publishOutbound({
-      channel,
-      chatId,
-      content: message,
-    });
-    
-    // 等待用户回复
-    return new Promise((resolve) => {
-      const timeoutId = setTimeout(() => {
-        this.pendingApprovals.delete(approvalId);
-        resolve(false); // 超时默认拒绝
-      }, timeout * 1000);
-      
-      this.pendingApprovals.set(approvalId, {
-        resolve,
-        timeoutId,
-      });
-    });
-  }
-  
-  // 处理用户回复
-  handleResponse(chatId: string, content: string): boolean {
-    const trimmed = content.trim().toLowerCase();
-    
-    if (trimmed === 'yes' || trimmed === 'y') {
-      const approvalId = this.findApprovalId(chatId);
-      if (approvalId) {
-        const resolver = this.pendingApprovals.get(approvalId);
-        if (resolver) {
-          clearTimeout(resolver.timeoutId);
-          this.pendingApprovals.delete(approvalId);
-          resolver.resolve(true);
-        }
-        return true;
-      }
-    } else if (trimmed === 'no' || trimmed === 'n') {
-      const approvalId = this.findApprovalId(chatId);
-      if (approvalId) {
-        const resolver = this.pendingApprovals.get(approvalId);
-        if (resolver) {
-          clearTimeout(resolver.timeoutId);
-          this.pendingApprovals.delete(approvalId);
-          resolver.resolve(false);
-        }
-        return true;
-      }
-    }
-    
-    return false;
-  }
-  
-  private generateApprovalId(toolName: string, params: Record<string, unknown>, channel: string, chatId: string): string {
-    return `${channel}:${chatId}:${toolName}:${Date.now()}`;
-  }
-  
-  private findApprovalId(chatId: string): string | undefined {
-    for (const [id] of this.pendingApprovals) {
-      if (id.includes(chatId)) {
-        return id;
-      }
-    }
-    return undefined;
-  }
-}
-```
+- 请求确认：发送确认消息到渠道，创建 Promise 并登记 pendingApprovals / approvalsByChatId，等待用户回复或超时。
+- **处理用户回复**：通过 `handleResponse(channel, chatId, content)`。若 content 为 yes/no 且该 chatId 有待处理确认，则 resolve 对应 Promise 并清理，返回 true；否则返回 false。
+- **与总线的配合**：审批回复必须在**入队前**被消费，否则 Agent 阻塞在 requestConfirmation 时无法从队列取到 yes/no。因此由 `bus.setInboundApprovalCheck(() => approvalManager.handleUserMessage(...))` 在 `publishInbound` 时先调用，若返回 true 则消息不入队。
 
 #### **阶段2: 集成到现有代码**
 
@@ -485,9 +397,11 @@ export class ToolRegistry {
 **2.2 修改Agent**
 ```typescript
 // 修改 src/core/agent.ts
+// Agent 主循环仅消费入队消息并处理，不再接收 approvalManager，也不在循环内判断审批回复。
+// 消息渠道的 yes/no 由总线的 setInboundApprovalCheck 在 publishInbound 时处理，不入队。
+
 async _processMessage(...): Promise<OutboundMessage> {
   // ...
-  
   const chatParams: Parameters<LLMProvider['chat']>[0] = {
     messages,
     tools,
@@ -496,7 +410,6 @@ async _processMessage(...): Promise<OutboundMessage> {
     maxTokens: this.config.agents.defaults.maxTokens,
     maxSteps: this.maxIterations,
     executeTool: async (name, args) => {
-      // 新增：传递上下文给工具注册表
       let result = await this.tools.execute(name, args, {
         channel,
         chatId,
@@ -510,6 +423,13 @@ async _processMessage(...): Promise<OutboundMessage> {
   // ...
 }
 ```
+
+**2.2.1 消息渠道 yes/no 入队前处理（当前实现）**
+- 在 `src/bus/queue.ts` 中，MessageBus 提供 `setInboundApprovalCheck(fn: (msg: InboundMessage) => boolean)`。
+- 在 `publishInbound(msg)` 开头：若存在该回调且 `fn(msg)` 返回 true，则直接 return，不 push、不唤醒 consumer。
+- 在 `src/cli/setup.ts` 的 `buildAgentRuntime` 中，创建 ApprovalManager 后执行：
+  `bus.setInboundApprovalCheck((m) => approvalManager.handleUserMessage(m.channel, m.chatId, m.content));`
+- 这样 Feishu/Email 等渠道的用户回复 yes/no 在入队前即被 `MessageApprovalHandler.handleResponse` 消费并 resolve 对应 `requestConfirmation` 的 Promise，避免「Agent 阻塞在等待审批时无法消费队列中的 yes 导致超时」。
 
 **2.3 修改现有工具**
 ```typescript
@@ -603,17 +523,10 @@ export class ChannelManager {
 
 #### **阶段3: 初始化集成**
 
-**3.1 修改主入口**
-```typescript
-// 修改 src/cli/run.ts 或 src/index.ts
-// 在初始化时：
-const channelManager = new ChannelManager(config);
-const approvalManager = channelManager.getApprovalManager();
-
-if (approvalManager) {
-  toolRegistry.setApprovalManager(approvalManager);
-}
-```
+**3.1 修改主入口 / buildAgentRuntime**
+- 创建 MessageBus、ApprovalManager（传入 bus），ToolRegistry.setApprovalManager(approvalManager)。
+- **关键**：`bus.setInboundApprovalCheck((m) => approvalManager.handleUserMessage(m.channel, m.chatId, m.content));` 使消息渠道的 yes/no 在 publishInbound 时即被处理，不入队。
+- AgentLoop 不再接收 approvalManager，仅消费队列中的入站消息并调用 _processMessage。
 
 ### 四、配置示例
 
@@ -674,7 +587,7 @@ src/core/approval-handlers/memory.ts
 src/config/approval-schema.ts
 ```
 
-**修改文件 (10个):**
+**修改文件 (12个):**
 ```
 src/tools/base.ts
 src/tools/shell.ts
@@ -684,6 +597,8 @@ src/tools/message.ts
 src/tools/cron.ts
 src/tools/registry.ts
 src/core/agent.ts
+src/bus/queue.ts
+src/cli/setup.ts
 src/config/schema.ts
 src/channels/manager.ts
 ```
