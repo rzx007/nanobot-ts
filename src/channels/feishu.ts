@@ -38,6 +38,7 @@ export class FeishuChannel implements BaseChannel {
         message?: { chat_id?: string; content?: string; create_time?: string; sender?: { sender_id?: { user_id?: string } } };
       }) => {
         const msg = data?.message;
+        console.log("🚀 ~ FeishuChannel ~ start ~ msg:", JSON.stringify(msg, null, 2))
         if (!msg?.chat_id) return;
         let text = '';
         try {

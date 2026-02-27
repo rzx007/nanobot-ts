@@ -205,7 +205,7 @@ export class CronService {
     }
     await this.saveStore();
     this.armTimer();
-    logger.info({ count: this.store!.jobs.length }, 'Cron service started');
+    logger.info(`Cron service started with ${this.store!.jobs.length} jobs`);
   }
 
   /**

@@ -3,10 +3,10 @@
  */
 
 import { Command } from 'commander';
-import { loadConfig } from '../config';
-import { MCPManager, loadMCPConfig } from '../mcp';
-import { logger } from '../utils/logger';
-import { expandHome } from '../utils/helpers';
+import { loadConfig } from '@/config';
+import { MCPManager, loadMCPConfig } from '@/mcp';
+import { logger } from '@/utils/logger';
+import { expandHome } from '@/utils/helpers';
 
 export function registerMCPCommands(program: Command): void {
   program
@@ -36,7 +36,7 @@ export function registerMCPCommands(program: Command): void {
         const manager = new MCPManager();
         await manager.connectAll(mcpConfig.servers);
 
-        const { MCPToolWrapper } = await import('../mcp');
+        const { MCPToolWrapper } = await import('../../mcp');
         const wrapper = new MCPToolWrapper(manager);
         const tools = wrapper.wrapMCPTools();
 
@@ -133,7 +133,7 @@ export function registerMCPCommands(program: Command): void {
         const manager = new MCPManager();
         await manager.connectAll(mcpConfig.servers);
 
-        const { MCPToolWrapper } = await import('../mcp');
+        const { MCPToolWrapper } = await import('../../mcp');
         const wrapper = new MCPToolWrapper(manager);
         const tools = wrapper.wrapMCPTools();
 

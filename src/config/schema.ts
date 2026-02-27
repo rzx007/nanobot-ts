@@ -49,7 +49,7 @@ export const ProviderConfigSchema = z.object({
 
   /** 额外的请求头 */
   extraHeaders: z.record(z.string(), z.string()).optional(),
-  // ... existing code ...
+
 });
 
 /**

@@ -48,7 +48,7 @@ pnpm run build
 
 ```bash
 # Run the initialization wizard
-pnpm run onboard
+pnpm run init
 ```
 
 This will create:
@@ -266,8 +266,9 @@ nanobot whatsapp:logout
 
 ### Feishu
 
-- **Library**: `lark-oapi`
-- **Features**: WebSocket long connection, official SDK
+- **Library**: `@larksuiteoapi/node-sdk`
+- **Features**: WebSocket 长连接接收消息，API 发送消息；无需公网 IP
+- **配置说明**: 见 [飞书渠道配置指南](docs/FEISHU.md)
 
 ```json
 {
@@ -275,7 +276,10 @@ nanobot whatsapp:logout
     "feishu": {
       "enabled": true,
       "appId": "cli_xxx",
-      "appSecret": "xxx"
+      "appSecret": "xxx",
+      "encryptKey": "",
+      "verificationToken": "",
+      "allowFrom": []
     }
   }
 }

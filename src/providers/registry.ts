@@ -1,22 +1,19 @@
 /**
  * LLM Provider 实现
  *
- * 使用 Vercel AI SDK 的 generateText 实现 LLM 提供商接口
+ * 使用 Vercel AI SDK 的 generateText，通过适配器注册表调用各供应商。
  * 参考: https://sdk.vercel.ai/docs/ai-sdk-core/generating-text
  */
 
 import { generateText, stepCountIs, type LanguageModel, type ModelMessage } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { createDeepSeek } from '@ai-sdk/deepseek';
-import { createGroq } from '@ai-sdk/groq';
 import type { LLMResponse, ToolSet } from '../bus/events';
 import type { Config } from '../config/schema';
 import { parseModelString } from '../utils/helpers';
 import { logger } from '../utils/logger';
 import { ProviderError } from '../utils/errors';
 import { withRetryAndRateLimit, createRetryState } from '../utils/retry';
+import type { ProviderRegistry } from './types';
+import { createProviderRegistry } from './adapters';
 
 /**
  * 将 agent 的 messages 转换为 AI SDK ModelMessage 格式
@@ -52,65 +49,14 @@ function normalizeMessages(
 /**
  * LLM Provider
  *
- * 统一的 LLM 提供商接口实现，使用 AI SDK generateText
+ * 通过 Provider 注册表统一调用各供应商，新增供应商只需在 adapters 中注册。
  */
 export class LLMProvider {
-  /** OpenAI 兼容 Provider (OpenAI + OpenRouter) */
-  private openaiProvider: ReturnType<typeof createOpenAI> | null = null;
-
-  /** Anthropic Provider */
-  private anthropicProvider: ReturnType<typeof createAnthropic> | null = null;
-
-  /** DeepSeek Provider */
-  private deepseekProvider: ReturnType<typeof createDeepSeek> | null = null;
-
-  /** OpenRouter Provider */
-  private openrouterProvider: ReturnType<typeof createOpenRouter> | null = null;
-
-  /** Groq Provider */
-  private groqProvider: ReturnType<typeof createGroq> | null = null;
-
-  /** 重试状态 */
+  private registry: ProviderRegistry;
   private retryState = createRetryState();
 
-  /**
-   * 构造函数
-   */
   constructor(config: Config) {
-    if (config.providers.openai.apiKey) {
-      const openaiConfig = {
-        apiKey: config.providers.openai.apiKey,
-        ...(config.providers.openai.apiBase && { baseURL: config.providers.openai.apiBase }),
-      };
-      this.openaiProvider = createOpenAI(openaiConfig);
-      logger.info('OpenAI Provider initialized');
-    }
-
-    if (config.providers.anthropic.apiKey) {
-      this.anthropicProvider = createAnthropic({
-        apiKey: config.providers.anthropic.apiKey,
-      });
-      logger.info('Anthropic Provider initialized');
-    }
-    if (config.providers.deepseek.apiKey) {
-      this.deepseekProvider = createDeepSeek({
-        apiKey: config.providers.deepseek.apiKey,
-      });
-      logger.info('DeepSeek Provider initialized');
-    }
-    if (config.providers.openrouter.apiKey) {
-      this.openrouterProvider = createOpenRouter({
-        apiKey: config.providers.openrouter.apiKey,
-        baseURL: config.providers.openrouter.apiBase ?? 'https://openrouter.ai/api/v1',
-      });
-      logger.info('OpenRouter Provider initialized');
-    }
-    if (config.providers.groq?.apiKey) {
-      this.groqProvider = createGroq({
-        apiKey: config.providers.groq.apiKey,
-      });
-      logger.info('Groq Provider initialized');
-    }
+    this.registry = createProviderRegistry(config);
   }
 
   /**
@@ -131,42 +77,18 @@ export class LLMProvider {
   }
 
   /**
-   * 获取当前请求对应的 model 实例
+   * 根据 provider 与 model 名获取 LanguageModel
+   * 未指定或未知 provider 时回退到 deepseek
    */
   private getModel(providerName: string, modelName: string): LanguageModel {
-    if (providerName === 'anthropic') {
-      if (!this.anthropicProvider) {
-        throw new Error('Anthropic Provider not initialized');
-      }
-      return this.anthropicProvider(modelName);
+    const factory =
+      this.registry.get(providerName) ?? this.registry.get('deepseek');
+    if (!factory) {
+      throw new Error(
+        `No provider available for "${providerName}". Ensure at least one provider (e.g. deepseek) is configured with apiKey.`,
+      );
     }
-    if (providerName === 'deepseek') {
-      if (!this.deepseekProvider) {
-        throw new Error('DeepSeek Provider not initialized');
-      }
-      return this.deepseekProvider(modelName);
-    }
-    if (providerName === 'groq') {
-      if (!this.groqProvider) {
-        throw new Error('Groq Provider not initialized');
-      }
-      return this.groqProvider(modelName);
-    }
-    if (providerName === 'openrouter') {
-      if (!this.openrouterProvider) {
-        throw new Error('OpenRouter Provider not initialized');
-      }
-      return this.openrouterProvider(modelName);
-    }
-
-    if (providerName === 'openai' || !this.openaiProvider) {
-      if (!this.openaiProvider) {
-        throw new Error('OpenAI Provider not initialized');
-      }
-      return this.openaiProvider(modelName);
-    }
-
-    return this.openaiProvider(modelName);
+    return factory(modelName);
   }
 
   /**
@@ -227,12 +149,12 @@ export class LLMProvider {
 
       const usage = result.usage
         ? {
-            promptTokens: result.usage.inputTokens ?? 0,
-            completionTokens: result.usage.outputTokens ?? 0,
-            totalTokens:
-              result.usage.totalTokens ??
-              (result.usage.inputTokens ?? 0) + (result.usage.outputTokens ?? 0),
-          }
+          promptTokens: result.usage.inputTokens ?? 0,
+          completionTokens: result.usage.outputTokens ?? 0,
+          totalTokens:
+            result.usage.totalTokens ??
+            (result.usage.inputTokens ?? 0) + (result.usage.outputTokens ?? 0),
+        }
         : undefined;
 
       return {
