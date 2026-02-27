@@ -19,7 +19,7 @@ export class SpawnTool extends Tool {
   name = 'spawn';
 
   description =
-    'Spawn a background process to run a task independently. Use for time-consuming or independent tasks. Returns process id (pid).';
+    '生成一个后台进程来独立运行任务。适用于耗时任务或独立任务场景。返回进程标识符（PID）。';
 
   private originChannel = 'cli';
   private originChatId = 'direct';

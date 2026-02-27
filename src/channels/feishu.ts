@@ -10,6 +10,15 @@ import type { FeishuConfig } from '../config/schema';
 import { logger } from '../utils/logger';
 import { MessageBus } from '@/bus/queue';
 
+/** 仅当消息 @ 了以下名称之一的机器人时才回复（与飞书 mentions[].name 匹配，不区分大小写） */
+const REPLY_AT_BOT_NAMES = ['cicibot', 'nanobot'];
+
+/** 飞书消息中的 @ 提及项 */
+interface FeishuMention {
+  key?: string;
+  name?: string;
+}
+
 export interface FeishuChannelConfig extends FeishuConfig { }
 
 export class FeishuChannel implements BaseChannel {
@@ -35,10 +44,16 @@ export class FeishuChannel implements BaseChannel {
       verificationToken: verificationToken,
     }).register({
       'im.message.receive_v1': async (data: {
-        message?: { chat_id?: string; content?: string; create_time?: string; sender?: { sender_id?: { user_id?: string } } };
+        message?: {
+          chat_id?: string;
+          chat_type?: string
+          content?: string;
+          create_time?: string;
+          sender?: { sender_id?: { user_id?: string } };
+          mentions?: FeishuMention[];
+        };
       }) => {
         const msg = data?.message;
-        console.log("🚀 ~ FeishuChannel ~ start ~ msg:", JSON.stringify(msg, null, 2))
         if (!msg?.chat_id) return;
         let text = '';
         try {
@@ -48,6 +63,21 @@ export class FeishuChannel implements BaseChannel {
           text = String(msg.content ?? '');
         }
         if (!text) return;
+        const isGroupChat = msg.chat_type === 'group';
+        // 仅当消息 @ 了配置的机器人时处理（按飞书 mentions[].name 判断）
+        const mentions = msg.mentions ?? [];
+        const isAtBot = mentions.some(
+          (m) => m.name && REPLY_AT_BOT_NAMES.includes(m.name.toLowerCase())
+        );
+        // 群聊中只有@了机器人才处理
+        if (!isAtBot && isGroupChat) return;
+        // 去掉正文中的 @ 占位符（如 @_user_1），只保留实际内容
+        let contentText = text;
+        for (const m of mentions) {
+          if (m.key) contentText = contentText.replace(m.key, '').trim();
+        }
+        contentText = contentText.replace(/\s+/g, ' ').trim();
+        if (!contentText) return;
         const senderId = msg.sender?.sender_id?.user_id ?? msg.chat_id;
         if (allowFrom.length > 0 && !allowFrom.includes(senderId)) return;
 
@@ -55,7 +85,7 @@ export class FeishuChannel implements BaseChannel {
           channel: 'feishu',
           senderId,
           chatId: msg.chat_id,
-          content: text,
+          content: contentText,
           timestamp: new Date(Number(msg.create_time) || Date.now()),
         };
         await this.bus.publishInbound(inbound);

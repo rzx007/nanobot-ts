@@ -10,7 +10,7 @@ import type { Config } from '../config/schema';
 import { logger } from '../utils/logger';
 
 /**
- * 消息发送工具
+ * 消息发送工具,让 Agent 能够主动发送消息
  */
 export class MessageTool extends Tool {
   name = 'message';

@@ -8,9 +8,9 @@ This file helps nanobot understand your preferences and context.
 
 **Name**: [Your name here]
 
-**Timezone**: [Your timezone, e.g., Asia/Shanghai]
+**Timezone**: Asia/Shanghai
 
-**Language**: [Preferred language, e.g., Chinese, English]
+**Language**: Chinese, English
 
 **Communication Style**: [Concise/Detailed/Formal/Casual]
 
