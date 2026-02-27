@@ -1,12 +1,13 @@
 /**
  * 消息发送工具
- * 
+ *
  * 跨渠道发送消息的工具实现
  */
 
 import { Tool } from './base';
 import type { MessageBus } from '../bus';
 import type { Config } from '../config/schema';
+import { RiskLevel } from './safety';
 import { logger } from '../utils/logger';
 
 /**
@@ -16,6 +17,8 @@ export class MessageTool extends Tool {
   name = 'message';
 
   description = '发送消息到指定的聊天渠道';
+
+  riskLevel = RiskLevel.MEDIUM;
 
   /** 消息总线 */
   private bus: MessageBus;
@@ -46,15 +49,11 @@ export class MessageTool extends Tool {
 
   /**
    * 发送消息到指定渠道
-   * 
+   *
    * @param params - 工具参数
    * @returns 发送结果
    */
-  async execute(params: {
-    channel: string;
-    chatId: string;
-    content: string;
-  }): Promise<string> {
+  async execute(params: { channel: string; chatId: string; content: string }): Promise<string> {
     try {
       const { channel, chatId, content } = params;
 

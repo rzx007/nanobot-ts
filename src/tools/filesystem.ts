@@ -1,6 +1,6 @@
 /**
  * 文件系统工具
- * 
+ *
  * 读写文件的工具实现
  */
 
@@ -8,12 +8,13 @@ import path from 'path';
 import fs from 'fs/promises';
 import { Tool } from './base';
 import type { Config } from '../config/schema';
+import { RiskLevel } from './safety';
 import { expandHome, isPathInWorkspace, ensureDir } from '../utils/helpers';
 import { logger } from '../utils/logger';
 
 /**
  * 文件系统工具基类
- * 
+ *
  * 提供工作区限制功能
  */
 abstract class FileTool extends Tool {
@@ -25,7 +26,7 @@ abstract class FileTool extends Tool {
 
   /**
    * 构造函数
-   * 
+   *
    * @param config - 配置对象
    */
   constructor(config: Config) {
@@ -36,7 +37,7 @@ abstract class FileTool extends Tool {
 
   /**
    * 检查路径是否在工作区内
-   * 
+   *
    * @param targetPath - 目标路径
    * @returns 是否在工作区内
    */
@@ -102,6 +103,8 @@ export class WriteFileTool extends FileTool {
 
   description = '写入内容到文件';
 
+  riskLevel = RiskLevel.MEDIUM;
+
   parameters = {
     type: 'object',
     properties: {
@@ -153,6 +156,8 @@ export class EditFileTool extends FileTool {
 
   description = '编辑文件中指定的字符串';
 
+  riskLevel = RiskLevel.MEDIUM;
+
   parameters = {
     type: 'object',
     properties: {
@@ -172,11 +177,7 @@ export class EditFileTool extends FileTool {
     required: ['path', 'oldStr', 'newStr'],
   };
 
-  async execute(params: {
-    path: string;
-    oldStr: string;
-    newStr: string;
-  }): Promise<string> {
+  async execute(params: { path: string; oldStr: string; newStr: string }): Promise<string> {
     try {
       // 展开路径
       const fullPath = expandHome(params.path);
@@ -200,6 +201,58 @@ export class EditFileTool extends FileTool {
       return `File "${params.path}" edited successfully`;
     } catch (error) {
       const errorMsg = `Edit file "${params.path}" failed: ${error instanceof Error ? error.message : String(error)}`;
+      logger.error(errorMsg);
+      return `Error: ${errorMsg}`;
+    }
+  }
+}
+
+/**
+ * 删除文件工具
+ */
+export class DeleteFileTool extends FileTool {
+  name = 'delete_file';
+
+  description = '删除文件';
+
+  riskLevel = RiskLevel.MEDIUM;
+
+  parameters = {
+    type: 'object',
+    properties: {
+      path: {
+        type: 'string',
+        description: '要删除的文件路径',
+      },
+    },
+    required: ['path'],
+  };
+
+  async execute(params: { path: string }): Promise<string> {
+    try {
+      // 展开路径
+      const fullPath = expandHome(params.path);
+
+      // 检查权限
+      if (!this.isPathAllowed(fullPath)) {
+        return `Error: Path "${params.path}" is outside workspace`;
+      }
+
+      logger.info(`Deleting file: ${fullPath}`);
+
+      // 检查文件是否存在
+      try {
+        await fs.access(fullPath);
+      } catch {
+        return `Error: File "${params.path}" does not exist`;
+      }
+
+      // 删除文件
+      await fs.unlink(fullPath);
+
+      return `File "${params.path}" deleted successfully`;
+    } catch (error) {
+      const errorMsg = `Delete file "${params.path}" failed: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(errorMsg);
       return `Error: ${errorMsg}`;
     }
@@ -242,7 +295,7 @@ export class ListDirTool extends FileTool {
 
       // 格式化输出
       const output = entries
-        .map((entry) => {
+        .map(entry => {
           const prefix = entry.isDirectory() ? '[DIR] ' : '      ';
           return `${prefix}${entry.name}`;
         })

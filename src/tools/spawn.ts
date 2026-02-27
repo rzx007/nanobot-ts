@@ -5,6 +5,7 @@
 
 import { execaCommand } from 'execa';
 import { Tool } from './base';
+import { RiskLevel } from './safety';
 import { logger } from '../utils/logger';
 
 export interface SpawnToolContext {
@@ -21,6 +22,8 @@ export class SpawnTool extends Tool {
   description =
     '生成一个后台进程来独立运行任务。适用于耗时任务或独立任务场景。返回进程标识符（PID）。';
 
+  riskLevel = RiskLevel.HIGH;
+
   private originChannel = 'cli';
   private originChatId = 'direct';
 
@@ -29,7 +32,8 @@ export class SpawnTool extends Tool {
     properties: {
       command: {
         type: 'string',
-        description: 'Shell command to run in background (e.g. "node dist/cli/run.js chat \'reminder\'" or "sleep 30 && echo done")',
+        description:
+          'Shell command to run in background (e.g. "node dist/cli/run.js chat \'reminder\'" or "sleep 30 && echo done")',
       },
       label: {
         type: 'string',

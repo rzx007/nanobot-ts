@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { ApprovalConfigSchema } from './approval-schema';
 
 /**
  * Agent 默认配置
@@ -49,7 +50,6 @@ export const ProviderConfigSchema = z.object({
 
   /** 额外的请求头 */
   extraHeaders: z.record(z.string(), z.string()).optional(),
-
 });
 
 /**
@@ -210,6 +210,9 @@ export const ToolsConfigSchema = z.object({
 
   /** Web 配置 */
   web: WebConfigSchema,
+
+  /** 确认配置 */
+  approval: ApprovalConfigSchema,
 });
 
 /**
@@ -323,6 +326,7 @@ export type EmailConfig = z.infer<typeof EmailConfigSchema>;
 export type ChannelsConfig = z.infer<typeof ChannelsConfigSchema>;
 export type ExecConfig = z.infer<typeof ExecConfigSchema>;
 export type WebConfig = z.infer<typeof WebConfigSchema>;
+export type ApprovalConfig = z.infer<typeof ApprovalConfigSchema>;
 export type ToolsConfig = z.infer<typeof ToolsConfigSchema>;
 export type MCPServerTypeEnum = z.infer<typeof MCPServerTypeEnum>;
 export type STDIO_MCPServerConfig = z.infer<typeof STDIO_MCPServerSchema>;

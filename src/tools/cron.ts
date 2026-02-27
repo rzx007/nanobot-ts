@@ -6,6 +6,7 @@
 import { Tool } from './base';
 import type { CronService } from '../cron/service';
 import type { CronSchedule } from '../cron/types';
+import { RiskLevel } from './safety';
 
 export interface CronToolContext {
   setContext(channel: string, chatId: string): void;
@@ -15,6 +16,8 @@ export class CronTool extends Tool {
   name = 'cron';
 
   description = 'Schedule reminders and recurring tasks. Actions: add, list, remove.';
+
+  riskLevel = RiskLevel.MEDIUM;
 
   private channel = 'cli';
   private chatId = 'direct';
@@ -29,7 +32,7 @@ export class CronTool extends Tool {
   }
 
   /**
-   * 
+   *
    * every_seconds → 	间隔执行，每 N 秒触发一次（周期任务）
    * cron_expr → Cron 表达式执行（可搭配 tz 设置时区）
    * at → 一次性执行时间，ISO 格式如 2026-02-12T10:30:00
@@ -138,9 +141,7 @@ export class CronTool extends Tool {
   private async listJobs(): Promise<string> {
     const jobs = await this.cronService.listJobs();
     if (jobs.length === 0) return 'No scheduled jobs.';
-    const lines = jobs.map(
-      (j) => `- ${j.name} (id: ${j.id}, ${j.schedule.kind})`
-    );
+    const lines = jobs.map(j => `- ${j.name} (id: ${j.id}, ${j.schedule.kind})`);
     return 'Scheduled jobs:\n' + lines.join('\n');
   }
 

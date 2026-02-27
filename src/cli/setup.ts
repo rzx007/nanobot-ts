@@ -6,6 +6,7 @@
 import path from 'path';
 import { loadConfig } from '@/config';
 import type { Config } from '@/config/schema';
+import { ApprovalConfigSchema } from '@/config/approval-schema';
 import { expandHome } from '@/utils/helpers';
 import { MessageBus } from '@/bus/queue';
 import { SessionManager } from '@/storage';
@@ -13,11 +14,14 @@ import { LLMProvider } from '@/providers';
 import { AgentLoop } from '@/core/agent';
 import { MemoryConsolidator } from '@/core/memory';
 import { SkillLoader } from '@/core/skills';
+import { ApprovalManager } from '@/core/approval';
+import { logger } from '@/utils/logger';
 import {
   ToolRegistry,
   ReadFileTool,
   WriteFileTool,
   EditFileTool,
+  DeleteFileTool,
   ListDirTool,
   ExecTool,
   WebSearchTool,
@@ -55,6 +59,7 @@ export interface AgentRuntime {
   tools: ToolRegistry;
   memory: MemoryConsolidator;
   skills: SkillLoader;
+  approvalManager: ApprovalManager;
   agent: AgentLoop;
   cronService: CronService;
 }
@@ -71,9 +76,25 @@ export async function buildAgentRuntime(config: Config): Promise<AgentRuntime> {
   const provider = new LLMProvider(config);
   const tools = new ToolRegistry();
 
+  // 创建确认管理器（解析并补全默认值，避免旧配置缺少 approval 字段导致报错）
+  const approvalConfig = ApprovalConfigSchema.parse(config.tools?.approval ?? {});
+  const approvalManager = new ApprovalManager(approvalConfig, bus);
+  tools.setApprovalManager(approvalManager);
+
+  logger.info(
+    {
+      enabled: approvalConfig.enabled,
+      memoryWindow: approvalConfig.memoryWindow,
+      timeout: approvalConfig.timeout,
+      strictMode: approvalConfig.strictMode,
+    },
+    'ApprovalManager initialized',
+  );
+
   tools.register(new ReadFileTool(config));
   tools.register(new WriteFileTool(config));
   tools.register(new EditFileTool(config));
+  tools.register(new DeleteFileTool(config));
   tools.register(new ListDirTool(config));
   tools.register(new ExecTool(config));
   tools.register(new WebSearchTool(config));
@@ -115,6 +136,7 @@ export async function buildAgentRuntime(config: Config): Promise<AgentRuntime> {
     config,
     memory,
     skills,
+    approvalManager,
   });
 
   return {
@@ -126,6 +148,7 @@ export async function buildAgentRuntime(config: Config): Promise<AgentRuntime> {
     tools,
     memory,
     skills,
+    approvalManager,
     agent,
     cronService,
   };

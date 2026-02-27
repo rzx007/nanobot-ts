@@ -1,12 +1,13 @@
 /**
  * Shell 执行工具
- * 
+ *
  * 执行 Shell 命令的工具实现
  */
 
 import { execaCommand } from 'execa';
 import { Tool } from './base';
 import type { Config } from '../config/schema';
+import { RiskLevel } from './safety';
 import { logger } from '../utils/logger';
 import { withTimeout } from '../utils/helpers';
 
@@ -18,12 +19,14 @@ export class ExecTool extends Tool {
 
   description = '执行 Shell 命令';
 
+  riskLevel = RiskLevel.HIGH;
+
   /** 配置 */
   private config: Config;
 
   /**
    * 构造函数
-   * 
+   *
    * @param config - 配置对象
    */
   constructor(config: Config) {
@@ -44,7 +47,7 @@ export class ExecTool extends Tool {
 
   /**
    * 执行 Shell 命令
-   * 
+   *
    * @param params - 工具参数
    * @returns 执行结果
    */
@@ -66,7 +69,7 @@ export class ExecTool extends Tool {
       const result = await withTimeout(
         execaCommand(command, { shell: true }),
         timeoutMs,
-        `Command execution timeout (${this.config.tools.exec.timeout}s)`
+        `Command execution timeout (${this.config.tools.exec.timeout}s)`,
       );
 
       // 组合输出

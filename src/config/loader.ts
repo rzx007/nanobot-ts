@@ -157,6 +157,14 @@ export function createDefaultConfig(): Config {
           apiKey: '',
         },
       },
+      approval: {
+        enabled: true,
+        memoryWindow: 300,
+        timeout: 60,
+        toolOverrides: {},
+        strictMode: false,
+        enableLogging: true,
+      },
     },
   };
 }

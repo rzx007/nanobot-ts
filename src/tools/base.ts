@@ -5,10 +5,11 @@
  */
 
 import { jsonSchema, tool, type Tool as AITool } from 'ai';
+import type { RiskLevel } from './safety';
 
 /**
  * 工具基类
- * 
+ *
  * 所有自定义工具必须继承此类并实现必需的属性和方法
  */
 export abstract class Tool {
@@ -28,8 +29,17 @@ export abstract class Tool {
   abstract parameters: Record<string, unknown>;
 
   /**
+   * 工具风险级别
+   *
+   * LOW - 低风险，无需确认
+   * MEDIUM - 中等风险，首次确认，会话记忆
+   * HIGH - 高风险，总是需要确认
+   */
+  riskLevel: RiskLevel = 'low' as RiskLevel;
+
+  /**
    * 验证参数
-   * 
+   *
    * @param params - 工具参数
    * @returns 错误消息数组，如果验证通过则返回空数组
    */
@@ -58,7 +68,7 @@ export abstract class Tool {
 
   /**
    * 执行工具
-   * 
+   *
    * @param params - 工具参数
    * @returns 执行结果 (字符串格式)
    */

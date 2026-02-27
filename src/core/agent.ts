@@ -1,14 +1,10 @@
 /**
  * Agent 主循环
- * 
+ *
  * AI 对话的核心处理引擎
  */
 
-import type {
-  InboundMessage,
-  OutboundMessage,
-  ProgressOptions,
-} from '../bus/events';
+import type { InboundMessage, OutboundMessage, ProgressOptions } from '../bus/events';
 import { getSessionKey } from '../bus/events';
 import type { ToolRegistry } from '../tools';
 import type { LLMProvider } from '../providers';
@@ -41,11 +37,14 @@ export interface AgentOptions {
 
   /** 技能加载器 (可选，用于系统提示词中的技能) */
   skills?: import('./skills').SkillLoader;
+
+  /** 确认管理器 (可选，用于消息渠道的确认) */
+  approvalManager?: import('./approval').ApprovalManager;
 }
 
 /**
  * Agent 主循环
- * 
+ *
  * 负责处理消息、调用 LLM、执行工具的主逻辑
  */
 export class AgentLoop {
@@ -70,6 +69,9 @@ export class AgentLoop {
   /** 技能加载器 (可选) */
   private skills: import('./skills').SkillLoader | null = null;
 
+  /** 确认管理器 (可选) */
+  private approvalManager: import('./approval').ApprovalManager | null = null;
+
   /** 是否正在运行 */
   private running = false;
 
@@ -84,7 +86,7 @@ export class AgentLoop {
 
   /**
    * 构造函数
-   * 
+   *
    * @param options - Agent 配置选项
    */
   constructor(options: AgentOptions) {
@@ -95,6 +97,7 @@ export class AgentLoop {
     this.sessions = options.sessions;
     this.memory = options.memory ?? null;
     this.skills = options.skills ?? null;
+    this.approvalManager = options.approvalManager ?? null;
     this.maxIterations = this.config.agents.defaults.maxIterations;
     this.memoryWindow = this.config.agents.defaults.memoryWindow;
   }
@@ -118,7 +121,28 @@ export class AgentLoop {
           // 消费入站消息 (超时 1 秒以允许检查 running 状态)
           const msg = await this.bus.consumeInbound();
 
-          logger.info({ channel: (msg as InboundMessage).channel, chatId: (msg as InboundMessage).chatId }, 'Processing inbound message');
+          // 检查是否是确认回复（用于消息渠道）
+          if (this.approvalManager) {
+            const inboundMsg = msg as InboundMessage;
+            const isApprovalResponse = this.approvalManager.handleUserMessage(
+              inboundMsg.channel,
+              inboundMsg.chatId,
+              inboundMsg.content,
+            );
+            // 如果是确认回复，跳过处理（已由 ApprovalManager 处理）
+            if (isApprovalResponse) {
+              logger.debug(
+                { channel: inboundMsg.channel, chatId: inboundMsg.chatId },
+                'Message handled as approval response',
+              );
+              continue;
+            }
+          }
+
+          logger.info(
+            { channel: (msg as InboundMessage).channel, chatId: (msg as InboundMessage).chatId },
+            'Processing inbound message',
+          );
 
           const response = await this._processMessage(msg);
 
@@ -126,7 +150,9 @@ export class AgentLoop {
         } catch (rawErr) {
           const err =
             rawErr ??
-            new Error('Rejected with undefined/null (unhandled from SDK or bus.publishOutbound). Run with LOG_LEVEL=debug and check stack.');
+            new Error(
+              'Rejected with undefined/null (unhandled from SDK or bus.publishOutbound). Run with LOG_LEVEL=debug and check stack.',
+            );
           const message = err instanceof Error ? err.message : String(err);
           const stack = err instanceof Error ? err.stack : (err as { stack?: string })?.stack;
           logger.error({ err, message, stack }, 'Error processing message');
@@ -150,14 +176,14 @@ export class AgentLoop {
 
   /**
    * 处理单条消息 (用于 CLI 模式)
-   * 
+   *
    * @param msg - 入站消息
    * @param onProgress - 进度回调
    * @returns 出站消息或 null
    */
   async process(
     msg: InboundMessage,
-    onProgress?: (content: string, options?: ProgressOptions) => Promise<void>
+    onProgress?: (content: string, options?: ProgressOptions) => Promise<void>,
   ): Promise<OutboundMessage | null> {
     logger.info(`Processing message: ${msg.channel}:${msg.chatId}`);
 
@@ -191,14 +217,14 @@ export class AgentLoop {
 
   /**
    * 处理消息的核心逻辑
-   * 
+   *
    * @param msg - 入站消息
    * @param onProgress - 进度回调
    * @returns 出站消息
    */
   private async _processMessage(
     msg: InboundMessage,
-    onProgress?: (content: string, options?: ProgressOptions) => Promise<void>
+    onProgress?: (content: string, options?: ProgressOptions) => Promise<void>,
   ): Promise<OutboundMessage> {
     const { channel, chatId, content } = msg;
     const sessionKey = getSessionKey(msg);
@@ -225,7 +251,11 @@ export class AgentLoop {
     // 为需要上下文的工具设置 channel/chatId（如 spawn、cron）
     for (const name of this.tools.getToolNames()) {
       const t = this.tools.get(name);
-      if (t && 'setContext' in t && typeof (t as { setContext?: (ch: string, cid: string) => void }).setContext === 'function') {
+      if (
+        t &&
+        'setContext' in t &&
+        typeof (t as { setContext?: (ch: string, cid: string) => void }).setContext === 'function'
+      ) {
         (t as { setContext: (ch: string, cid: string) => void }).setContext(channel, chatId);
       }
     }
@@ -241,9 +271,7 @@ export class AgentLoop {
     const history = await this.sessions.getHistory(sessionKey, this.memoryWindow);
 
     // 构建系统提示词 (Identity + Bootstrap + Memory + Skills)
-    const memoryContext = this.memory
-      ? await this.memory.readLongTerm()
-      : '';
+    const memoryContext = this.memory ? await this.memory.readLongTerm() : '';
     const buildOpts: import('./context').BuildSystemPromptOptions = {
       workspace: this.config.agents.defaults.workspace,
       alwaysSkills: this.skills?.getAlwaysSkills() ?? [],
@@ -256,15 +284,20 @@ export class AgentLoop {
     const systemPrompt = await ContextBuilder.buildSystemPrompt(buildOpts);
 
     // 构建消息列表 (含运行时上下文注入)
-    const messages: Array<{ role: string; content: string | Array<{ type: 'tool-result'; toolCallId: string; toolName: string; output: string }> }> = [
-      ...ContextBuilder.buildMessages({
-        systemPrompt,
-        history,
-        currentMessage: content,
-        channel,
-        chatId,
-      }),
-    ];
+    const messages: Array<{
+      role: string;
+      content:
+      | string
+      | Array<{ type: 'tool-result'; toolCallId: string; toolName: string; output: string }>;
+    }> = [
+        ...ContextBuilder.buildMessages({
+          systemPrompt,
+          history,
+          currentMessage: content,
+          channel,
+          chatId,
+        }),
+      ];
 
     // 获取工具定义，由 SDK 自动执行工具（executeTool + maxSteps）
     const tools = this.tools.getDefinitions();
@@ -277,7 +310,11 @@ export class AgentLoop {
       maxTokens: this.config.agents.defaults.maxTokens,
       maxSteps: this.maxIterations,
       executeTool: async (name, args) => {
-        let result = await this.tools.execute(name, args);
+        // 传递上下文信息给工具注册表（用于确认机制）
+        let result = await this.tools.execute(name, args, {
+          channel,
+          chatId,
+        });
         if (result.length > AgentLoop.TOOL_RESULT_MAX_CHARS) {
           result = result.slice(0, AgentLoop.TOOL_RESULT_MAX_CHARS) + '\n... (truncated)';
         }
@@ -285,7 +322,7 @@ export class AgentLoop {
       },
     };
     if (onProgress) {
-      chatParams.onStepFinish = (step) => {
+      chatParams.onStepFinish = step => {
         if (step?.text != null && step.text !== '') {
           onProgress(step.text, { toolHint: true }).catch(() => { });
         }
@@ -323,5 +360,4 @@ export class AgentLoop {
       content: typeof assistantContent === 'string' ? assistantContent : '',
     };
   }
-
 }
