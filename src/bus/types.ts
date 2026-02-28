@@ -1,8 +1,7 @@
 /**
- * 事件类型定义
+ * 消息总线类型定义
  *
  * 定义消息总线中使用的所有事件类型
- * ToolDefinition 直接兼容 Vercel AI SDK 的 Tool 类型
  */
 
 import type { Tool } from 'ai';
@@ -110,13 +109,11 @@ export interface LLMResponse {
 
 /**
  * 工具定义 - 直接兼容 Vercel AI SDK 的 Tool 类型
- * 可直接传入 generateText/streamText 的 tools 参数
  */
 export type ToolDefinition = Tool;
 
 /**
  * 工具集合 - Record<工具名, Tool>
- * 即 generateText({ tools }) 的 tools 参数类型
  */
 export type ToolSet = Record<string, ToolDefinition>;
 
@@ -127,4 +124,26 @@ export type ToolSet = Record<string, ToolDefinition>;
 export interface ProgressOptions {
   /** 工具提示 (是否为工具调用提示) */
   toolHint?: boolean;
+}
+
+/**
+ * 消息总线接口
+ *
+ * 供 ChannelManager、渠道等组件使用，解耦具体实现
+ */
+export interface IMessageBus {
+  /** 发布入站消息 */
+  publishInbound(msg: InboundMessage): Promise<void>;
+
+  /** 发布出站消息 */
+  publishOutbound(msg: OutboundMessage): Promise<void>;
+
+  /** 消费入站消息 (阻塞直到有消息) */
+  consumeInbound(): Promise<InboundMessage>;
+
+  /** 消费出站消息 (阻塞直到有消息) */
+  consumeOutbound(): Promise<OutboundMessage>;
+
+  /** 添加入站消息过滤器 */
+  addInboundFilter(filter: (msg: InboundMessage) => boolean): void;
 }

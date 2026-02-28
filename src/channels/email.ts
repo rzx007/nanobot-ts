@@ -5,11 +5,10 @@
 
 import { ImapFlow } from 'imapflow';
 import nodemailer from 'nodemailer';
-import type { InboundMessage, OutboundMessage } from '../bus/events';
+import type { InboundMessage, OutboundMessage, IMessageBus } from '@/bus/types';
 import type { BaseChannel } from './base';
 import type { EmailConfig } from '../config/schema';
 import { logger } from '../utils/logger';
-import { MessageBus } from '@/bus/queue';
 
 export interface EmailChannelConfig extends EmailConfig { }
 
@@ -23,7 +22,7 @@ export class EmailChannel implements BaseChannel {
 
   constructor(
     private readonly config: EmailChannelConfig,
-    private readonly bus: MessageBus
+    private readonly bus: IMessageBus
   ) { }
 
   async start(): Promise<void> {

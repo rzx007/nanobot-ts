@@ -4,10 +4,10 @@
  * 直接命令行交互的渠道实现
  */
 
-import type { InboundMessage, OutboundMessage } from '@/bus/events';
+import type { InboundMessage, OutboundMessage } from '@/bus/types';
 import type { BaseChannelConfig, BaseChannel } from './base';
 import { logger } from '../utils/logger';
-import { MessageBus } from '@/bus/queue';
+import type { IMessageBus } from '@/bus/types';
 
 /**
  * CLI 渠道配置
@@ -26,7 +26,7 @@ export class CLIChannel implements BaseChannel {
   readonly config: CLIConfig;
 
   /** 消息总线 */
-  private bus: MessageBus;
+  private bus: IMessageBus;
 
   /** 消息回调 (供子类或扩展使用) */
   protected messageCallback: ((msg: InboundMessage) => void) | null = null;
@@ -37,7 +37,7 @@ export class CLIChannel implements BaseChannel {
    * @param config - 配置对象
    * @param bus - 消息总线
    */
-  constructor(config: CLIConfig, bus: MessageBus) {
+  constructor(config: CLIConfig, bus: IMessageBus) {
     this.config = config;
     this.bus = bus;
   }

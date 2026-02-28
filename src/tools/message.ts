@@ -5,7 +5,7 @@
  */
 
 import { Tool } from './base';
-import type { MessageBus } from '../bus';
+import type { IMessageBus } from '../bus/types';
 import type { Config } from '../config/schema';
 import { RiskLevel } from './safety';
 import { logger } from '../utils/logger';
@@ -21,9 +21,9 @@ export class MessageTool extends Tool {
   riskLevel = RiskLevel.MEDIUM;
 
   /** 消息总线 */
-  private bus: MessageBus;
+  private bus: IMessageBus;
 
-  constructor(_config: Config, bus: MessageBus) {
+  constructor(_config: Config, bus: IMessageBus) {
     super();
     this.bus = bus;
   }

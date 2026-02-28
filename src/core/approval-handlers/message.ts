@@ -4,7 +4,7 @@
  * 用于 WhatsApp、Feishu、Email 等消息渠道的确认机制
  */
 
-import type { MessagePublisher } from './types';
+import type { IMessageBus } from '@/bus/types';
 import type { ApprovalHandler, ConfirmationRequest } from './types';
 import { logger } from '@/utils/logger';
 
@@ -31,7 +31,7 @@ interface PendingApproval {
  */
 export class MessageApprovalHandler implements ApprovalHandler {
   /** 消息发布器 */
-  private publisher: MessagePublisher;
+  private publisher: IMessageBus;
 
   /** 待处理的确认请求 */
   private pendingApprovals: Map<string, PendingApproval>;
@@ -44,14 +44,14 @@ export class MessageApprovalHandler implements ApprovalHandler {
    *
    * @param publisher - 消息发布器
    */
-  constructor(publisher: MessagePublisher) {
+  constructor(publisher: IMessageBus) {
     this.publisher = publisher;
     this.pendingApprovals = new Map();
     this.approvalsByChatId = new Map();
   }
 
   /**
-   * 请求用户确认
+   * 请求用户确认 发送确认消息给whatsapp、feishu 等渠道
    *
    * @param req - 确认请求
    * @returns 确认结果
@@ -70,7 +70,7 @@ export class MessageApprovalHandler implements ApprovalHandler {
 
     // 发送确认消息给whatsapp、feishu、email 等渠道
     try {
-      await this.publisher.publishOutbound(channel, chatId, message);
+      await this.publisher.publishOutbound({ channel, chatId, content: message });
 
       logger.info({ approvalId, toolName, chatId }, 'Confirmation message sent');
     } catch (error) {
@@ -106,7 +106,7 @@ export class MessageApprovalHandler implements ApprovalHandler {
   }
 
   /**
-   * 处理用户回复
+   * 处理用户回复 处理whatsapp、feishu 等渠道的确认回复
    *
    * @param channel - 渠道
    * @param chatId - 聊天ID
@@ -161,7 +161,7 @@ export class MessageApprovalHandler implements ApprovalHandler {
   }
 
   /**
-   * 取消待处理的确认
+   * 取消待处理的确认 取消待处理的确认请求
    *
    * @param chatId - 聊天ID
    */

@@ -9,11 +9,9 @@ import { ApprovalMemory } from './approval-handlers/memory';
 import type { ApprovalConfig } from '../config/approval-schema';
 import { RiskLevel, DEFAULT_RISK_LEVELS } from '../tools/safety';
 import { logger } from '../utils/logger';
-import type { MessageBus } from '../bus/queue';
+import type { IMessageBus } from '../bus/types';
 import { CLIApprovalHandler } from './approval-handlers/cli';
 import { MessageApprovalHandler } from './approval-handlers/message';
-import { MessageBusAdapter } from './approval-handlers/message-bus-adapter';
-
 /**
  * 确认管理器
  *
@@ -67,14 +65,13 @@ export class ApprovalManager {
    *
    * @param bus - 消息总线（可选，用于消息渠道）
    */
-  initializeDefaultHandlers(bus?: MessageBus): void {
+  initializeDefaultHandlers(bus?: IMessageBus): void {
     // 注册 CLI 处理器
     this.registerHandler('cli', new CLIApprovalHandler());
 
-    // 如果提供了 MessageBus，注册消息处理器
+    // 如果提供了消息总线，注册消息处理器
     if (bus) {
-      const publisher = new MessageBusAdapter(bus);
-      this.messageHandler = new MessageApprovalHandler(publisher);
+      this.messageHandler = new MessageApprovalHandler(bus);
       this.registerHandler('message', this.messageHandler);
     }
   }

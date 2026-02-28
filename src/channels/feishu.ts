@@ -4,11 +4,11 @@
  */
 
 import * as lark from '@larksuiteoapi/node-sdk';
-import type { InboundMessage, OutboundMessage } from '../bus/events';
+import type { InboundMessage, OutboundMessage } from '@/bus/types';
 import type { BaseChannel } from './base';
 import type { FeishuConfig } from '../config/schema';
 import { logger } from '../utils/logger';
-import { MessageBus } from '@/bus/queue';
+import type { IMessageBus } from '@/bus/types';
 
 /** 仅当消息 @ 了以下名称之一的机器人时才回复（与飞书 mentions[].name 匹配，不区分大小写） */
 const REPLY_AT_BOT_NAMES = ['cicibot', 'nanobot'];
@@ -27,7 +27,7 @@ export class FeishuChannel implements BaseChannel {
 
   constructor(
     private readonly config: FeishuChannelConfig,
-    private readonly bus: MessageBus
+    private readonly bus: IMessageBus
   ) { }
 
   async start(): Promise<void> {

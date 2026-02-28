@@ -6,7 +6,7 @@
  */
 
 import { generateText, stepCountIs, type LanguageModel, type ModelMessage } from 'ai';
-import type { LLMResponse, ToolSet } from '../bus/events';
+import type { LLMResponse, ToolSet } from '../bus/types';
 import type { Config } from '../config/schema';
 import { parseModelString } from '../utils/helpers';
 import { logger } from '../utils/logger';

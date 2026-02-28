@@ -9,7 +9,7 @@ import { EventEmitter } from 'eventemitter3';
 import type {
   InboundMessage,
   OutboundMessage,
-} from './events';
+} from './types';
 import { createLogger } from '../utils/logger';
 /**
  * 消息总线事件

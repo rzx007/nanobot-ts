@@ -78,6 +78,7 @@ export async function buildAgentRuntime(config: Config): Promise<AgentRuntime> {
   // 创建审批管理器（解析并补全默认值，避免旧配置缺少 approval 字段导致报错）
   const approvalConfig = ApprovalConfigSchema.parse(config.tools?.approval ?? {});
   const approvalManager = new ApprovalManager(approvalConfig);
+  // 设置工具的审批检查
   tools.setApprovalCheck(approvalManager);
 
   // 初始化默认处理器

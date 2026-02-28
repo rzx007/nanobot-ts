@@ -4,7 +4,7 @@
  * 所有聊天渠道的抽象基类
  */
 
-import type { OutboundMessage } from '../bus/events';
+import type { OutboundMessage } from '../bus/types';
 
 /**
  * 基础渠道配置

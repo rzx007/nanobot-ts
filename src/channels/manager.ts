@@ -5,8 +5,8 @@
 
 import type { BaseChannel } from './base';
 import type { Config } from '../config/schema';
+import type { IMessageBus } from '@/bus/types';
 import { logger } from '../utils/logger';
-import { MessageBus } from '@/bus/queue';
 
 /**
  * 渠道管理器
@@ -19,7 +19,7 @@ export class ChannelManager {
 
   constructor(
     private readonly config: Config,
-    private readonly bus: MessageBus,
+    private readonly bus: IMessageBus,
   ) {}
 
   /** 获取配置（供按 config.channels 加载渠道时使用） */
@@ -50,7 +50,7 @@ export class ChannelManager {
    * 需传入带 publishInbound 的 bus，供渠道上报入站消息。
    * 单个渠道依赖缺失时只打 log 不抛错。
    */
-  async loadChannelsFromConfig(bus: MessageBus): Promise<void> {
+  async loadChannelsFromConfig(bus: IMessageBus): Promise<void> {
     const { whatsapp, feishu, email } = this.config.channels;
 
     if (whatsapp.enabled) {
