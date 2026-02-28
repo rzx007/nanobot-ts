@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: nanobot-ts:latest
+    image: nanobot-ts:bun-latest
     container_name: nanobot
     restart: unless-stopped
     volumes:
@@ -14,6 +14,7 @@ services:
       # Mount workspace directory (for tools to access)
       - ~/nanobot-workspace:/home/nanobot/workspace
     environment:
+      - BUN_ENV=production
       - NODE_ENV=production
       - TZ=Asia/Shanghai
     # Optional: Resource limits

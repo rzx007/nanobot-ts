@@ -12,7 +12,7 @@ nanobot-ts is the TypeScript version of [nanobot](https://github.com/HKUDS/nanob
 ### Key Features
 
 - 🪶 **Lightweight**: ~5000 lines of TypeScript code
-- 🚀 **Fast**: Powered by Node.js non-blocking I/O
+- 🚀 **Fast**: Powered by Bun runtime
 - 🔌 **Multi-channel**: WhatsApp, Feishu, Email, CLI
 - 🧠 **Smart**: LLM-driven with tool calling
 - 🛠️ **Extensible**: Easy to add custom tools and channels
@@ -27,7 +27,7 @@ nanobot-ts is the TypeScript version of [nanobot](https://github.com/HKUDS/nanob
 | Feature       | Python Version | TypeScript Version               |
 | ------------- | -------------- | -------------------------------- |
 | Lines of Code | ~4,000         | ~5,000                           |
-| Runtime       | Python 3.11+   | Node.js 18+                      |
+| Runtime       | Python 3.11+   | Bun 1.3+                         |
 | Type Safety   | Optional       | ✅ Full                          |
 | Performance   | Good           | ✅ Better (async I/O)            |
 | Ecosystem     | PyPI           | ✅ npm (larger)                  |
@@ -45,18 +45,18 @@ nanobot-ts is the TypeScript version of [nanobot](https://github.com/HKUDS/nanob
 git clone https://github.com/your-org/nanobot-ts.git
 cd nanobot-ts
 
-# Install dependencies
-pnpm install
+# Install dependencies (需要先安装 Bun: https://bun.sh)
+bun install
 
 # Build the project
-pnpm run build
+bun run build
 ```
 
 ### Initialize
 
 ```bash
 # Run the initialization wizard
-pnpm run init
+bun run onboard
 ```
 
 This will create:

@@ -11,13 +11,12 @@ import makeWASocket, {
   type BaileysEventMap,
   Browsers,
 } from 'baileys';
-import pino from 'pino';
 import path from 'path';
 import qrcode from 'qrcode-terminal';
 import type { InboundMessage, OutboundMessage, IMessageBus } from '@/bus/types';
 import type { BaseChannel } from './base';
 import type { WhatsAppConfig } from '../config/schema';
-import { logger } from '../utils/logger';
+import { createLogger, logger } from '../utils/logger';
 
 export interface WhatsAppChannelConfig extends WhatsAppConfig {
   /** 认证状态存储目录（默认 ~/.nanobot/whatsapp_auth） */
@@ -37,7 +36,8 @@ export class WhatsAppChannel implements BaseChannel {
   name = 'whatsapp';
 
   private socket: WASocket | null = null;
-  private readonly pinoLogger = pino({ level: 'silent' });
+  // 静默 logger 供 baileys 使用，不输出库内日志
+  private readonly pinoLogger = createLogger(undefined, { level: 'silent' });
   private readonly authDir: string;
   private isAuthenticating = false;
   private retryCount = 0;

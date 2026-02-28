@@ -3,7 +3,6 @@
  */
 
 import path from 'path';
-import { fileURLToPath } from 'url';
 
 export const NANOBOT_HOME =
   process.env.NANOBOT_HOME ??
@@ -16,7 +15,7 @@ export const DEFAULT_CONFIG_PATH = path.join(NANOBOT_HOME, 'config.json');
  * @param metaUrl - import.meta.url
  */
 export function getPackageRoot(metaUrl: string): string {
-  const dir = path.dirname(fileURLToPath(metaUrl));
+  const dir = path.dirname(new URL(metaUrl).pathname);
   return path.resolve(dir, '..', '..');
 }
 

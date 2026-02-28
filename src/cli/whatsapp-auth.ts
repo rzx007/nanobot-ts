@@ -7,13 +7,14 @@ import { Command } from 'commander';
 import fs from 'fs/promises';
 import readline from 'readline';
 import makeWASocket, { DisconnectReason, useMultiFileAuthState, Browsers } from 'baileys';
-import pino from 'pino';
 import qrcode from 'qrcode-terminal';
 import { success, error, info } from './ui';
 import { loadConfig } from '../config/loader';
 import { expandHome } from '../utils/helpers';
+import { createLogger } from '../utils/logger';
 
-const logger = pino({ level: 'silent' });
+// 静默 logger 供 baileys 使用，不输出库内日志
+const logger = createLogger(undefined, { level: 'silent' });
 
 const MAX_RETRIES = 5;
 const RETRY_DELAY = 3000;

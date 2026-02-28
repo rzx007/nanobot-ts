@@ -18,7 +18,7 @@ export class MessageTool extends Tool {
 
   description = '发送消息到指定的聊天渠道';
 
-  riskLevel = RiskLevel.MEDIUM;
+  riskLevel = RiskLevel.LOW;
 
   /** 消息总线 */
   private bus: IMessageBus;
