@@ -8,4 +8,3 @@ export * from './types';
 export * from './cli';
 export * from './message';
 export * from './memory';
-export * from './message-bus-adapter';

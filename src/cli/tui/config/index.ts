@@ -1,0 +1,1 @@
+export { ConfigApp } from './ConfigApp';
