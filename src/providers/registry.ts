@@ -138,7 +138,7 @@ export class LLMProvider {
             tools: toolsToUse,
             temperature: temperature ?? 0.7,
             maxOutputTokens: maxTokens ?? 4096,
-            stopWhen: [stepCountIs(maxSteps ?? 3)],
+            stopWhen: [stepCountIs(maxSteps ?? 5)],
             ...(onStepFinish && { onStepFinish }),
           }),
         `LLM call: ${provider}:${modelName}`,
