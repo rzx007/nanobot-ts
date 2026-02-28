@@ -15,7 +15,6 @@ import { AgentLoop } from '@/core/agent';
 import { MemoryConsolidator } from '@/core/memory';
 import { SkillLoader } from '@/core/skills';
 import { ApprovalManager } from '@/core/approval';
-import { logger } from '@/utils/logger';
 import {
   ToolRegistry,
   ReadFileTool,
@@ -76,22 +75,17 @@ export async function buildAgentRuntime(config: Config): Promise<AgentRuntime> {
   const provider = new LLMProvider(config);
   const tools = new ToolRegistry();
 
-  // 创建确认管理器（解析并补全默认值，避免旧配置缺少 approval 字段导致报错）
+  // 创建审批管理器（解析并补全默认值，避免旧配置缺少 approval 字段导致报错）
   const approvalConfig = ApprovalConfigSchema.parse(config.tools?.approval ?? {});
-  const approvalManager = new ApprovalManager(approvalConfig, bus);
-  tools.setApprovalManager(approvalManager);
-  bus.setInboundApprovalCheck((m) =>
-    approvalManager.handleUserMessage(m.channel, m.chatId, m.content),
-  );
+  const approvalManager = new ApprovalManager(approvalConfig);
+  tools.setApprovalCheck(approvalManager);
 
-  logger.info(
-    {
-      enabled: approvalConfig.enabled,
-      memoryWindow: approvalConfig.memoryWindow,
-      timeout: approvalConfig.timeout,
-      strictMode: approvalConfig.strictMode,
-    },
-    'ApprovalManager initialized',
+  // 初始化默认处理器
+  approvalManager.initializeDefaultHandlers(bus);
+
+  // 设置消息过滤器（更通用的方式）
+  bus.addInboundFilter((m) =>
+    approvalManager.handleUserMessage(m.channel, m.chatId, m.content),
   );
 
   tools.register(new ReadFileTool(config));

@@ -4,14 +4,15 @@
  * 统一管理所有渠道的工具确认逻辑
  */
 
-import type { ApprovalHandler, ConfirmationRequest } from './approval-handlers/index-internal';
-import { CLIApprovalHandler } from './approval-handlers/cli';
-import { MessageApprovalHandler } from './approval-handlers/message';
+import type { ApprovalHandler, ConfirmationRequest } from './approval-handlers/types';
 import { ApprovalMemory } from './approval-handlers/memory';
 import type { ApprovalConfig } from '../config/approval-schema';
 import { RiskLevel, DEFAULT_RISK_LEVELS } from '../tools/safety';
-import type { MessageBus } from '../bus/queue';
 import { logger } from '../utils/logger';
+import type { MessageBus } from '../bus/queue';
+import { CLIApprovalHandler } from './approval-handlers/cli';
+import { MessageApprovalHandler } from './approval-handlers/message';
+import { MessageBusAdapter } from './approval-handlers/message-bus-adapter';
 
 /**
  * 确认管理器
@@ -19,6 +20,8 @@ import { logger } from '../utils/logger';
  * 负责协调不同渠道的确认处理器，管理确认流程
  */
 export class ApprovalManager {
+  name = 'approval';
+  
   /** 确认处理器映射表 */
   private handlers: Map<string, ApprovalHandler>;
 
@@ -31,29 +34,20 @@ export class ApprovalManager {
   /** 默认风险级别 */
   private defaultRiskLevels: Record<string, RiskLevel>;
 
-  /** 消息处理器（用于处理用户回复） */
+  /** 消息处理器（用于处理消息渠道的确认回复） */
   private messageHandler?: MessageApprovalHandler;
 
   /**
    * 构造函数
    *
    * @param config - 确认配置
-   * @param bus - 消息总线（用于消息渠道）
+   * @param memory - 会话记忆管理器（可选）
    */
-  constructor(config: ApprovalConfig, bus?: MessageBus) {
+  constructor(config: ApprovalConfig, memory?: ApprovalMemory) {
     this.config = config;
-    this.memory = new ApprovalMemory(config);
+    this.memory = memory ?? new ApprovalMemory(config);
     this.handlers = new Map();
     this.defaultRiskLevels = DEFAULT_RISK_LEVELS;
-
-    // 注册默认的 CLI 处理器
-    this.registerHandler('cli', new CLIApprovalHandler());
-
-    // 如果提供了消息总线，注册消息处理器
-    if (bus) {
-      this.messageHandler = new MessageApprovalHandler(bus);
-      this.registerHandler('message', this.messageHandler);
-    }
 
     logger.info(
       {
@@ -64,6 +58,25 @@ export class ApprovalManager {
       },
       'ApprovalManager initialized',
     );
+  }
+
+  /**
+   * 初始化默认处理器
+   *
+   * 注册 CLI 和消息渠道的默认处理器
+   *
+   * @param bus - 消息总线（可选，用于消息渠道）
+   */
+  initializeDefaultHandlers(bus?: MessageBus): void {
+    // 注册 CLI 处理器
+    this.registerHandler('cli', new CLIApprovalHandler());
+
+    // 如果提供了 MessageBus，注册消息处理器
+    if (bus) {
+      const publisher = new MessageBusAdapter(bus);
+      this.messageHandler = new MessageApprovalHandler(publisher);
+      this.registerHandler('message', this.messageHandler);
+    }
   }
 
   /**
@@ -170,7 +183,7 @@ export class ApprovalManager {
   }
 
   /**
-   * 请求用户确认
+   * 请求用户确认 (给渠道(whatsapp、feishu、email 等)发送确认消息, 等待用户回复)
    *
    * @param toolName - 工具名称
    * @param params - 工具参数
@@ -221,6 +234,19 @@ export class ApprovalManager {
   }
 
   /**
+   * 取消待处理的确认
+   *
+   * @param channel - 渠道
+   * @param chatId - 聊天ID
+   */
+  cancelPending(channel: string, chatId: string): void {
+    const handler = this.getHandler(channel);
+    if (handler?.cancelPending) {
+      handler.cancelPending(chatId);
+    }
+  }
+
+  /**
    * 处理用户消息（用于消息渠道的确认回复）
    *
    * @param channel - 渠道
@@ -232,21 +258,7 @@ export class ApprovalManager {
     if (!this.messageHandler) {
       return false;
     }
-    const result = this.messageHandler.handleResponse(channel, chatId, content);
-    return result;
-  }
-
-  /**
-   * 取消待处理的确认
-   *
-   * @param channel - 渠道
-   * @param chatId - 聊天ID
-   */
-  cancelPending(channel: string, chatId: string): void {
-    const handler = this.getHandler(channel);
-    if (handler?.cancelPending) {
-      handler.cancelPending(chatId);
-    }
+    return this.messageHandler.handleResponse(channel, chatId, content);
   }
 
   /**

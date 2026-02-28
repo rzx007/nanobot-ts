@@ -5,7 +5,7 @@
  */
 
 import inquirer from 'inquirer';
-import type { ApprovalHandler, ConfirmationRequest } from './index-internal';
+import type { ApprovalHandler, ConfirmationRequest } from './types';
 import { logger } from '../../utils/logger';
 
 /**

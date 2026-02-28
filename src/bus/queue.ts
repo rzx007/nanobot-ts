@@ -40,14 +40,18 @@ export class MessageBus extends EventEmitter<MessageBusEvents> {
   /** 出站消费者队列 (Promise resolve 函数) */
   private readonly outboundConsumers: Array<(msg: OutboundMessage) => void> = [];
 
-  /** 入队前审批检查：若返回 true 表示已作为审批回复处理，不再入队 */
-  private inboundApprovalCheck?: (msg: InboundMessage) => boolean;
+  /** 入站消息过滤器列表 */
+  private inboundMessageFilters: Array<(msg: InboundMessage) => boolean> = [];
 
   /**
-   * 设置入队前审批检查（用于消息渠道的 yes/no 在入队前被 ApprovalManager 消费）
+   * 添加入站消息过滤器
+   *
+   * 如果任意过滤器返回 true，消息将被拦截
+   *
+   * @param filter - 过滤器函数
    */
-  setInboundApprovalCheck(fn: (msg: InboundMessage) => boolean): void {
-    this.inboundApprovalCheck = fn;
+  addInboundFilter(filter: (msg: InboundMessage) => boolean): void {
+    this.inboundMessageFilters.push(filter);
   }
 
   /**
@@ -56,9 +60,13 @@ export class MessageBus extends EventEmitter<MessageBusEvents> {
    * @param msg - 入站消息
    */
   async publishInbound(msg: InboundMessage): Promise<void> {
-    if (this.inboundApprovalCheck?.(msg)) {
-      return;
+    // 检查所有过滤器
+    for (const filter of this.inboundMessageFilters) {
+      if (filter(msg)) {
+        return; // 消息被拦截，不入队
+      }
     }
+
     this.inboundQueue.push(msg);
     this.emit('inbound', msg);
     const hadConsumer = this.inboundConsumers.length > 0;

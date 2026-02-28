@@ -125,6 +125,9 @@ ${toConsolidate.map(msg => `**${msg.role}**: ${msg.content}`).join('\n\n')}
 
   /**
    * 检查是否需要整合
+   * 1. 获取会话上次整合的位置 lastConsolidated（默认为0）。
+   * 2. 计算未整合的消息数量 unconsolidated。
+   * 3. 若未整合消息数大于等于整合阈值 consolidationThreshold, 则返回 true，表示需要整合。
    *
    * @param session - 会话对象
    * @returns 是否需要整合

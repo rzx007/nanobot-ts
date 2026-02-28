@@ -384,10 +384,6 @@ nanobot-ts/
 └── package.json
 ```
 
-## 🤝 Contributing
-
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
 ### MCP Tools
 
 Connect to external MCP (Model Context Protocol) servers to extend nanobot's capabilities:
@@ -407,10 +403,4 @@ MIT
 - AI SDK: [Vercel AI SDK](https://sdk.vercel.ai/)
 - Test framework: [Vitest](https://vitest.dev/)
 
----
 
-**Made with ❤️ by the nanobot-ts team**
-
-```
-
-```

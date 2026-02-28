@@ -1,7 +1,7 @@
 /**
- * 确认处理器核心接口定义
+ * 审批处理器接口定义
  *
- * 定义确认处理器的接口和数据结构
+ * 定义审批处理器、消息发布等相关的接口和数据结构
  */
 
 /**
@@ -35,9 +35,9 @@ export interface ConfirmationResult {
 }
 
 /**
- * 确认处理器接口
+ * 审批处理器接口
  *
- * 不同渠道的确认处理器需要实现此接口
+ * 不同渠道的审批处理器需要实现此接口
  */
 export interface ApprovalHandler {
   /**
@@ -54,4 +54,21 @@ export interface ApprovalHandler {
    * @param chatId - 聊天ID
    */
   cancelPending?(chatId: string): void;
+}
+
+/**
+ * 消息发布接口
+ *
+ * 用于消息审批处理器发送确认消息到渠道
+ * 解耦消息处理器与具体消息总线实现
+ */
+export interface MessagePublisher {
+  /**
+   * 发布出站消息
+   *
+   * @param channel - 渠道
+   * @param chatId - 聊天ID
+   * @param content - 消息内容
+   */
+  publishOutbound(channel: string, chatId: string, content: string): Promise<void>;
 }

@@ -7,7 +7,47 @@
 import { logger } from '../utils/logger';
 import type { Tool } from './base';
 import type { ToolSet } from '../bus/events';
-import type { ApprovalManager } from '../core/approval';
+
+/**
+ * 审批检查接口
+ *
+ * 解耦 ToolRegistry 与具体的 ApprovalManager 实现
+ */
+export interface ApprovalCheck {
+  /**
+   * 检查是否需要确认
+   *
+   * @param toolName - 工具名称
+   * @param params - 工具参数
+   * @param toolRiskLevel - 工具风险级别
+   * @param channel - 渠道
+   * @param chatId - 聊天ID
+   * @returns 是否需要确认
+   */
+  needsApproval(
+    toolName: string,
+    params: Record<string, unknown>,
+    toolRiskLevel: unknown,
+    channel: string,
+    chatId: string,
+  ): Promise<boolean>;
+
+  /**
+   * 请求用户确认
+   *
+   * @param toolName - 工具名称
+   * @param params - 工具参数
+   * @param channel - 渠道
+   * @param chatId - 聊天ID
+   * @returns 是否批准
+   */
+  requestApproval(
+    toolName: string,
+    params: Record<string, unknown>,
+    channel: string,
+    chatId: string,
+  ): Promise<boolean>;
+}
 
 /**
  * 工具注册表
@@ -18,26 +58,26 @@ export class ToolRegistry {
   /** 工具映射表 */
   private readonly tools = new Map<string, Tool>();
 
-  /** 确认管理器 */
-  private approvalManager?: ApprovalManager;
+  /** 审批检查器 */
+  private approvalCheck?: ApprovalCheck;
 
   /**
-   * 设置确认管理器
+   * 设置审批检查器
    *
-   * @param manager - 确认管理器
+   * @param check - 审批检查器
    */
-  setApprovalManager(manager: ApprovalManager): void {
-    this.approvalManager = manager;
-    logger.info('ApprovalManager set in ToolRegistry');
+  setApprovalCheck(check: ApprovalCheck): void {
+    this.approvalCheck = check;
+    logger.info('ApprovalCheck set in ToolRegistry');
   }
 
   /**
-   * 获取确认管理器
+   * 获取审批检查器
    *
-   * @returns 确认管理器或 undefined
+   * @returns 审批检查器或 undefined
    */
-  getApprovalManager(): ApprovalManager | undefined {
-    return this.approvalManager;
+  getApprovalCheck(): ApprovalCheck | undefined {
+    return this.approvalCheck;
   }
 
   /**
@@ -145,16 +185,17 @@ export class ToolRegistry {
     }
 
     // 检查是否需要确认（人工交互确认）
-    if (this.approvalManager && context?.channel && context?.chatId) {
-      const needsApproval = await this.approvalManager.needsApproval(
+    if (this.approvalCheck && context?.channel && context?.chatId) {
+      const needsApproval = await this.approvalCheck.needsApproval(
         name,
         params,
         tool.riskLevel,
         context.channel,
         context.chatId,
       );
+      console.log("🚀 ~ ToolRegistry ~ execute ~ needsApproval:", needsApproval)
       if (needsApproval) {
-        const approved = await this.approvalManager.requestApproval(
+        const approved = await this.approvalCheck.requestApproval(
           name,
           params,
           context.channel,
