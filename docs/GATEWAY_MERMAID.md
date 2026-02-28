@@ -36,6 +36,8 @@ graph TB
         LP[LLMProvider]
         TR[ToolRegistry]
         CS[CronService]
+        AM[ApprovalManager]
+        MCP[MCPManager]
     end
 
     subgraph 工具层 [Tool Layer]
@@ -70,12 +72,16 @@ graph TB
 
     LP -->|generateText| VercelSDK[Vercel AI SDK]
 
+    TR -->|审批检查| AM
     TR -->|分类| FT
     TR -->|分类| ST
     TR -->|分类| WT
     TR -->|分类| MT
 
     CS -->|定时触发| MB
+    MCP -->|加载工具| TR
+
+    AM -->|过滤| MB
 ```
 
 ## 2. 入站消息处理流程
@@ -226,10 +232,19 @@ graph TB
         C[选择工具类型]
     end
 
+    subgraph 审批检查 [审批检查]
+        Check{需要审批?}
+        Request[请求用户审批]
+        UserDec{用户决定}
+        Approve[批准]
+        Deny[拒绝]
+    end
+
     subgraph 文件工具 [文件系统工具]
         RFT[ReadFileTool<br/>读取文件]
         WFT[WriteFileTool<br/>写入文件]
         EFT[EditFileTool<br/>编辑文件]
+        DFT[DeleteFileTool<br/>删除文件]
         LDT[ListDirTool<br/>列出目录]
     end
 
@@ -240,6 +255,10 @@ graph TB
     subgraph Web工具 [Web工具]
         WST[WebSearchTool<br/>搜索网页]
         WFT2[WebFetchTool<br/>获取内容]
+    end
+
+    subgraph MCP工具 [MCP工具]
+        MCP[MCP Server<br/>外部工具]
     end
 
     subgraph 消息工具 [消息/任务工具]
@@ -258,13 +277,25 @@ graph TB
     B -->|是| C
     B -->|否| F
 
-    C --> RFT
+    C --> Check
+    Check -->|是| Request
+    Check -->|否| RFT
+
+    Request --> UserDec
+    UserDec -->|批准| Approve
+    UserDec -->|拒绝| Deny
+
+    Approve --> RFT
+    Deny --> D
+
     C --> WFT
     C --> EFT
+    C --> DFT
     C --> LDT
     C --> ET
     C --> WST
     C --> WFT2
+    C --> MCP
     C --> MT
     C --> SPT
     C --> CT
@@ -272,10 +303,12 @@ graph TB
     RFT --> D
     WFT --> D
     EFT --> D
+    DFT --> D
     LDT --> D
     ET --> D
     WST --> D
     WFT2 --> D
+    MCP --> D
     MT --> D
     SPT --> D
     CT --> D
@@ -420,7 +453,205 @@ graph TB
     Wait --> AL
 ```
 
-## 8. 技能加载和使用流程
+## 8. 审批系统流程
+
+```mermaid
+graph TB
+    subgraph 工具执行 [工具执行请求]
+        Execute[ToolRegistry.execute]
+        CheckNeeds[needsApproval]
+    end
+
+    subgraph 审批判断 [审批判断逻辑]
+        Global{全局开关<br/>enabled?}
+        Override{工具覆盖<br/>toolOverrides?}
+        GetRisk[获取风险级别<br/>riskLevel]
+        RiskHigh{HIGH?}
+        RiskMedium{MEDIUM?}
+        CheckMemory{检查记忆<br/>hasApproved?}
+        StrictMode{严格模式<br/>strictMode?}
+        RiskLow{LOW?}
+    end
+
+    subgraph 需要审批 [需要用户审批]
+        Request[requestApproval]
+        GetHandler[getHandler channel]
+        CLIHandler[CLIApprovalHandler]
+        MsgHandler[MessageApprovalHandler]
+        SendRequest[发送审批请求]
+        WaitForReply[等待用户回复]
+        UserReply{用户回复}
+    end
+
+    subgraph 审批决策 [审批决策]
+        Approved[用户批准]
+        Record[recordApproval<br/>记录到记忆]
+        Declined[用户拒绝]
+        Deny[拒绝执行]
+    end
+
+    subgraph 直接执行 [无需审批]
+        ExecuteTool[tool.execute]
+    end
+
+    subgraph 消息过滤 [入站消息过滤]
+        MessageBus[MessageBus]
+        InboundFilter[addInboundFilter]
+        HandleMsg[handleUserMessage]
+        IsResponse{是审批回复?}
+        ProcessApproval[处理审批回复]
+    end
+
+    Execute --> CheckNeeds
+    CheckNeeds --> Global
+
+    Global -->|否| ExecuteTool
+    Global -->|是| Override
+
+    Override -->|有覆盖| IsOverride{requiresApproval?}
+    IsOverride -->|是| Request
+    IsOverride -->|否| GetRisk
+
+    Override -->|无覆盖| GetRisk
+    GetRisk --> RiskHigh
+
+    RiskHigh -->|是| Request
+    RiskHigh -->|否| RiskMedium
+
+    RiskMedium -->|是| StrictMode
+    RiskMedium -->|否| RiskLow
+
+    StrictMode -->|是| Request
+    StrictMode -->|否| CheckMemory
+
+    CheckMemory -->|已批准| ExecuteTool
+    CheckMemory -->|未批准| Request
+
+    RiskLow -->|是| ExecuteTool
+
+    Request --> GetHandler
+    GetHandler --> CLIHandler
+    GetHandler --> MsgHandler
+
+    CLIHandler --> SendRequest
+    MsgHandler --> SendRequest
+
+    SendRequest --> WaitForReply
+    WaitForReply --> UserReply
+
+    UserReply -->|yes/approve| Approved
+    UserReply -->|no/decline| Declined
+
+    Approved --> Record
+    Record --> ExecuteTool
+
+    Declined --> Deny
+
+    MessageBus --> InboundFilter
+    InboundFilter --> HandleMsg
+    HandleMsg --> IsResponse
+
+    IsResponse -->|是| ProcessApproval
+    IsResponse -->|否| AgentLoop
+
+    ProcessApproval --> Approved
+    ProcessApproval --> Declined
+```
+
+## 9. MCP 工具加载流程
+
+```mermaid
+graph TB
+    subgraph 启动 [系统启动]
+        Init[创建 MCPToolLoader]
+        LoadConfig[加载配置<br/>workspace/mcp.json]
+        CheckEnabled{enabled?}
+        CheckServers{servers.length>0?}
+    end
+
+    subgraph 连接服务器 [连接 MCP 服务器]
+        CreateManager[创建 MCPManager]
+        ConnectAll[connectAll]
+    end
+
+    subgraph STDIO服务器 [STDIO 类型]
+        STDIOCmd[执行命令<br/>command + args]
+        STDIOEnv[设置环境变量<br/>env]
+        STDIOWork[设置工作目录<br/>cwd]
+        STDIOComm[通过 stdin/stdout 通信]
+    end
+
+    subgraph HTTP服务器 [HTTP 类型]
+        HTTPURL[连接到 URL]
+        HTTPOAuth{OAuth配置?}
+        HTTPAuth[进行 OAuth 认证]
+        HTTPReq[发送 HTTP 请求]
+    end
+
+    subgraph 工具包装 [工具包装]
+        Wrapper[创建 MCPToolWrapper]
+        ListTools[列出所有工具<br/>tools/list]
+        Wrap[wrapMCPTools<br/>包装为内部格式]
+    end
+
+    subgraph 注册 [注册到工具表]
+        Register[toolRegistry.register]
+        Validate[验证工具定义]
+        Success[注册成功]
+        Fail[注册失败<br/>记录警告]
+    end
+
+    subgraph 工具执行 [MCP 工具执行]
+        Call[LLM 调用 MCP 工具]
+        Forward[转发到 MCP 服务器]
+        Execute[MCP 服务器执行]
+        Return[返回结果]
+    end
+
+    Init --> LoadConfig
+    LoadConfig --> CheckEnabled
+
+    CheckEnabled -->|否| Skip[跳过 MCP]
+    CheckEnabled -->|是| CheckServers
+
+    CheckServers -->|否| Skip
+    CheckServers -->|是| CreateManager
+
+    CreateManager --> ConnectAll
+
+    ConnectAll --> STDIOCmd
+    ConnectAll --> HTTPURL
+
+    STDIOCmd --> STDIOEnv
+    STDIOEnv --> STDIOWork
+    STDIOWork --> STDIOComm
+
+    HTTPURL --> HTTPOAuth
+    HTTPOAuth -->|有| HTTPAuth
+    HTTPOAuth -->|无| HTTPReq
+    HTTPAuth --> HTTPReq
+
+    STDIOComm --> Wrapper
+    HTTPReq --> Wrapper
+
+    Wrapper --> ListTools
+    ListTools --> Wrap
+
+    Wrap --> Register
+    Register --> Validate
+
+    Validate --> Success
+    Validate --> Fail
+
+    Success --> Ready[MCP 工具就绪]
+
+    Call --> Forward
+    Forward --> Execute
+    Execute --> Return
+    Return --> ToolReg[返回给 ToolRegistry]
+```
+
+## 10. 技能加载和使用流程
 
 ```mermaid
 graph TB
@@ -467,7 +698,7 @@ graph TB
     LLMGen --> UseSkill
 ```
 
-## 9. 会话管理流程
+## 11. 会话管理流程
 
 ```mermaid
 graph TB
@@ -518,7 +749,7 @@ graph TB
     AddAssistant --> Save
 ```
 
-## 10. 启动和停止流程
+## 12. 启动和停止流程
 
 ```mermaid
 graph TB
@@ -529,7 +760,11 @@ graph TB
         InitSM[初始化SessionManager]
         InitLP[创建LLMProvider]
         InitTR[初始化ToolRegistry]
+        InitAM[创建ApprovalManager]
+        InitHandlers[初始化审批处理器]
+        SetFilter[设置消息过滤器]
         RegTools[注册所有工具]
+        LoadMCP[加载MCP工具]
         InitCS[启动CronService]
         InitMC[初始化MemoryConsolidator]
         InitSL[初始化SkillLoader]
@@ -545,6 +780,7 @@ graph TB
         UserAction[用户: /exit 或 Ctrl+C]
         StopAL[停止AgentLoop]
         StopCM[停止ChannelManager]
+        StopMCP[断开MCP服务器]
         StopAll[停止所有渠道]
         CloseCLI[关闭CLI]
         Exit[进程退出]
@@ -555,8 +791,12 @@ graph TB
     InitMB --> InitSM
     InitSM --> InitLP
     InitLP --> InitTR
-    InitTR --> RegTools
-    RegTools --> InitCS
+    InitTR --> InitAM
+    InitAM --> InitHandlers
+    InitHandlers --> SetFilter
+    SetFilter --> RegTools
+    RegTools --> LoadMCP
+    LoadMCP --> InitCS
     InitCS --> InitMC
     InitMC --> InitSL
     InitSL --> InitAL
@@ -569,12 +809,13 @@ graph TB
     Ready --> UserAction
     UserAction --> StopAL
     StopAL --> StopCM
-    StopCM --> StopAll
+    StopCM --> StopMCP
+    StopMCP --> StopAll
     StopAll --> CloseCLI
     CloseCLI --> Exit
 ```
 
-## 11. 完整消息流转时序
+## 13. 完整消息流转时序
 
 ```mermaid
 sequenceDiagram
@@ -586,6 +827,7 @@ sequenceDiagram
     participant S as SessionManager
     participant L as LLMProvider
     participant T as ToolRegistry
+    participant AM as ApprovalManager
     participant CM as ChannelManager
 
     U->>C: 输入: "帮我分析这个文件"
@@ -624,6 +866,21 @@ sequenceDiagram
     alt 需要工具
         L->>T: executeTool('read_file', {path})
         activate T
+
+        Note over T: 检查是否需要审批
+        alt 需要审批
+            T->>AM: needsApproval()
+            AM-->>T: true
+            T->>AM: requestApproval()
+            activate AM
+            AM->>C: 发送审批请求
+            C->>U: "是否允许执行 read_file?"
+            U->>C: "yes"
+            C->>AM: 审批结果: approve
+            deactivate AM
+            AM->>T: 返回审批结果
+        end
+
         T->>T: 读取文件内容
         T-->>L: 返回文件内容
         deactivate T
@@ -664,7 +921,7 @@ sequenceDiagram
     C->>U: 显示: "文件分析完成..."
 ```
 
-## 12. 组件依赖关系
+## 14. 组件依赖关系
 
 ```mermaid
 graph LR
@@ -681,6 +938,8 @@ graph LR
         LP[LLMProvider]
         TR[ToolRegistry]
         CS[CronService]
+        AM[ApprovalManager]
+        MCP[MCPManager]
     end
 
     subgraph 基础工具
@@ -688,6 +947,7 @@ graph LR
         ST[Shell工具]
         WT[Web工具]
         MT[消息工具]
+        MCPTools[MCP工具]
     end
 
     AL --> MB
@@ -696,6 +956,7 @@ graph LR
     AL --> SL
     AL --> LP
     AL --> TR
+    AL --> AM
 
     CM --> MB
     CM --> C1[CLIChannel]
@@ -705,12 +966,18 @@ graph LR
 
     LP --> VSDK[Vercel AI SDK]
 
+    TR --> AM
     TR --> FT
     TR --> ST
     TR --> WT
     TR --> MT
+    TR --> MCPTools
+
+    MCP --> MCPTools
 
     CS --> MB
+
+    AM --> MB
 
     C1 --> MB
     C2 --> MB
@@ -720,7 +987,7 @@ graph LR
     MT --> MB
 ```
 
-## 13. 数据流图
+## 15. 数据流图
 
 ```mermaid
 graph TB
@@ -796,7 +1063,7 @@ graph TB
     WebMsg --> Session
 ```
 
-## 14. 并发处理模型
+## 16. 并发处理模型
 
 ```mermaid
 graph TB

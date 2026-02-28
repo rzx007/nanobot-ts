@@ -27,6 +27,7 @@ async function runGateway(): Promise<void> {
   channelManager.registerChannel('cli', new CLIChannel({}, bus));
   await channelManager.loadChannelsFromConfig(bus);
   await channelManager.startAll();
+  // 启动出站循环
   channelManager.runOutboundLoop();
 
   agent.run().catch(err => {

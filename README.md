@@ -1,5 +1,8 @@
 # nanobot-ts
 
+ [中文](README_CN.md)
+
+
 Ultra-lightweight personal AI assistant - TypeScript implementation
 
 ## 🎯 Overview
@@ -10,23 +13,28 @@ nanobot-ts is the TypeScript version of [nanobot](https://github.com/HKUDS/nanob
 
 - 🪶 **Lightweight**: ~5000 lines of TypeScript code
 - 🚀 **Fast**: Powered by Node.js non-blocking I/O
-- 🔌 **Multi-channel**: WhatsApp, Feishu, Email, QQ, CLI
+- 🔌 **Multi-channel**: WhatsApp, Feishu, Email, CLI
 - 🧠 **Smart**: LLM-driven with tool calling
 - 🛠️ **Extensible**: Easy to add custom tools and channels
+- 🔐 **Safe**: Risk-based tool approval system
+- 🔌 **MCP Support**: Model Context Protocol for external tools
 - 🎨 **Type-safe**: Full TypeScript support with Zod validation
-- 🔌 **AI SDK**: Powered by Vercel AI SDK
+- 🤖 **AI SDK**: Powered by Vercel AI SDK
+- 💾 **Memory**: Automatic session consolidation and long-term memory
 
 ### Comparison with Python Version
 
-| Feature       | Python Version | TypeScript Version              |
-| ------------- | -------------- | ------------------------------- |
-| Lines of Code | ~4,000         | ~5,000                          |
-| Runtime       | Python 3.11+   | Node.js 18+                     |
-| Type Safety   | Optional       | ✅ Full                         |
-| Performance   | Good           | ✅ Better (async I/O)           |
-| Ecosystem     | PyPI           | ✅ npm (larger)                 |
-| Channels      | 9+             | 4 (WhatsApp, Feishu, Email, QQ) |
-| LLM SDK       | LiteLLM        | ✅ Vercel AI SDK                |
+| Feature       | Python Version | TypeScript Version               |
+| ------------- | -------------- | -------------------------------- |
+| Lines of Code | ~4,000         | ~5,000                           |
+| Runtime       | Python 3.11+   | Node.js 18+                      |
+| Type Safety   | Optional       | ✅ Full                          |
+| Performance   | Good           | ✅ Better (async I/O)            |
+| Ecosystem     | PyPI           | ✅ npm (larger)                  |
+| Channels      | 9+             | 4 (WhatsApp, Feishu, Email, CLI) |
+| LLM SDK       | LiteLLM        | ✅ Vercel AI SDK                 |
+| Approval      | ✅             | ✅ Risk-based approval           |
+| MCP Support   | ✅             | ✅ stdio + HTTP servers          |
 
 ## 🚀 Quick Start
 
@@ -82,7 +90,35 @@ Edit `~/.nanobot/config.json`:
       "enabled": true,
       "allowFrom": ["+1234567890"]
     }
+  },
+  "tools": {
+    "approval": {
+      "enabled": true,
+      "memoryWindow": 300,
+      "timeout": 60
+    }
   }
+}
+```
+
+For MCP configuration, create `~/.nanobot/workspace/mcp.json`:
+
+```json
+{
+  "enabled": true,
+  "servers": [
+    {
+      "name": "filesystem",
+      "type": "stdio",
+      "stdio": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+        "env": {
+          "FILESYSTEM_ALLOWED_DIRECTORIES": "/workspace"
+        }
+      }
+    }
+  ]
 }
 ```
 
@@ -177,29 +213,84 @@ nanobot whatsapp:logout
 
 ## 📦 Architecture
 
-```
-
-┌─────────────────────────────────┐
-│ CLI / Gateway │
-├─────────────────────────────────┤
-│ Channel Manager │
-├───────────┬───────────┬────────┤
-│ WhatsApp │ Feishu │ Email │
-└───────────┴───────────┴────────┘
-↕
-Message Bus
-↕
-┌─────────────────────────────────┐
-│ Agent Loop │
-├─────────────────────────────────┤
-│ Context | Memory | Tools │
-├─────────────────────────────────┤
-│ Vercel AI SDK │
-├───────────┬───────────┬────────┤
-│ OpenAI │ Anthropic │OpenRouter│
-└───────────┴───────────┴────────┘
+nanobot-ts follows an event-driven architecture with a message bus at its core:
 
 ```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           User Layer (Channels)                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐        │
+│  │   CLI      │  │ WhatsApp   │  │  Feishu    │  │   Email    │        │
+│  │  Channel   │  │  Channel   │  │  Channel   │  │  Channel   │        │
+│  └─────┬──────┘  └─────┬──────┘  └─────┬──────┘  └─────┬──────┘        │
+└────────┼────────────────┼────────────────┼────────────────┼────────────────┘
+         │                │                │                │
+         ▼                ▼                ▼                ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         Message Bus (Queue System)                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  • Inbound Queue: User → Agent                                              │
+│  • Outbound Queue: Agent → User                                             │
+│  • Approval Filter: Intercepts yes/no responses                             │
+└─────────────────────────────┬───────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           Agent Loop (Processing)                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │   Session    │  │    Memory    │  │    Skills    │  │   Context    │ │
+│  │   Manager    │  │Consolidator  │  │   Loader    │  │   Builder    │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘ │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │   Tool       │  │  Approval    │  │   Cron       │  │     MCP      │ │
+│  │  Registry    │  │  Manager    │  │   Service    │  │   Manager    │ │
+│  │              │  │              │  │              │  │              │ │
+│  │ • File Tools │  │ • Risk-based │  │ • Scheduled  │  │ • stdio      │ │
+│  │ • Shell      │  │ • Memory     │  │   tasks      │  │   servers    │ │
+│  │ • Web        │  │ • Per-tool   │  │              │  │ • HTTP       │ │
+│  │ • Message    │  │   overrides │  │              │  │   servers    │ │
+│  │ • Spawn      │  │              │  │              │  │              │ │
+│  │ • MCP Tools  │  │              │  │              │  │              │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘ │
+└─────────────────────────────┬───────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         LLM Provider (Vercel AI SDK)                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐         │
+│  │   OpenAI   │  │ Anthropic  │  │ OpenRouter │  │   DeepSeek │         │
+│  │   (GPT-4)  │  │  (Claude)  │  │ (All Mdl)  │  │  (DeepSeek) │         │
+│  └────────────┘  └────────────┘  └────────────┘  └────────────┘         │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Core Components
+
+1. **Message Bus**: Central pub/sub system with inbound/outbound queues
+2. **Agent Loop**: Main processing engine that handles LLM interaction and tool execution
+3. **Tool Registry**: Manages built-in tools and dynamically loads MCP tools
+4. **Approval Manager**: Risk-based tool approval with channel-specific handlers
+5. **Session Manager**: Manages conversation state and history
+6. **Memory Consolidator**: Automatic session summarization and long-term memory
+7. **Channel Manager**: Multi-channel support with unified interface
+
+### Tool Execution Flow
+
+```
+LLM Decision → Tool Registry → Approval Check → Execute → Return Result
+                                    ↓
+                              User Approval
+                                    ↓
+                           (via CLI/WhatsApp/Feishu/Email)
+```
+
+For detailed architecture diagrams and flows, see:
+
+- [Gateway Flow Documentation](docs/GATEWAY_FLOW.md)
+- [Mermaid Diagrams](docs/GATEWAY_MERMAID.md)
 
 ## 🔌 Channels
 
@@ -307,10 +398,6 @@ nanobot whatsapp:logout
 }
 ```
 
-### ~~QQ~~ (暂未实现)
-
-
-
 ## 🤖 LLM Providers
 
 Supported providers (powered by Vercel AI SDK):
@@ -325,19 +412,59 @@ Supported providers (powered by Vercel AI SDK):
 
 ## 🛠️ Tools
 
-Built-in tools:
+### Built-in Tools
 
-| Tool         | Description                       |
-| ------------ | --------------------------------- |
-| `read_file`  | Read file contents                |
-| `write_file` | Write to file                     |
-| `edit_file`  | Edit specific lines in file       |
-| `list_dir`   | List directory contents           |
-| `exec`       | Execute shell commands            |
-| `web_search` | Search the web (Brave Search API) |
-| `web_fetch`  | Fetch web page content            |
-| `message`    | Send message to specific channel  |
-| `spawn`      | Spawn background sub-agent        |
+| Tool          | Description                       |
+| ------------- | --------------------------------- |
+| `read_file`   | Read file contents                |
+| `write_file`  | Write to file                     |
+| `edit_file`   | Edit specific lines in file       |
+| `delete_file` | Delete file                       |
+| `list_dir`    | List directory contents           |
+| `exec`        | Execute shell commands            |
+| `web_search`  | Search the web (Brave Search API) |
+| `web_fetch`   | Fetch web page content            |
+| `message`     | Send message to specific channel  |
+| `spawn`       | Spawn background sub-agent        |
+| `cron`        | Schedule and manage cron tasks    |
+
+### MCP Tools
+
+Connect to external MCP (Model Context Protocol) servers to extend nanobot's capabilities:
+
+- ✅ Supports both local (STDIO) and remote (HTTP) servers
+- ✅ OAuth authentication for protected endpoints
+- ✅ Automatic tool loading and registration
+- ✅ See [MCP.md](MCP.md) for configuration details
+
+### Tool Approval System
+
+Risk-based approval system for tool execution:
+
+- **High Risk**: Always requires approval
+- **Medium Risk**: Checks approval memory (configurable timeout)
+- **Low Risk**: No approval required
+- **Per-tool overrides**: Override risk level per tool
+- **Strict mode**: All non-LOW risk tools require approval
+- **Channel-specific handlers**: CLI, WhatsApp, Feishu, Email
+
+Configuration example:
+
+```json
+{
+  "tools": {
+    "approval": {
+      "enabled": true,
+      "memoryWindow": 300,
+      "timeout": 60,
+      "strictMode": false,
+      "toolOverrides": {
+        "exec": { "requiresApproval": true }
+      }
+    }
+  }
+}
+```
 
 ## 🎨 Development
 
@@ -384,14 +511,12 @@ nanobot-ts/
 └── package.json
 ```
 
-### MCP Tools
+## 📚 Documentation
 
-Connect to external MCP (Model Context Protocol) servers to extend nanobot's capabilities:
-
-- ✅ Supports both local (STDIO) and remote (HTTP) servers
-- ✅ OAuth authentication for protected endpoints
-- ✅ Automatic tool loading and registration
-- ✅ See [MCP.md](MCP.md) for configuration details
+- [Gateway Flow Documentation](docs/GATEWAY_FLOW.md) - Detailed message flow diagrams
+- [Mermaid Diagrams](docs/GATEWAY_MERMAID.md) - Visual architecture diagrams
+- [Feishu Channel Guide](docs/FEISHU.md) - Feishu channel configuration
+- [MCP Configuration](MCP.md) - Model Context Protocol setup
 
 ## 📄 License
 
@@ -402,5 +527,3 @@ MIT
 - Original Python version: [HKUDS/nanobot](https://github.com/HKUDS/nanobot)
 - AI SDK: [Vercel AI SDK](https://sdk.vercel.ai/)
 - Test framework: [Vitest](https://vitest.dev/)
-
-

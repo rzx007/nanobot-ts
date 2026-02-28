@@ -3,9 +3,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ApprovalManager } from '../../../src/core/approval';
-import type { ApprovalConfig } from '../../../src/config/approval-schema';
-import { RiskLevel } from '../../../src/tools/safety';
+import { ApprovalManager } from '../../src/core/approval';
+import type { ApprovalConfig } from '../../src/config/approval-schema';
+import { RiskLevel } from '../../src/tools/safety';
 
 describe('ApprovalManager', () => {
   let approvalManager: ApprovalManager;
@@ -23,6 +23,7 @@ describe('ApprovalManager', () => {
     };
 
     mockMessageHandler = {
+      requestConfirmation: vi.fn(),
       handleResponse: vi.fn(),
     };
 
@@ -37,10 +38,6 @@ describe('ApprovalManager', () => {
       },
       mockMessageBus,
     );
-
-    approvalManager['handlers'].set('cli', mockCLIHandler);
-    approvalManager['handlers'].set('message', mockMessageHandler);
-    approvalManager['messageHandler'] = mockMessageHandler;
   });
 
   afterEach(() => {
