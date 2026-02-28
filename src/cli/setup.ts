@@ -6,7 +6,6 @@
 import path from 'path';
 import { loadConfig } from '@/config';
 import type { Config } from '@/config/schema';
-import { ApprovalConfigSchema } from '@/config/approval-schema';
 import { expandHome } from '@/utils/helpers';
 import { MessageBus } from '@/bus/queue';
 import { SessionManager } from '@/storage';
@@ -75,13 +74,12 @@ export async function buildAgentRuntime(config: Config): Promise<AgentRuntime> {
   const provider = new LLMProvider(config);
   const tools = new ToolRegistry();
 
-  // 创建审批管理器（解析并补全默认值，避免旧配置缺少 approval 字段导致报错）
-  const approvalConfig = ApprovalConfigSchema.parse(config.tools?.approval ?? {});
-  const approvalManager = new ApprovalManager(approvalConfig);
+  // 创建审批管理器（内部从 config.tools?.approval 解析确认配置，按 config.channels 注册渠道 handler）
+  const approvalManager = new ApprovalManager(config);
   // 设置工具的审批检查
   tools.setApprovalCheck(approvalManager);
 
-  // 初始化默认处理器
+  // 初始化默认处理器（按渠道名注册：cli + 已启用的 feishu/whatsapp/email）
   approvalManager.initializeDefaultHandlers(bus);
 
   // 设置消息过滤器（更通用的方式）

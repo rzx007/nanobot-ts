@@ -6,7 +6,8 @@
 
 import type { ApprovalHandler, ConfirmationRequest } from './approval-handlers/types';
 import { ApprovalMemory } from './approval-handlers/memory';
-import type { ApprovalConfig } from '../config/approval-schema';
+import { ApprovalConfigSchema, type ApprovalConfig } from '../config/approval-schema';
+import type { Config } from '../config/schema';
 import { RiskLevel, DEFAULT_RISK_LEVELS } from '../tools/safety';
 import { logger } from '../utils/logger';
 import type { IMessageBus } from '../bus/types';
@@ -26,33 +27,34 @@ export class ApprovalManager {
   /** 会话记忆管理器 */
   private memory: ApprovalMemory;
 
-  /** 配置 */
+  /** 确认配置（从 Config 解析） */
   private config: ApprovalConfig;
+
+  /** 主配置（用于 initializeDefaultHandlers 按渠道注册） */
+  private appConfig: Config;
 
   /** 默认风险级别 */
   private defaultRiskLevels: Record<string, RiskLevel>;
 
-  /** 消息处理器（用于处理消息渠道的确认回复） */
-  private messageHandler?: MessageApprovalHandler;
-
   /**
    * 构造函数
    *
-   * @param config - 确认配置
-   * @param memory - 会话记忆管理器（可选）
+   * @param config - 主配置（确认配置从 config.tools?.approval 解析）
+   * @param memory - 会话记忆管理器（可选，默认根据确认配置新建）
    */
-  constructor(config: ApprovalConfig, memory?: ApprovalMemory) {
-    this.config = config;
-    this.memory = memory ?? new ApprovalMemory(config);
+  constructor(config: Config, memory?: ApprovalMemory) {
+    this.appConfig = config;
+    this.config = ApprovalConfigSchema.parse(config.tools?.approval ?? {});
+    this.memory = memory ?? new ApprovalMemory(this.config);
     this.handlers = new Map();
     this.defaultRiskLevels = DEFAULT_RISK_LEVELS;
 
     logger.info(
       {
-        enabled: config.enabled,
-        memoryWindow: config.memoryWindow,
-        timeout: config.timeout,
-        strictMode: config.strictMode,
+        enabled: this.config.enabled,
+        memoryWindow: this.config.memoryWindow,
+        timeout: this.config.timeout,
+        strictMode: this.config.strictMode,
       },
       'ApprovalManager initialized',
     );
@@ -61,7 +63,7 @@ export class ApprovalManager {
   /**
    * 初始化默认处理器
    *
-   * 注册 CLI 和消息渠道的默认处理器
+   * 按渠道名注册：cli 使用 CLI 处理器，feishu/whatsapp/email 使用消息处理器（根据构造函数传入的 config 中已启用的渠道）。
    *
    * @param bus - 消息总线（可选，用于消息渠道）
    */
@@ -69,10 +71,28 @@ export class ApprovalManager {
     // 注册 CLI 处理器
     this.registerHandler('cli', new CLIApprovalHandler());
 
-    // 如果提供了消息总线，注册消息处理器
+    // 根据 appConfig 为已启用的消息渠道逐个注册 MessageApprovalHandler（与 ChannelManager 判定一致）
     if (bus) {
-      this.messageHandler = new MessageApprovalHandler(bus);
-      this.registerHandler('message', this.messageHandler);
+      const { whatsapp, feishu, email } = this.appConfig.channels;
+      const messageHandler = new MessageApprovalHandler(bus);
+
+      if (whatsapp.enabled) {
+        this.registerHandler('whatsapp', messageHandler);
+      }
+      if (feishu.enabled && feishu.appId && feishu.appSecret) {
+        this.registerHandler('feishu', messageHandler);
+      }
+      if (
+        email.enabled &&
+        email.consentGranted &&
+        email.imapHost &&
+        email.imapUsername &&
+        email.smtpHost &&
+        email.smtpUsername &&
+        email.fromAddress
+      ) {
+        this.registerHandler('email', messageHandler);
+      }
     }
   }
 
@@ -104,14 +124,7 @@ export class ApprovalManager {
    * @returns 确认处理器或 undefined
    */
   getHandler(channel: string): ApprovalHandler | undefined {
-    let handler = this.handlers.get(channel);
-    
-    // 如果找不到特定渠道的处理器，并且有通用消息处理器，则回退到通用消息处理器（除了 cli 渠道）
-    if (!handler && channel !== 'cli' && this.messageHandler) {
-      handler = this.messageHandler;
-    }
-    
-    return handler;
+    return this.handlers.get(channel);
   }
 
   /**
@@ -252,10 +265,11 @@ export class ApprovalManager {
    * @returns 是否是确认回复（true表示已处理，false表示普通消息）
    */
   handleUserMessage(channel: string, chatId: string, content: string): boolean {
-    if (!this.messageHandler) {
-      return false;
+    const handler = this.getHandler(channel);
+    if (handler && 'handleResponse' in handler && typeof handler.handleResponse === 'function') {
+      return handler.handleResponse(channel, chatId, content);
     }
-    return this.messageHandler.handleResponse(channel, chatId, content);
+    return false;
   }
 
   /**
