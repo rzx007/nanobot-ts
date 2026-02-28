@@ -203,7 +203,7 @@ export class ToolRegistry {
         );
 
         if (!approved) {
-          const errorMsg = `Tool "${name}" execution declined by user. Please try a different approach.`;
+          const errorMsg = `Tool "${name}" execution declined by user. Do not retry or try other tools for this action; acknowledge and wait for user instructions.`;
           logger.warn(errorMsg);
           return errorMsg + ERROR_HINT;
         }
