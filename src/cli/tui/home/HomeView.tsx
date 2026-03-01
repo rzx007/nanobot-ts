@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppContext } from '../context';
-import { ChatInput } from '../chat';
+import { ChatInput } from '../components/ChatInput';
 import { Layout } from '../components/Layout';
 import { Logo } from '../components/Logo';
 import { theme } from '../theme';
@@ -31,15 +31,15 @@ export function HomeView({ initialPrompt }: HomeViewProps) {
     (async () => {
       setLoading(false);
       if (initialPrompt?.trim()) {
-        navigateTo('chat');
+        navigateTo('gateway');
       }
     })();
   }, [initialPrompt, navigateTo]);
 
+
   const handleSubmit = () => {
-    navigateTo('chat');
+    navigateTo('gateway');
   };
-  
 
   const handleSlashCommand = (commandId: string) => {
     switch (commandId) {
@@ -74,7 +74,13 @@ export function HomeView({ initialPrompt }: HomeViewProps) {
     <Layout
       title=""
       footer={
-        <box flexDirection="row" width="100%" justifyContent="space-between" alignItems="center" padding={1}>
+        <box
+          flexDirection="row"
+          width="100%"
+          justifyContent="space-between"
+          alignItems="center"
+          padding={1}
+        >
           <box flexDirection="row" gap={2}>
             <text fg={theme.textMuted}>~</text>
           </box>

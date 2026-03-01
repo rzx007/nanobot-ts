@@ -56,7 +56,7 @@ export class MessageApprovalHandler implements ApprovalHandler {
    * @param req - 确认请求
    * @returns 确认结果
    */
-  async requestConfirmation(req: ConfirmationRequest): Promise<boolean> {
+  async requestApproval(req: ConfirmationRequest): Promise<boolean> {
     const { toolName, params, channel, chatId, timeout } = req;
 
     // 生成唯一ID
@@ -113,7 +113,7 @@ export class MessageApprovalHandler implements ApprovalHandler {
    * @param content - 回复内容
    * @returns 是否成功处理（true表示是确认回复，false表示普通消息）
    */
-  handleResponse(channel: string, chatId: string, content: string): boolean {
+  handleUserMessage(channel: string, chatId: string, content: string): boolean {
     const trimmed = content.trim().toLowerCase();
 
     // 检查是否是确认回复

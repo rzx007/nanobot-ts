@@ -1,5 +1,5 @@
-import type { MessageItem } from '../components/MessageList';
-import { MessageList } from '../components/MessageList';
+import type { MessageItem } from './MessageList';
+import { MessageList } from './MessageList';
 
 interface ChatMessagesProps {
   messages: MessageItem[];

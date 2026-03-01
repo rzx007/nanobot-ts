@@ -46,7 +46,16 @@ export interface ApprovalHandler {
    * @param req - 确认请求
    * @returns 确认结果
    */
-  requestConfirmation(req: ConfirmationRequest): Promise<boolean>;
+  requestApproval(req: ConfirmationRequest): Promise<boolean>;
+
+  /**
+   * 处理用户回复
+   *
+   * @param channel - 渠道
+   * @param chatId - 聊天ID
+   * @param content - 回复内容
+   */
+  handleUserMessage?(channel: string, chatId: string, content: string): boolean;
 
   /**
    * 取消待处理的确认（可选）

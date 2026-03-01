@@ -6,7 +6,7 @@ import { ChatMessages } from '../components/ChatMessages';
 import { ChatInput } from '../components/ChatInput';
 import { theme } from '../theme';
 
-export function ChatApp({
+export function GatewayApp({
   prompt: initialPrompt,
 }: {
   prompt?: string | undefined;
@@ -39,46 +39,45 @@ export function ChatApp({
     }
   };
 
+  // 订阅出站消息，将 cli 渠道的回复追加到消息列表
+  useEffect(() => {
+    if (!runtime) return;
+    const handler = (msg: { channel: string; chatId: string; content: string }) => {
+      if (msg.channel !== 'cli') return;
+      setMessages(m => [...m, { role: 'assistant', content: msg.content }]);
+      setInputDisabled(false);
+    };
+    runtime.bus.on('outbound', handler);
+    return () => {
+      runtime.bus.off('outbound', handler);
+    };
+  }, [runtime]);
+
+  // 有 initialPrompt 时发一条入站消息（新会话）
   useEffect(() => {
     if (!runtime || !initialPrompt?.trim()) return;
-    let cancelled = false;
     setInputDisabled(true);
     setMessages(m => [...m, { role: 'user', content: initialPrompt.trim() }]);
-    const msg = {
-      channel: 'cli' as const,
+    void runtime.bus.publishInbound({
+      channel: 'cli',
       senderId: 'user',
       chatId: 'direct',
       content: initialPrompt.trim(),
       timestamp: new Date(),
-    };
-    runtime.agent.process(msg).then(out => {
-      if (cancelled) return;
-      if (out) setMessages(m => [...m, { role: 'assistant', content: out.content }]);
-    }).finally(() => {
-      if (!cancelled) setInputDisabled(false);
     });
-    return () => {
-      cancelled = true;
-    };
   }, [runtime, initialPrompt]);
 
   const handleSend = async (content: string) => {
     if (!runtime) return;
     setMessages(m => [...m, { role: 'user', content }]);
     setInputDisabled(true);
-    const msg = {
-      channel: 'cli' as const,
+    await runtime.bus.publishInbound({
+      channel: 'cli',
       senderId: 'user',
       chatId: 'direct',
       content,
       timestamp: new Date(),
-    };
-    try {
-      const out = await runtime.agent.process(msg);
-      if (out) setMessages(m => [...m, { role: 'assistant', content: out.content }]);
-    } finally {
-      setInputDisabled(false);
-    }
+    });
   };
 
   if (loading && messages.length === 0) {

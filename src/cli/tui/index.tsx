@@ -6,7 +6,7 @@ import { createCliRenderer } from '@opentui/core';
 import { createRoot } from '@opentui/react';
 import { App } from './App';
 
-export type TuiMode = 'chat' | 'config' | 'status' | 'init' | 'home';
+export type TuiMode = 'gateway' | 'status' | 'config' | 'home';
 
 export interface TuiOptions {
   prompt?: string | undefined;

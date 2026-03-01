@@ -10,7 +10,6 @@ const shadowColor = theme.border;
 function renderLine(
   line: string,
   fg: string,
-  bold: boolean,
 ): ReactNode[] {
   const elements: ReactNode[] = [];
   let i = 0;
@@ -73,10 +72,10 @@ export function Logo() {
     <box>
       {logo.left.map((leftLine, index) => (
         <box key={index} flexDirection="row" gap={1}>
-          <box flexDirection="row">{renderLine(leftLine, theme.textMuted, false)}</box>
+          <box flexDirection="row">{renderLine(leftLine, theme.textMuted)}</box>
           <box flexDirection="row">
             {/* 添加非空检查 */}
-            {logo.right[index] && renderLine(logo.right[index], theme.text, true)}
+            {logo.right[index] && renderLine(logo.right[index], theme.text)}
           </box>
         </box>
       ))}

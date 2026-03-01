@@ -66,16 +66,23 @@ export class ApprovalManager {
    * 按渠道名注册：cli 使用 CLI 处理器，feishu/whatsapp/email 使用消息处理器（根据构造函数传入的 config 中已启用的渠道）。
    *
    * @param bus - 消息总线（可选，用于消息渠道）
+   * @param tui - 是否是 TUI 模式
    */
-  initializeDefaultHandlers(bus?: IMessageBus): void {
+  initializeDefaultHandlers(bus?: IMessageBus, tui?: boolean): void {
     // 注册 CLI 处理器
-    this.registerHandler('cli', new CLIApprovalHandler());
+    if (!tui) {
+      // 非 TUI 模式下，注册 CLI 处理器
+      this.registerHandler('cli', new CLIApprovalHandler());
+    } 
 
     // 根据 appConfig 为已启用的消息渠道逐个注册 MessageApprovalHandler（与 ChannelManager 判定一致）
     if (bus) {
       const { whatsapp, feishu, email } = this.appConfig.channels;
       const messageHandler = new MessageApprovalHandler(bus);
-
+      if(tui) {
+        // TUI 模式下，使用 MessageApprovalHandler 处理 CLI 消息
+        this.registerHandler('cli', messageHandler);
+      }
       if (whatsapp.enabled) {
         this.registerHandler('whatsapp', messageHandler);
       }
@@ -226,7 +233,7 @@ export class ApprovalManager {
       logger.info({ toolName, channel, chatId }, 'Requesting user approval');
 
       // 渠道的确认处理器 来处理确认请求
-      const approved = await handler!.requestConfirmation(req);
+      const approved = await handler!.requestApproval(req);
 
       if (approved) {
         // 记录到会话记忆
@@ -266,8 +273,8 @@ export class ApprovalManager {
    */
   handleUserMessage(channel: string, chatId: string, content: string): boolean {
     const handler = this.getHandler(channel);
-    if (handler && 'handleResponse' in handler && typeof handler.handleResponse === 'function') {
-      return handler.handleResponse(channel, chatId, content);
+    if (handler && 'handleUserMessage' in handler && typeof handler.handleUserMessage === 'function') {
+      return handler.handleUserMessage(channel, chatId, content);
     }
     return false;
   }

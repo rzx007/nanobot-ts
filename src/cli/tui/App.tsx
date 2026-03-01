@@ -1,7 +1,7 @@
 import { useKeyboard } from '@opentui/react';
 import { AppProvider, useAppContext } from './context';
 import { HomeView } from './home';
-import { ChatApp } from './chat';
+import { GatewayApp } from './gateway';
 import { StatusApp } from './status';
 import { ConfigApp } from './config';
 import { CommandPalette } from './components/CommandPalette';
@@ -9,7 +9,7 @@ import { DialogProvider } from './components/Dialog';
 import { theme } from './theme';
 import type { TuiOptions } from './index';
 
-export type ViewMode = 'home' | 'chat' | 'status' | 'config';
+export type ViewMode = 'home' | 'gateway' | 'status' | 'config';
 
 interface MainAppProps {
   mode: ViewMode;
@@ -55,8 +55,8 @@ function MainAppContent({ options }: MainAppProps) {
       )}
       <box flexGrow={1}>
         {currentView === 'home' && <HomeView initialPrompt={options?.prompt} />}
-        {currentView === 'chat' && (
-          <ChatApp prompt={options?.prompt} interactive={options?.interactive ?? false} />
+        {currentView === 'gateway' && (
+          <GatewayApp prompt={options?.prompt} interactive={options?.interactive ?? false} />
         )}
         {currentView === 'status' && <StatusApp />}
         {currentView === 'config' && (

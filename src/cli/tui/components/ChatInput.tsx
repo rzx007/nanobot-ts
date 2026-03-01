@@ -1,7 +1,7 @@
 import { useState, useImperativeHandle, forwardRef, useRef, useMemo, useEffect } from 'react';
 import { useKeyboard } from '@opentui/react';
 import { theme } from '../theme';
-import { EmptyBorder } from '../components/Border';
+import { EmptyBorder } from './Border';
 import { loadConfig } from '@/config/loader';
 import { SlashCommandPopover, type SlashCommandOption } from './SlashCommandPopover';
 

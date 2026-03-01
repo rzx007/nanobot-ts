@@ -18,7 +18,7 @@ export class CLIApprovalHandler implements ApprovalHandler {
    * @param req - 确认请求
    * @returns 确认结果
    */
-  async requestConfirmation(req: ConfirmationRequest): Promise<boolean> {
+  async requestApproval(req: ConfirmationRequest): Promise<boolean> {
     const { toolName, params } = req;
 
     // 格式化参数显示
