@@ -1,9 +1,11 @@
 import { useState, useImperativeHandle, forwardRef, useRef, useMemo, useEffect } from 'react';
 import { useKeyboard } from '@opentui/react';
+import "opentui-spinner/react"
 import { theme } from '../theme';
 import { EmptyBorder } from './Border';
 import { loadConfig } from '@/config/loader';
 import { SlashCommandPopover, type SlashCommandOption } from './SlashCommandPopover';
+import { createColors, createFrames } from './spinner';
 
 /** opentui textarea 实例：与 opencode 一致用 ref + onContentChange 非受控 */
 type TextareaRef = { plainText: string; clear(): void };
@@ -16,7 +18,11 @@ export const SLASH_COMMANDS: SlashCommandOption[] = [
   { id: 'mcps', label: '/mcps', description: 'Toggle MCPs' },
   { id: 'models', label: '/models', description: 'Switch model' },
   { id: 'new', label: '/new', description: 'New session' },
-  { id: 'review', label: '/review', description: 'review changes [commit|branch|pr], defaults to uncommitted' },
+  {
+    id: 'review',
+    label: '/review',
+    description: 'review changes [commit|branch|pr], defaults to uncommitted',
+  },
   { id: 'sessions', label: '/sessions', description: 'Switch session' },
   { id: 'skills', label: '/skills', description: 'Skills' },
   { id: 'status', label: '/status', description: 'View status' },
@@ -39,11 +45,12 @@ interface ChatInputProps {
   onSubmit: (text: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  status?: 'idle' | 'responding' ;
   onSlashCommand?: (commandId: string) => void;
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-  { onSubmit, disabled = false, placeholder = 'Ask anything...', onSlashCommand },
+  { onSubmit, disabled = false, placeholder = 'Ask anything...', onSlashCommand, status = 'idle' },
   ref,
 ) {
   const [currentModel, setCurrentModel] = useState<string>('');
@@ -112,12 +119,33 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     return theme.primary;
   }, []);
 
+  
+  const spinnerDef = useMemo(() => {
+    const color = theme.primary;
+    return {
+      frames: createFrames({
+        color,
+        style: "blocks",
+        inactiveFactor: 0.6,
+        // enableFading: false,
+        minAlpha: 0.3,
+      }),
+      color: createColors({
+        color,
+        style: "blocks",
+        inactiveFactor: 0.6,
+        // enableFading: false,
+        minAlpha: 0.3,
+      }),
+    }
+  }, []);
+
   return (
     <box flexDirection="column" width="100%" position="relative">
       {slashOpen && filtered.length > 0 && (
         <SlashCommandPopover
           options={filtered}
-          onSelect={option => {
+          onSelect={(option: SlashCommandOption) => {
             onSlashCommand?.(option.id);
             closeSlashAndClear();
           }}
@@ -185,15 +213,17 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           </box>
         </box>
       </box>
-      <box flexDirection="row" justifyContent='flex-end' paddingTop={1}>
-        <text fg={theme.textMuted}>
-          <span fg={theme.warn}>Ctrl+P</span> commands
-        </text>
-        <text fg={theme.textMuted}>  </text>
-        <text fg={theme.textMuted}>
-          <span fg={theme.warn}>Enter</span> to send
-        </text>
-        
+      <box flexDirection="row" justifyContent="space-between" paddingTop={1}>
+        <box flexDirection="row"><spinner color={spinnerDef.color} frames={spinnerDef.frames} interval={40} visible={status === 'responding'} /></box>
+        <box flexDirection="row" >
+          <text fg={theme.textMuted}>
+            <span fg={theme.warn}>Ctrl+P</span> commands
+          </text>
+          <text fg={theme.textMuted}> </text>
+          <text fg={theme.textMuted}>
+            <span fg={theme.warn}>Enter</span> to send
+          </text>
+        </box>
       </box>
     </box>
   );

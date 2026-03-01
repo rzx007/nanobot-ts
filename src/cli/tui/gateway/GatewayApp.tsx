@@ -16,6 +16,7 @@ export function GatewayApp({
   const [inputDisabled, setInputDisabled] = useState(false);
   const { navigateTo, configLoaded, config, runtime } = useAppContext();
 
+  const [status, setStatus] = useState<'idle' | 'responding'>('idle');
   const loading = !configLoaded;
   const error = configLoaded && !config ? 'No config found. Run "nanobot init" first.' : null;
 
@@ -46,8 +47,10 @@ export function GatewayApp({
       if (msg.channel !== 'cli') return;
       setMessages(m => [...m, { role: 'assistant', content: msg.content }]);
       setInputDisabled(false);
+      setStatus('idle');
     };
     runtime.bus.on('outbound', handler);
+   
     return () => {
       runtime.bus.off('outbound', handler);
     };
@@ -69,6 +72,7 @@ export function GatewayApp({
 
   const handleSend = async (content: string) => {
     if (!runtime) return;
+    setStatus('responding');
     setMessages(m => [...m, { role: 'user', content }]);
     setInputDisabled(true);
     await runtime.bus.publishInbound({
@@ -88,6 +92,8 @@ export function GatewayApp({
     );
   }
 
+
+
   if (error) {
     return (
       <Layout title="Chat">
@@ -99,16 +105,14 @@ export function GatewayApp({
   return (
     <Layout
       title="Chat"
-      footer={
-        <text fg={theme.textMuted}>
-          {inputDisabled ? 'Thinking...' : 'Click Send to send · Or Tab to focus Send then Enter'}
-        </text>
-      }
     >
-      <box flexDirection="column" flexGrow={1} height="100%">
-        <ChatMessages messages={messages} />
-        <box paddingTop={1}>
+      <box flexDirection="column" flexGrow={1} height="100%" width="100%">
+        <box flexGrow={1} minHeight={0} width="100%" overflow="hidden" flexDirection="column">
+          <ChatMessages messages={messages} />
+        </box>
+        <box paddingTop={1} flexShrink={0} width="100%">
           <ChatInput
+          status={status}
           onSubmit={handleSend}
           disabled={inputDisabled}
           onSlashCommand={handleSlashCommand}

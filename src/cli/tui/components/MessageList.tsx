@@ -11,7 +11,17 @@ interface MessageListProps {
 
 export function MessageList({ messages }: MessageListProps) {
   return (
-    <scrollbox flexGrow={1} flexDirection="column">
+    <scrollbox
+      flexGrow={1}
+      flexDirection="column"
+      minHeight={0}
+      width="100%"
+      height="100%"
+      viewportOptions={{ paddingRight: 0 }}
+      verticalScrollbarOptions={{
+        visible: false,
+      }}
+    >
       {messages.map((msg, i) => (
         <box
           key={i}
