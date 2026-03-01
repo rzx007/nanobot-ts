@@ -19,7 +19,7 @@ import { runTui } from '../tui';
 export async function runCLI(argv: string[]): Promise<void> {
   const program = new Command();
 
-  program.name('nanobot').description('Ultra-lightweight personal AI assistant').version('0.1.0');
+  program.name('nanobot-ts').description('Ultra-lightweight personal AI assistant').version('0.1.0');
 
   registerInitCommand(program);
   registerGatewayCommand(program);
