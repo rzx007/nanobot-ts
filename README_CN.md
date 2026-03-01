@@ -38,22 +38,22 @@ nanobot-ts 是 [nanobot](https://github.com/HKUDS/nanobot) 的 TypeScript 版本
 ### 安装
 
 ```bash
-# 克隆仓库
+# Clone the repository
 git clone https://github.com/your-org/nanobot-ts.git
 cd nanobot-ts
 
-# 安装依赖
-pnpm install
+# Install dependencies (需要先安装 Bun: https://bun.sh)
+bun install
 
-# 构建项目
-pnpm run build
+# Build the project
+bun run build
 ```
 
 ### 初始化
 
 ```bash
 # 运行初始化向导
-pnpm run init
+pnpm run onboard
 ```
 
 这将创建：

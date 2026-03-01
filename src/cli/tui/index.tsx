@@ -5,7 +5,6 @@
 import { createCliRenderer } from '@opentui/core';
 import { createRoot } from '@opentui/react';
 import { App } from './App';
-import { MainApp } from './MainApp';
 
 export type TuiMode = 'chat' | 'config' | 'status' | 'init' | 'home';
 
@@ -28,9 +27,5 @@ export async function runTui(mode: TuiMode, options?: TuiOptions): Promise<void>
 
   const root = createRoot(renderer);
 
-  if (mode === 'home') {
-    root.render(<MainApp mode={mode} options={options} />);
-  } else {
-    root.render(<App mode={mode} options={options} />);
-  }
+  root.render(<App mode={mode} options={options} />);
 }

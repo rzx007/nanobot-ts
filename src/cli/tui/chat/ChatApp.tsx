@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { loadConfig } from '@/config/loader';
 import { buildAgentRuntime } from '../../setup';
 import type { MessageItem } from '../components/MessageList';
+import { useAppContext } from '../context';
 import { Layout } from '../components/Layout';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
@@ -18,6 +19,27 @@ export function ChatApp({
   const [error, setError] = useState<string | null>(null);
   const [inputDisabled, setInputDisabled] = useState(false);
   const runtimeRef = useRef<Awaited<ReturnType<typeof buildAgentRuntime>> | null>(null);
+  const { navigateTo } = useAppContext();
+
+  const handleSlashCommand = (commandId: string) => {
+    switch (commandId) {
+      case 'new':
+        navigateTo('home');
+        break;
+      case 'status':
+        navigateTo('status');
+        break;
+      case 'models':
+      case 'themes':
+        navigateTo('config');
+        break;
+      case 'sessions':
+        navigateTo('status');
+        break;
+      default:
+        break;
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -108,7 +130,11 @@ export function ChatApp({
       <box flexDirection="column" flexGrow={1} height="100%">
         <ChatMessages messages={messages} />
         <box paddingTop={1}>
-          <ChatInput onSubmit={handleSend} disabled={inputDisabled} />
+          <ChatInput
+          onSubmit={handleSend}
+          disabled={inputDisabled}
+          onSlashCommand={handleSlashCommand}
+        />
         </box>
       </box>
     </Layout>
