@@ -14,14 +14,12 @@ import { registerChannelsCommand } from './channels';
 import { registerLogsCommand } from './logs';
 import { registerWhatsAppAuthCommand } from '../whatsapp-auth';
 import { registerMCPCommands } from './mcp';
+import { runTui } from '../tui';
 
 export async function runCLI(argv: string[]): Promise<void> {
   const program = new Command();
 
-  program
-    .name('nanobot')
-    .description('Ultra-lightweight personal AI assistant')
-    .version('0.1.0');
+  program.name('nanobot').description('Ultra-lightweight personal AI assistant').version('0.1.0');
 
   registerInitCommand(program);
   registerGatewayCommand(program);
@@ -33,6 +31,10 @@ export async function runCLI(argv: string[]): Promise<void> {
   registerLogsCommand(program);
   registerWhatsAppAuthCommand(program);
   registerMCPCommands(program);
+
+  program.action(async () => {
+    await runTui('home');
+  });
 
   await program.parseAsync(argv);
 }

@@ -168,10 +168,10 @@ export class AgentLoop {
     try {
       // 执行消息处理流程
       const response = await this._processMessage(msg, onProgress);
-      // 发布到出站队列
-      if (response) {
-        await this.bus.publishOutbound(response);
-      }
+      // 发布到出站队列(未消费)
+      // if (response) {
+      //   await this.bus.publishOutbound(response);
+      // }
 
       return response;
     } catch (err) {

@@ -9,7 +9,6 @@ import { theme } from '../theme';
 
 export function ChatApp({
   prompt: initialPrompt,
-  interactive: _interactive,
 }: {
   prompt?: string | undefined;
   interactive?: boolean | undefined;
