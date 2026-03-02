@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { theme } from '../theme';
+import { MessageContent } from './MessageContent';
 
 export interface MessageItem {
   role: 'user' | 'assistant';
@@ -9,9 +11,25 @@ interface MessageListProps {
   messages: MessageItem[];
 }
 
+type ScrollboxRefLike = { scrollToBottom?: () => void; scrollBy?: (delta: number) => void } | null;
+
 export function MessageList({ messages }: MessageListProps) {
+  const scrollboxRef = useRef<ScrollboxRefLike>(null);
+
+  useEffect(() => {
+    const scroll = scrollboxRef.current;
+    if (scroll?.scrollToBottom) {
+      scroll.scrollToBottom();
+    } else if (typeof scroll?.scrollBy === 'function') {
+      scroll.scrollBy(1e9);
+    }
+  }, [messages.length]);
+
   return (
     <scrollbox
+      ref={(r: ScrollboxRefLike) => {
+        scrollboxRef.current = r;
+      }}
       flexGrow={1}
       flexDirection="column"
       minHeight={0}
@@ -34,7 +52,7 @@ export function MessageList({ messages }: MessageListProps) {
           <text fg={msg.role === 'user' ? theme.accent : theme.textMuted}>
             {msg.role === 'user' ? 'You' : 'Bot'}
           </text>
-          <text fg={theme.text}>{msg.content}</text>
+          <MessageContent content={msg.content} />
         </box>
       ))}
     </scrollbox>
