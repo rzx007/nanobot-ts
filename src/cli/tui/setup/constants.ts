@@ -54,6 +54,13 @@ export const PROVIDER_SKIP_OPTION = {
   label: '跳过此步骤',
 };
 
+/** 渠道显示名，新增渠道可在此补充，否则用 key 首字母大写 */
+export const CHANNEL_LABELS: Record<string, string> = {
+  whatsapp: 'WhatsApp',
+  feishu: '飞书',
+  email: 'Email',
+};
+
 export const SETUP_STEPS = [
   { id: 'provider', title: 'Provider 配置', description: '选择并配置AI模型提供商' },
   { id: 'approval', title: '安全设置', description: '配置工具确认机制' },

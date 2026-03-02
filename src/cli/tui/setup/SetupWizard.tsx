@@ -8,13 +8,14 @@ import { ProviderForm } from './ProviderForm';
 import { ApprovalForm } from './ApprovalForm';
 import { ChannelForm } from './ChannelForm';
 import type { ProviderConfig, ChannelConfig } from './types';
-import { saveConfig, createDefaultConfig } from '@/config/loader';
+import { saveConfig, createDefaultConfig, getChannelsFromConfig } from '@/config/loader';
+import type { Config } from '@/config/schema';
 import path from 'path';
 import os from 'os';
 
 export function SetupWizard() {
   const renderer = useRenderer();
-  const { setConfig, reloadConfig, navigateTo } = useAppContext();
+  const { config: appConfig, setConfig, reloadConfig, navigateTo } = useAppContext();
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,11 +30,9 @@ export function SetupWizard() {
   });
 
   const [approvalEnabled, setApprovalEnabled] = useState(true);
-  const [channelsConfig, setChannelsConfig] = useState<ChannelConfig>({
-    whatsapp: { enabled: false },
-    feishu: { enabled: false },
-    email: { enabled: false },
-  });
+  const [channelsConfig, setChannelsConfig] = useState<ChannelConfig>(
+    () => getChannelsFromConfig(appConfig),
+  );
 
   const handleNext = async () => {
     if (currentStep < SETUP_STEPS.length - 1) {
@@ -73,20 +72,12 @@ export function SetupWizard() {
               enabled: approvalEnabled,
             },
           },
-          channels: {
-            whatsapp: {
-              ...defaultConfig.channels.whatsapp,
-              enabled: channelsConfig.whatsapp.enabled,
-            },
-            feishu: {
-              ...defaultConfig.channels.feishu,
-              enabled: channelsConfig.feishu.enabled,
-            },
-            email: {
-              ...defaultConfig.channels.email,
-              enabled: channelsConfig.email.enabled,
-            },
-          },
+          channels: Object.fromEntries(
+            Object.entries(defaultConfig.channels).map(([k, ch]) => [
+              k,
+              { ...ch, enabled: channelsConfig[k]?.enabled ?? (ch as { enabled?: boolean }).enabled },
+            ]),
+          ) as Config['channels'],
         }
         : {
           ...defaultConfig,
@@ -113,20 +104,12 @@ export function SetupWizard() {
               enabled: approvalEnabled,
             },
           },
-          channels: {
-            whatsapp: {
-              ...defaultConfig.channels.whatsapp,
-              enabled: channelsConfig.whatsapp.enabled,
-            },
-            feishu: {
-              ...defaultConfig.channels.feishu,
-              enabled: channelsConfig.feishu.enabled,
-            },
-            email: {
-              ...defaultConfig.channels.email,
-              enabled: channelsConfig.email.enabled,
-            },
-          },
+          channels: Object.fromEntries(
+            Object.entries(defaultConfig.channels).map(([k, ch]) => [
+              k,
+              { ...ch, enabled: channelsConfig[k]?.enabled ?? (ch as { enabled?: boolean }).enabled },
+            ]),
+          ) as Config['channels'],
         };
 
       const configPath = path.join(os.homedir(), '.nanobot', 'config.json');
@@ -182,7 +165,7 @@ export function SetupWizard() {
       ) : (
         <box flexDirection="column" flexGrow={1}>
           <box flexDirection="column" gap={1} flexGrow={1}>
-            <text fg={theme.accent}>
+            <text fg={theme.primary}>
               步骤 {currentStep + 1}/{SETUP_STEPS.length}: {SETUP_STEPS[currentStep]!.title}
             </text>
             {/* <text fg={theme.textMuted}>{SETUP_STEPS[currentStep]!.description}</text> */}

@@ -104,12 +104,12 @@ export function ProviderForm({
               flexDirection="row"
 
             >
-              <text fg={providerListIndex === i ? theme.accent : theme.textMuted}>
-                {providerListIndex === i ? '●' : 'o'}
+              <text fg={providerListIndex === i ? theme.primary : theme.textSecondary}>
+                {providerListIndex === i ? '● ' : 'o '}
               </text>
               <text
                 paddingLeft={1}
-                fg={providerListIndex === i ? theme.accent : theme.text}
+                fg={providerListIndex === i ? theme.primary : theme.textSecondary}
               >
                 {item.label}
               </text>

@@ -81,6 +81,28 @@ export async function saveConfig(config: Config, filepath: string): Promise<void
   }
 }
 
+/** 渠道开关（仅 enabled），键与 Config.channels 一致，由 createDefaultConfig 推导 */
+export type ChannelsEnabledMap = Record<string, { enabled: boolean }>;
+
+/**
+ * 从完整配置中取出渠道开关（用于 Setup 向导等）。
+ * 渠道列表以 createDefaultConfig().channels 为准，新增渠道只需改默认配置即可。
+ */
+export function getChannelsFromConfig(config: Config | null): ChannelsEnabledMap {
+  const defaultChannels = createDefaultConfig().channels;
+  const defaultKeys = Object.keys(defaultChannels);
+  const keys =
+    config?.channels ?
+      [...defaultKeys, ...Object.keys(config.channels).filter(k => !defaultKeys.includes(k))]
+    : defaultKeys;
+  return Object.fromEntries(
+    keys.map(k => [
+      k,
+      { enabled: (config?.channels as Record<string, { enabled?: boolean }>)?.[k]?.enabled ?? false },
+    ]),
+  );
+}
+
 /**
  * 创建默认配置
  *

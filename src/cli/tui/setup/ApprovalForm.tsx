@@ -31,10 +31,10 @@ export function ApprovalForm({ enabled, onChange }: ApprovalFormProps) {
       <box flexDirection="column" gap={1} paddingTop={1}>
         <box flexDirection="row" gap={1} alignItems="center">
           <box flexDirection="row" paddingLeft={0}>
-            <text fg={focusedOption === 'enable' ? theme.accent : theme.textMuted}>
+            <text fg={focusedOption === 'enable' ? theme.primary : theme.textMuted}>
               {focusedOption === 'enable' ? '●' : ' '}
             </text>
-            <text paddingLeft={1} fg={enabled ? theme.accent : theme.text}>
+            <text paddingLeft={1} fg={enabled ? theme.primary : theme.text}>
               {enabled ? '[●]' : '[ ]'} 启用（推荐）
             </text>
           </box>
@@ -44,10 +44,10 @@ export function ApprovalForm({ enabled, onChange }: ApprovalFormProps) {
         </box>
         <box flexDirection="row" gap={1} alignItems="center">
           <box flexDirection="row" paddingLeft={0}>
-            <text fg={focusedOption === 'disable' ? theme.accent : theme.textMuted}>
+            <text fg={focusedOption === 'disable' ? theme.primary : theme.textMuted}>
               {focusedOption === 'disable' ? '●' : ' '}
             </text>
-            <text paddingLeft={1} fg={!enabled ? theme.accent : theme.text}>
+            <text paddingLeft={1} fg={!enabled ? theme.primary : theme.text}>
               {!enabled ? '[●]' : '[ ]'} 禁用
             </text>
           </box>

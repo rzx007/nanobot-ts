@@ -27,17 +27,8 @@ export interface ProviderConfig {
   model?: string | undefined;
 }
 
-export interface ChannelConfig {
-  whatsapp: {
-    enabled: boolean;
-  };
-  feishu: {
-    enabled: boolean;
-  };
-  email: {
-    enabled: boolean;
-  };
-}
+/** 渠道开关映射，键与 Config.channels 一致，由 loader.getChannelsFromConfig 生成 */
+export type ChannelConfig = Record<string, { enabled: boolean }>;
 
 export interface SetupFormData {
   provider: ProviderConfig;
