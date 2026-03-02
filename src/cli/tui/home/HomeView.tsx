@@ -4,8 +4,10 @@ import { ChatInput } from '../components/ChatInput';
 import { Layout } from '../components/Layout';
 import { Logo } from '../components/Logo';
 import { theme } from '../theme';
+// package.json version
+import packageJson from '../../../../package.json';
 
-const VERSION = '0.1.0';
+const VERSION = packageJson.version;
 
 const TIPS = [
   'Press Ctrl+P to open the command palette',

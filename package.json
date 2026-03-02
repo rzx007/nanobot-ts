@@ -1,6 +1,6 @@
 {
   "name": "nanobot-ts",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Ultra-lightweight personal AI assistant - TypeScript implementation",
   "type": "module",
   "main": "dist/index.js",

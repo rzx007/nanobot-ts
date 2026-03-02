@@ -114,6 +114,14 @@ export function createDefaultConfig(): Config {
         apiKey: '',
         apiBase: 'https://api.deepseek.com/v1',
       },
+      groq: {
+        apiKey: '',
+        apiBase: 'https://api.groq.com/openai/v1',
+      },
+      google: {
+        apiKey: '',
+        apiBase: 'https://generativelanguage.googleapis.com',
+      },
     },
     channels: {
       whatsapp: {

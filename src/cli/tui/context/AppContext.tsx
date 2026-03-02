@@ -4,8 +4,10 @@ import { loadConfig } from '@/config/loader';
 import { ChannelManager, CLIChannel } from '@/channels';
 import { buildAgentRuntime, type AgentRuntime } from '@/cli/setup';
 import { logger } from '@/utils';
+import { useSelfCheck } from '../hooks';
+import type { SelfCheckResult } from '../setup/types';
 
-export type ViewMode = 'home' | 'gateway' | 'status' | 'config';
+export type ViewMode = 'home' | 'gateway' | 'status' | 'config' | 'setup' | 'check-error';
 
 export interface AppContextValue {
   currentView: ViewMode;
@@ -16,10 +18,14 @@ export interface AppContextValue {
   configLoaded: boolean;
   /** 由 AppContext 统一 build 的 runtime，无配置时为 null */
   runtime: AgentRuntime | null;
+  /** 自检结果 */
+  selfCheckResult: SelfCheckResult | null;
   navigateTo: (view: ViewMode) => void;
   setCommandPaletteOpen: (open: boolean) => void;
   setSessionKey: (key: string | null) => void;
   setConfig: (config: Config | null) => void;
+  /** 从磁盘重新加载配置，供自检/CheckError 使用 */
+  reloadConfig: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -37,8 +43,34 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
   const [configLoaded, setConfigLoaded] = useState(false);
   const [runtime, setRuntime] = useState<AgentRuntime | null>(null);
 
+  // 使用自检hook
+  const { result: selfCheckResult } = useSelfCheck(config);
+
   const navigateTo = useCallback((view: ViewMode) => {
     setCurrentView(view);
+  }, []);
+
+  const reloadConfig = useCallback(async () => {
+    try {
+      const loaded = await loadConfig();
+      setConfig(loaded);
+      if (!loaded) return;
+      const rt = await buildAgentRuntime(loaded, true);
+      setRuntime(rt);
+      const { bus, agent, config: cfg } = rt;
+      const channelManager = new ChannelManager(cfg, bus);
+      channelManager.registerChannel('cli', new CLIChannel({}, bus));
+      await channelManager.loadChannelsFromConfig(bus);
+      await channelManager.startAll();
+      channelManager.runOutboundLoop();
+      agent.run().catch(err => {
+        logger.error({ err }, 'Agent loop error');
+      });
+      setConfig(cfg);
+      setConfigLoaded(true);
+    } catch {
+      setConfig(null);
+    }
   }, []);
 
   useEffect(() => {
@@ -50,7 +82,7 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
         if (!loaded) {
           setConfig(null);
           setConfigLoaded(true);
-          // TODO: 无配置时初始化引导（先不实现）
+          navigateTo('setup');
           return;
         }
 
@@ -72,17 +104,32 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
           logger.error({ err }, 'Agent loop error');
         });
         setConfig(cfg);
+        setConfigLoaded(true);
       } catch (err) {
         if (cancelled) return;
         logger.error({ err }, 'Agent runtime init error');
-      } finally {
-        if (!cancelled) setConfigLoaded(true);
+        setConfigLoaded(true);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [navigateTo]);
+
+  // 根据自检结果决定是否需要跳转
+  useEffect(() => {
+    if (!selfCheckResult || !configLoaded) {
+      return;
+    }
+
+    if (!selfCheckResult.canProceed) {
+      if (selfCheckResult.severity === 'error') {
+        navigateTo('check-error');
+      } else {
+        navigateTo('setup');
+      }
+    }
+  }, [selfCheckResult, configLoaded, navigateTo]);
 
   return (
     <AppContext.Provider
@@ -93,10 +140,12 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
         config,
         configLoaded,
         runtime,
+        selfCheckResult,
         navigateTo,
         setCommandPaletteOpen,
         setSessionKey,
         setConfig,
+        reloadConfig,
       }}
     >
       {children}

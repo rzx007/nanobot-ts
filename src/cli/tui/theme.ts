@@ -3,12 +3,15 @@
  */
 export const theme = {
   primary: '#5ea500',
-  bg: '#1a1a2e',
+  bg: '#0e0e0e',
   bgSecondary: '#16213e',
-  backgroundElement: '#1e2433',
-  border: '#0f3460',
+  backgroundElement: '#1c1c1c',
+  border: '#ffffff26',
   text: '#e8e8e8',
   textMuted: '#a0a0a0',
+  textSecondary: '#606060',
+  /** 更淡，用于说明/备注，视觉上像小字 */
+  textTertiary: '#404040',
   accent: '#e94560',
   success: '#4ecca3',
   error: '#e94560',
