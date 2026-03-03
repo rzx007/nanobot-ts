@@ -21,6 +21,8 @@ nanobot-ts is the TypeScript version of [nanobot](https://github.com/HKUDS/nanob
 - 🎨 **Type-safe**: Full TypeScript support with Zod validation
 - 🤖 **AI SDK**: Powered by Vercel AI SDK
 - 💾 **Memory**: Automatic session consolidation and long-term memory
+- ⏰ **Cron**: Built-in scheduled task execution system
+- 🖥️ **TUI**: Modern terminal interface with slash commands and search
 
 ### Comparison with Python Version
 
@@ -55,8 +57,8 @@ bun run build
 ### Initialize
 
 ```bash
-# Run the initialization wizard
-bun run onboard
+# Setup in first run
+bun run start
 ```
 
 This will create:
@@ -125,15 +127,49 @@ For MCP configuration, create `~/.nanobot/workspace/mcp.json`:
 ### Run
 
 ```bash
-# Start gateway (all channels)
+# Start gateway with TUI (Terminal User Interface)
 nanobot gateway
 
 # Single-shot message
 nanobot chat "Hello!"
 
-# Interactive mode
+# Interactive mode (CLI-based)
 nanobot chat --interactive
 ```
+
+### TUI Mode
+
+The `nanobot gateway` command now includes a modern Terminal User Interface (TUI) powered by opentui:
+
+**Features**:
+- 🎨 **Beautiful Interface**: Modern TUI with responsive design
+- 💬 **Chat Interface**: Real-time chat with message history
+- 🎯 **Slash Commands**: Quick access to commands with `/` prefix
+- 🔍 **Command Search**: Filter commands by typing after `/`
+- 📜 **Message History**: Automatically loads from session storage
+- ⚙️ **Configuration**: Built-in config and settings management
+- 🎨 **Theme Support**: Customizable themes
+
+**Slash Commands**:
+
+| Command | Description |
+|---------|-------------|
+| `/new` | Start a new session (archives current history) |
+| `/help` | Show help information |
+| `/status` | View system status and sessions |
+| `/models` | Configure AI models |
+| `/themes` | Change UI themes |
+| `/sessions` | Manage chat sessions |
+| `/init` | Initialize configuration |
+| `/mcps` | Manage MCP servers |
+| `/review` | Review conversation history |
+| `/skills` | Manage skills |
+
+**Usage**:
+1. Type `/` in the chat input to see all available commands
+2. Type `/` followed by text to search (e.g., `/stat` to find `/status`)
+3. Use arrow keys to navigate, Enter to select
+4. Press Escape to close the command popover
 
 ## 💻 CLI Commands
 
@@ -249,10 +285,19 @@ nanobot-ts follows an event-driven architecture with a message bus at its core:
 │  │              │  │              │  │              │  │              │ │
 │  │ • File Tools │  │ • Risk-based │  │ • Scheduled  │  │ • stdio      │ │
 │  │ • Shell      │  │ • Memory     │  │   tasks      │  │   servers    │ │
-│  │ • Web        │  │ • Per-tool   │  │              │  │ • HTTP       │ │
-│  │ • Message    │  │   overrides │  │              │  │   servers    │ │
-│  │ • Spawn      │  │              │  │              │  │              │ │
-│  │ • MCP Tools  │  │              │  │              │  │              │ │
+│  │ • Web        │  │ • Per-tool   │  │ • Persistent │  │ • HTTP       │ │
+│  │ • Message    │  │   overrides │  │   storage    │  │   servers    │ │
+│  │ • Spawn      │  │              │  │ • One-time   │  │              │ │
+│  │ • MCP Tools  │  │              │  │ • Recurring  │  │              │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘ │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │    TUI       │  │   Slash      │  │  Message     │  │   Theme      │ │
+│  │   System     │  │  Commands    │  │   History    │  │   Manager    │ │
+│  │              │  │              │  │              │  │              │ │
+│  │ • opentui    │  │ • /new       │  │ • Sessions   │  │ • Color      │ │
+│  │ • React      │  │ • /help      │  │ • Loading    │  │ • Styles     │ │
+│  │ • Layout     │  │ • /status    │  │ • Persistence│  │ • Dynamic    │ │
 │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘ │
 └─────────────────────────────┬───────────────────────────────────────────────┘
                               │
@@ -276,6 +321,8 @@ nanobot-ts follows an event-driven architecture with a message bus at its core:
 5. **Session Manager**: Manages conversation state and history
 6. **Memory Consolidator**: Automatic session summarization and long-term memory
 7. **Channel Manager**: Multi-channel support with unified interface
+8. **Cron Service**: Scheduled task execution with persistent storage
+9. **TUI System**: Modern terminal interface with slash commands
 
 ### Tool Execution Flow
 
@@ -426,7 +473,7 @@ Supported providers (powered by Vercel AI SDK):
 | `web_fetch`   | Fetch web page content            |
 | `message`     | Send message to specific channel  |
 | `spawn`       | Spawn background sub-agent        |
-| `cron`        | Schedule and manage cron tasks    |
+| `cron`        | Schedule and manage cron tasks with persistent storage |
 
 ### MCP Tools
 
@@ -504,6 +551,11 @@ nanobot-ts/
 │   ├── config/             # Configuration
 │   ├── storage/            # Storage layer
 │   ├── cli/                # CLI commands
+│   │   └── tui/            # Terminal User Interface
+│   │       ├── commands/   # Slash command handlers
+│   │       ├── components/ # TUI React components
+│   │       └── hooks/      # Custom React hooks
+│   ├── cron/               # Scheduled task service
 │   └── utils/              # Utilities
 ├── templates/               # Workspace templates
 ├── tests/                  # Test files
@@ -517,6 +569,8 @@ nanobot-ts/
 - [Mermaid Diagrams](docs/GATEWAY_MERMAID.md) - Visual architecture diagrams
 - [Feishu Channel Guide](docs/FEISHU.md) - Feishu channel configuration
 - [MCP Configuration](MCP.md) - Model Context Protocol setup
+- [Cron Service](src/cron/README.md) - Scheduled task execution system
+- [TUI Slash Commands](src/cli/tui/commands/README.md) - Terminal user interface command system
 
 ## 📄 License
 
