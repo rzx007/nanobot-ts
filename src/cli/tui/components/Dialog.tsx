@@ -1,5 +1,6 @@
 import { useState, useContext, createContext, useRef, type ReactNode } from 'react';
 import { useKeyboard, useRenderer } from '@opentui/react';
+import { theme } from '../theme';
 
 export interface DialogContextValue {
   stack: Array<{
@@ -52,7 +53,7 @@ export function Dialog(props: DialogProps) {
       <box
         width={props.size === 'large' ? 80 : 60}
         maxWidth="95%"
-        backgroundColor="#1a1a2e"
+        backgroundColor={theme.backgroundElement}
         paddingTop={1}
         paddingBottom={1}
         onMouseDown={() => {
@@ -82,7 +83,7 @@ export function DialogProvider(props: DialogProviderProps) {
   >([]);
 
   const renderer = useRenderer();
-  let focus: { focus(): void; blur(): void; isDestroyed?: boolean } | null = null;
+  const focusRef = useRef<{ focus(): void; blur(): void; isDestroyed?: boolean } | null>(null)
 
   useKeyboard(evt => {
     if (stack.length === 0) return;
@@ -94,8 +95,8 @@ export function DialogProvider(props: DialogProviderProps) {
       evt.preventDefault();
       evt.stopPropagation();
 
-      if (focus && !focus.isDestroyed) {
-        focus.focus();
+      if (focusRef.current && !focusRef.current.isDestroyed) {
+        focusRef.current.focus();
       }
     }
   });
@@ -108,14 +109,14 @@ export function DialogProvider(props: DialogProviderProps) {
       }
       setStack([]);
 
-      if (focus && !focus.isDestroyed) {
-        focus.focus();
+      if (focusRef.current && !focusRef.current.isDestroyed) {
+        setTimeout(() => focusRef.current?.focus(), 0);
       }
     },
     replace: (element: ReactNode, onClose?: () => void) => {
       if (stack.length === 0) {
-        focus = renderer.currentFocusedRenderable;
-        focus?.blur();
+        focusRef.current = renderer.currentFocusedRenderable;
+        focusRef.current?.blur();
       }
 
       for (const item of stack) {
