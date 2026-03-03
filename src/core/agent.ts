@@ -312,6 +312,7 @@ export class AgentLoop {
         role: 'assistant',
         content: assistantContent,
         timestamp: new Date().toISOString(),
+        model: this.config.agents.defaults.model,
       });
     }
 

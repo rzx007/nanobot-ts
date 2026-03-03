@@ -6,6 +6,8 @@ import { EmptyBorder } from './Border';
 export interface MessageItem {
   role: 'user' | 'assistant';
   content: string;
+  model?: string;
+  timestamp?: string;
 }
 
 interface MessageListProps {
@@ -64,7 +66,7 @@ export function MessageList({ messages }: MessageListProps) {
                 width="100%"
                 backgroundColor={theme.backgroundElement}
               >
-               
+
                 <MessageContent content={msg.content} />
               </box>
             </box>
@@ -80,8 +82,13 @@ export function MessageList({ messages }: MessageListProps) {
             paddingLeft={2}
             width="100%"
           >
-           
+
             <MessageContent content={msg.content} />
+            {/* 展示模型信息 */}
+            <box flexDirection='row' alignItems='center' paddingTop={1}>
+              <text fg={theme.primary} marginRight={1}>▣</text>
+              <text fg={theme.textTertiary}>{msg.model}</text>
+            </box>
           </box>
         );
       })}

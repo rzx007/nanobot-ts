@@ -27,6 +27,8 @@ export interface SessionMessage {
 
   /** 工具调用 ID */
   toolCallId?: string;
+  /** 模型名称 */
+  model?: string;
 }
 
 /**

@@ -53,6 +53,8 @@ export function GatewayApp() {
         .map(msg => ({
           role: msg.role as 'user' | 'assistant',
           content: msg.content,
+          model: msg.model ?? '',
+          timestamp: msg.timestamp ?? '',
         }));
       setMessages(historyMessages);
       setHistoryLoaded(true);
@@ -66,7 +68,7 @@ export function GatewayApp() {
     if (!runtime) return;
     const handler = (msg: { channel: string; chatId: string; content: string }) => {
       if (msg.channel !== 'cli') return;
-      setMessages(m => [...m, { role: 'assistant', content: msg.content }]);
+      setMessages(m => [...m, { role: 'assistant', content: msg.content, model: config?.agents.defaults.model ?? '', timestamp: new Date().toISOString() }]);
       setInputDisabled(false);
       setStatus('idle');
     };

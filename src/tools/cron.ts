@@ -17,7 +17,7 @@ export class CronTool extends Tool {
 
   description = 'Schedule reminders and recurring tasks. Actions: add, list, remove.';
 
-  riskLevel = RiskLevel.MEDIUM;
+  riskLevel = RiskLevel.LOW;
 
   private channel = 'cli';
   private chatId = 'direct';

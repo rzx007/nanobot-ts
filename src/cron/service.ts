@@ -164,9 +164,9 @@ export class CronService {
    */
   private async executeJob(job: CronJob): Promise<void> {
     const start = nowMs();
-    logger.info({ name: job.name, id: job.id }, 'Cron: executing job');
     try {
       if (this.onJob) {
+        logger.info({ name: job.name, id: job.id }, 'Cron: executing job');
         await this.onJob(job);
       }
       job.state.lastStatus = 'ok';
