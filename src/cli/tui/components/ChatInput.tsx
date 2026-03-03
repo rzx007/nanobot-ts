@@ -10,24 +10,6 @@ import { createColors, createFrames } from './spinner';
 /** opentui textarea 实例：与 opencode 一致用 ref + onContentChange 非受控 */
 type TextareaRef = { plainText: string; clear(): void };
 
-export type { SlashCommandOption };
-
-export const SLASH_COMMANDS: SlashCommandOption[] = [
-  { id: 'help', label: '/help', description: 'Help' },
-  { id: 'init', label: '/init', description: 'create/update AGENTS.md' },
-  { id: 'mcps', label: '/mcps', description: 'Toggle MCPs' },
-  { id: 'models', label: '/models', description: 'Switch model' },
-  { id: 'new', label: '/new', description: 'New session' },
-  {
-    id: 'review',
-    label: '/review',
-    description: 'review changes [commit|branch|pr], defaults to uncommitted',
-  },
-  { id: 'sessions', label: '/sessions', description: 'Switch session' },
-  { id: 'skills', label: '/skills', description: 'Skills' },
-  { id: 'status', label: '/status', description: 'View status' },
-  { id: 'themes', label: '/themes', description: 'Switch theme' },
-];
 
 /** 与 opencode textarea-keybindings 一致：Enter 提交，Shift+Enter / Meta+Enter 换行 */
 const CHAT_TEXTAREA_KEYBINDINGS = [
@@ -47,10 +29,11 @@ interface ChatInputProps {
   placeholder?: string;
   status?: 'idle' | 'responding';
   onSlashCommand?: (commandId: string) => void;
+  slashCommands?: SlashCommandOption[]; // 动态命令列表
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-  { onSubmit, disabled = false, placeholder = 'Ask anything...', onSlashCommand, status = 'idle' },
+  { onSubmit, disabled = false, placeholder = 'Ask anything...', onSlashCommand, status = 'idle', slashCommands },
   ref,
 ) {
   const [currentModel, setCurrentModel] = useState<string>('');
@@ -58,14 +41,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const textareaRef = useRef<TextareaRef | null>(null);
 
   const slashOpen = value === '/' || value.startsWith('/');
-  const query = slashOpen ? value.slice(1).toLowerCase() : '';
+  const searchQuery = slashOpen && value.length > 1 ? value.slice(1) : '';
   const filtered = useMemo(() => {
     if (!slashOpen) return [];
-    if (!query) return SLASH_COMMANDS;
-    return SLASH_COMMANDS.filter(
-      c => c.id.toLowerCase().startsWith(query) || c.label.toLowerCase().startsWith('/' + query),
-    );
-  }, [slashOpen, query]);
+    const commands = slashCommands ?? [];
+    return commands;
+  }, [slashOpen, slashCommands]);
 
   useEffect(() => {
     (async () => {
@@ -154,6 +135,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             closeSlashAndClear();
           }}
           onClose={closeSlashAndClear}
+          searchQuery={searchQuery}
         />
       )}
       {/* 左侧指示条：opencode 为 border left + customBorderChars "┃"，此处用 1 单位色条模拟 */}

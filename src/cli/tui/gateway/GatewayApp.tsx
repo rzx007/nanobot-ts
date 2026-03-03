@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { MessageItem } from '../components/MessageList';
 import { useAppContext } from '../context';
 import { Layout } from '../components/Layout';
@@ -6,6 +6,7 @@ import { ChatMessages } from '../components/ChatMessages';
 import { ChatInput } from '../components/ChatInput';
 import { theme } from '../theme';
 import { getSessionKey } from '@/bus/types';
+import { SlashCommandContext, SlashCommandExecutor, createAllHandlers } from '../commands';
 
 export function GatewayApp() {
   const [messages, setMessages] = useState<MessageItem[]>([]);
@@ -13,27 +14,63 @@ export function GatewayApp() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const { navigateTo, configLoaded, config, runtime, pendingPrompt, clearPendingPrompt } = useAppContext();
 
+  // 创建 Slash 命令执行器
+  const slashExecutor = useMemo(() => {
+    const executor = new SlashCommandExecutor();
+    executor.registerAll(createAllHandlers());
+    return executor;
+  }, []);
+
+  // 获取命令列表（从 Handler 元数据生成）
+  const slashCommands = useMemo(() =>
+    slashExecutor.getSlashCommandOptions(),
+    [slashExecutor]
+  );
+
   const [status, setStatus] = useState<'idle' | 'responding'>('idle');
   const loading = !configLoaded;
   const error = configLoaded && !config ? 'No config found. Run "nanobot init" first.' : null;
 
-  const handleSlashCommand = (commandId: string) => {
-    switch (commandId) {
-      case 'new':
-        navigateTo('home');
-        break;
-      case 'status':
-        navigateTo('status');
-        break;
-      case 'models':
-      case 'themes':
-        navigateTo('config');
-        break;
-      case 'sessions':
-        navigateTo('status');
-        break;
-      default:
-        break;
+  const handleSlashCommand = async (commandId: string) => {
+    // 构建命令执行上下文
+    const context: SlashCommandContext = {
+      runtime,
+      config,
+      navigateTo,
+      setMessages,
+      clearMessages: () => setMessages([]),
+      addSystemMessage: (content: string) => {
+        setMessages(m => [...m, {
+          role: 'assistant',
+          content,
+          model: config?.agents.defaults.model ?? '',
+          timestamp: new Date().toISOString()
+        }]);
+      },
+      addUserMessage: (content: string) => {
+        setMessages(m => [...m, {
+          role: 'user',
+          content,
+          model: '',
+          timestamp: new Date().toISOString()
+        }]);
+      },
+      addAssistantMessage: (content: string) => {
+        setMessages(m => [...m, {
+          role: 'assistant',
+          content,
+          model: config?.agents.defaults.model ?? '',
+          timestamp: new Date().toISOString()
+        }]);
+      },
+    };
+
+    // 执行命令
+    const executed = await slashExecutor.execute(commandId, context);
+
+    // 如果命令未注册，返回 home（保持原有行为）
+    if (!executed) {
+      navigateTo('home');
     }
   };
 
@@ -150,6 +187,7 @@ export function GatewayApp() {
             onSubmit={handleSend}
             disabled={inputDisabled}
             onSlashCommand={handleSlashCommand}
+            slashCommands={slashCommands}
           />
         </box>
       </box>

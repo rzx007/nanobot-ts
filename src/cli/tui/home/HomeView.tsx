@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAppContext } from '../context';
 import { ChatInput } from '../components/ChatInput';
 import { Layout } from '../components/Layout';
 import { Logo } from '../components/Logo';
 import { theme } from '../theme';
+import { SlashCommandExecutor, createAllHandlers } from '../commands';
 // package.json version
 import packageJson from '../../../../package.json';
 
@@ -25,6 +26,13 @@ export function HomeView() {
   const [loading, setLoading] = useState(true);
   const [tip] = useState(() => getRandomTip());
   const chatInputRef = useRef<{ submit: () => void; clear: () => void; getValue: () => string }>(null);
+
+  // 创建 Slash 命令执行器并获取命令列表
+  const slashCommands = useMemo(() => {
+    const executor = new SlashCommandExecutor();
+    executor.registerAll(createAllHandlers());
+    return executor.getSlashCommandOptions();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -109,6 +117,7 @@ export function HomeView() {
             onSubmit={handleSubmit}
             placeholder="Ask anything... e.g. 'What is the tech stack of this project?'"
             onSlashCommand={handleSlashCommand}
+            slashCommands={slashCommands}
           />
         </box>
         <box
