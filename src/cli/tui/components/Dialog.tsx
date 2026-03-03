@@ -12,6 +12,8 @@ export interface DialogContextValue {
 
 const DialogContext = createContext<DialogContextValue | null>(null);
 
+export { DialogContext };
+
 export interface DialogProps {
   children: ReactNode;
   onClose: () => void;
@@ -19,8 +21,7 @@ export interface DialogProps {
 }
 
 export function Dialog(props: DialogProps) {
-  const renderer = useRenderer();
-  const dismissRef = useRef(false);
+  const contentClickRef = useRef(false);
 
   return (
     <box
@@ -32,16 +33,13 @@ export function Dialog(props: DialogProps) {
       backgroundColor="#00000088"
       alignItems="center"
       justifyContent="center"
-      onMouseDown={evt => {
-        dismissRef.current = !!renderer.getSelection();
-        if (dismissRef.current) {
-          evt.preventDefault();
-          evt.stopPropagation();
-        }
+      onMouseDown={() => {
+        // 重置标记
+        contentClickRef.current = false;
       }}
       onMouseUp={evt => {
-        if (dismissRef.current) {
-          dismissRef.current = false;
+        // 如果在内容区域点击过，不关闭
+        if (contentClickRef.current) {
           return;
         }
         if (evt.defaultPrevented) {
@@ -57,8 +55,11 @@ export function Dialog(props: DialogProps) {
         backgroundColor="#1a1a2e"
         paddingTop={1}
         paddingBottom={1}
+        onMouseDown={() => {
+          // 标记点击了内容区域
+          contentClickRef.current = true;
+        }}
         onMouseUp={evt => {
-          dismissRef.current = false;
           evt.stopPropagation();
         }}
       >
@@ -87,7 +88,6 @@ export function DialogProvider(props: DialogProviderProps) {
     if (stack.length === 0) return;
     if (evt.defaultPrevented) return;
     if (evt.name === 'escape' || (evt.ctrl && evt.name === 'c')) {
-      if (renderer.getSelection()) return;
       const current = stack.at(-1);
       current?.onClose?.();
       setStack([]);

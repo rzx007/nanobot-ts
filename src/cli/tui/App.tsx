@@ -48,15 +48,15 @@ function MainAppContent({ options }: Omit<MainAppProps, 'renderer'>) {
       return;
     }
 
-    if (
-      key.name === 'escape' &&
-      currentView !== 'home' &&
-      currentView !== 'setup' &&
-      currentView !== 'check-error'
-    ) {
-      navigateTo('home');
-      return;
-    }
+    // if (
+    //   key.name === 'escape' &&
+    //   currentView !== 'home' &&
+    //   currentView !== 'setup' &&
+    //   currentView !== 'check-error'
+    // ) {
+    //   navigateTo('home');
+    //   return;
+    // }
   });
 
   const handleCommandSelect = (commandId: string) => {

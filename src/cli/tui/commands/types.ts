@@ -2,6 +2,7 @@ import type { MessageItem } from '../components/MessageList';
 import type { ViewMode } from '../context';
 import type { Config } from '@/config/schema';
 import type { AgentRuntime } from '@/cli/setup';
+import type { ReactNode } from 'react';
 
 /**
  * Slash 命令分类
@@ -36,6 +37,12 @@ export interface SlashCommandContext {
 
   /** 添加助手消息到列表 */
   addAssistantMessage: (content: string) => void;
+
+  /** 打开 Dialog */
+  openDialog: (element: ReactNode, onClose?: () => void) => void;
+
+  /** 关闭所有 Dialogs */
+  closeDialog: () => void;
 }
 
 /**

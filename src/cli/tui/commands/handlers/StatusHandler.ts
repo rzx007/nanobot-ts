@@ -1,17 +1,21 @@
 import type { SlashCommandHandler, SlashCommandContext } from '../types';
+import { createStatusDialog } from '../dialogs';
 
 /**
  * /status 命令处理器
- * 跳转到状态页面，查看 agent 和 gateway 状态
+ * 使用 Dialog 展示系统状态
  */
 export class StatusHandler implements SlashCommandHandler {
   id = 'status';
   label = '/status';
   description = 'View status';
-  category = 'navigation' as const;
+  category = 'system' as const;
 
   async execute(context: SlashCommandContext): Promise<void> {
-    const { navigateTo } = context;
-    navigateTo('status');
+    const { runtime, config, openDialog } = context;
+
+    // 创建并打开状态 Dialog
+    const { element } = createStatusDialog({ runtime, config });
+    openDialog(element);
   }
 }

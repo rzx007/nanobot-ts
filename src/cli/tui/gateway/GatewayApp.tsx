@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import type { MessageItem } from '../components/MessageList';
 import { useAppContext } from '../context';
 import { Layout } from '../components/Layout';
 import { ChatMessages } from '../components/ChatMessages';
 import { ChatInput } from '../components/ChatInput';
+import { useDialog } from '../components/Dialog';
 import { theme } from '../theme';
 import { getSessionKey } from '@/bus/types';
 import { SlashCommandContext, SlashCommandExecutor, createAllHandlers } from '../commands';
@@ -13,6 +14,7 @@ export function GatewayApp() {
   const [inputDisabled, setInputDisabled] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const { navigateTo, configLoaded, config, runtime, pendingPrompt, clearPendingPrompt } = useAppContext();
+  const dialog = useDialog();
 
   // 创建 Slash 命令执行器
   const slashExecutor = useMemo(() => {
@@ -43,7 +45,7 @@ export function GatewayApp() {
         setMessages(m => [...m, {
           role: 'assistant',
           content,
-          model: config?.agents.defaults.model ?? '',
+          model: '',
           timestamp: new Date().toISOString()
         }]);
       },
@@ -62,6 +64,12 @@ export function GatewayApp() {
           model: config?.agents.defaults.model ?? '',
           timestamp: new Date().toISOString()
         }]);
+      },
+      openDialog: (element: ReactNode, onClose?: () => void) => {
+        dialog.replace(element, onClose);
+      },
+      closeDialog: () => {
+        dialog.clear();
       },
     };
 

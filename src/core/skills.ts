@@ -2,7 +2,6 @@
  * 技能加载器
  *
  * 动态加载工作区中的技能，支持 frontmatter、requirements、always 技能
- * 参考 Python nanobot agent/skills.py
  */
 
 import path from 'path';
@@ -71,11 +70,20 @@ export class SkillLoader {
     this.skillsDir = path.join(this.workspace, 'skills');
   }
 
+  /**
+   * 初始化技能加载器
+   * 
+   * 扫描技能目录，加载所有有效的技能文件（SKILL.md），解析其 frontmatter 和元数据，
+   * 检查技能依赖是否满足，并将技能信息存储到内部的 Map 中
+   * 
+   * @returns Promise<void> 无返回值的Promise
+   */
   async init(): Promise<void> {
     try {
       await ensureDir(this.skillsDir);
       const entries = await fs.readdir(this.skillsDir);
 
+      // 遍历技能目录中的所有条目
       for (const entry of entries) {
         const skillPath = path.join(this.skillsDir, entry);
         const skillFile = path.join(skillPath, 'SKILL.md');
@@ -83,6 +91,7 @@ export class SkillLoader {
         const stat = await fs.stat(skillPath).catch(() => null);
         if (!stat?.isDirectory()) continue;
 
+        // 检查是否存在 SKILL.md 文件
         if (await fs.access(skillFile).then(() => true).catch(() => false)) {
           const raw = await fs.readFile(skillFile, 'utf-8');
           const content = this._stripFrontmatter(raw);
@@ -90,6 +99,7 @@ export class SkillLoader {
           const skillMeta = this._parseNanobotMetadata(frontmatter.metadata);
           const available = this._checkRequirements(skillMeta);
 
+          // 将解析出的技能信息存入 Map
           this.skills.set(entry, {
             name: entry,
             path: skillFile,

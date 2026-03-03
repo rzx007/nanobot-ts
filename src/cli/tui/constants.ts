@@ -1,5 +1,3 @@
-import { SlashCommandOption } from "./components/SlashCommandPopover";
-
 /**
  * Logo 数据：N A N O B O T 清晰块体字，与 opencode 一致格式
  * 左列 N A N O（偏灰），右列 B O T（高亮），每行 19 字符

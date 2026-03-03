@@ -59,6 +59,7 @@ export function DialogSelect<T = string>(props: DialogSelectProps<T>) {
   };
 
   useKeyboard(evt => {
+
     if (evt.name === 'up' || (evt.ctrl && evt.name === 'p')) {
       moveUp();
       return;

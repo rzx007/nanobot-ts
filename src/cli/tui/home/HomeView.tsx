@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { useAppContext } from '../context';
 import { ChatInput } from '../components/ChatInput';
 import { Layout } from '../components/Layout';
 import { Logo } from '../components/Logo';
+import { useDialog } from '../components/Dialog';
 import { theme } from '../theme';
-import { SlashCommandExecutor, createAllHandlers } from '../commands';
+import { SlashCommandExecutor, createAllHandlers, type SlashCommandContext } from '../commands';
 // package.json version
 import packageJson from '../../../../package.json';
 
@@ -22,17 +23,22 @@ function getRandomTip() {
 }
 
 export function HomeView() {
-  const { navigateTo } = useAppContext();
+  const { navigateTo, config, runtime } = useAppContext();
   const [loading, setLoading] = useState(true);
   const [tip] = useState(() => getRandomTip());
   const chatInputRef = useRef<{ submit: () => void; clear: () => void; getValue: () => string }>(null);
+  const dialog = useDialog();
 
   // 创建 Slash 命令执行器并获取命令列表
-  const slashCommands = useMemo(() => {
+  const slashExecutor = useMemo(() => {
     const executor = new SlashCommandExecutor();
     executor.registerAll(createAllHandlers());
-    return executor.getSlashCommandOptions();
+    return executor;
   }, []);
+
+  const slashCommands = useMemo(() => {
+    return slashExecutor.getSlashCommandOptions();
+  }, [slashExecutor]);
 
   useEffect(() => {
     (async () => {
@@ -50,23 +56,40 @@ export function HomeView() {
     }, 0);
   };
 
-  const handleSlashCommand = (commandId: string) => {
-    switch (commandId) {
-      case 'new':
-        break;
-      case 'status':
-        navigateTo('status');
-        break;
-      case 'models':
-      case 'themes':
-        navigateTo('config');
-        break;
-      case 'sessions':
-        navigateTo('status');
-        break;
-      default:
-        break;
-    }
+  const handleSlashCommand = async (commandId: string) => {
+    // 构建 Slash 命令执行上下文
+    const context: SlashCommandContext = {
+      runtime: runtime || null,
+      config: config || null,
+      navigateTo,
+      setMessages: () => {
+        // HomeView 不需要消息列表，空实现
+      },
+      clearMessages: () => {
+        // HomeView 不需要消息列表，空实现
+      },
+      addSystemMessage: (content: string) => {
+        // 系统消息可以在这里处理，如果需要的话
+        console.log('System message:', content);
+      },
+      addUserMessage: (content: string) => {
+        // 用户消息可以在这里处理
+        console.log('User message:', content);
+      },
+      addAssistantMessage: (content: string) => {
+        // 助手消息可以在这里处理
+        console.log('Assistant message:', content);
+      },
+      openDialog: (element: ReactNode, onClose?: () => void) => {
+        dialog.replace(element, onClose);
+      },
+      closeDialog: () => {
+        dialog.clear();
+      },
+    };
+
+    // 执行命令
+    await slashExecutor.execute(commandId, context);
   };
 
   if (loading) {
