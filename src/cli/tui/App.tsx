@@ -85,10 +85,8 @@ function MainAppContent({ options }: Omit<MainAppProps, 'renderer'>) {
         />
       )}
       <box flexGrow={1}>
-        {currentView === 'home' && <HomeView initialPrompt={options?.prompt} />}
-        {currentView === 'gateway' && (
-          <GatewayApp prompt={options?.prompt} interactive={options?.interactive ?? false} />
-        )}
+        {currentView === 'home' && <HomeView />}
+        {currentView === 'gateway' && <GatewayApp />}
         {currentView === 'status' && <StatusApp />}
         {currentView === 'config' && (
           <ConfigApp keyOption={options?.key} valueOption={options?.value} />

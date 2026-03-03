@@ -23,7 +23,9 @@ export interface AppContextValue {
   selfCheckResult: SelfCheckResult | null;
   /** opentui renderer 实例，用于设置终端标题等 */
   renderer: CliRenderer | null;
-  navigateTo: (view: ViewMode) => void;
+  /** 待发送到 gateway 的 prompt */
+  pendingPrompt: string | null;
+  navigateTo: (view: ViewMode, prompt?: string) => void;
   setCommandPaletteOpen: (open: boolean) => void;
   setSessionKey: (key: string | null) => void;
   setConfig: (config: Config | null) => void;
@@ -31,6 +33,8 @@ export interface AppContextValue {
   reloadConfig: () => Promise<void>;
   /** 设置 renderer 实例 */
   setRenderer: (renderer: CliRenderer | null) => void;
+  /** 清除 pending prompt */
+  clearPendingPrompt: () => void;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -48,17 +52,25 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
   const [configLoaded, setConfigLoaded] = useState(false);
   const [runtime, setRuntime] = useState<AgentRuntime | null>(null);
   const [renderer, setRendererState] = useState<CliRenderer | null>(null);
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
   const setRenderer = useCallback((renderer: CliRenderer | null) => {
     setRendererState(renderer);
   }, []);
 
+  const navigateTo = useCallback((view: ViewMode, prompt?: string) => {
+    setCurrentView(view);
+    if (prompt) {
+      setPendingPrompt(prompt);
+    }
+  }, []);
+
+  const clearPendingPrompt = useCallback(() => {
+    setPendingPrompt(null);
+  }, []);
+
   // 使用自检hook
   const { result: selfCheckResult } = useSelfCheck(config);
-
-  const navigateTo = useCallback((view: ViewMode) => {
-    setCurrentView(view);
-  }, []);
 
   const reloadConfig = useCallback(async () => {
     try {
@@ -152,12 +164,14 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
         runtime,
         selfCheckResult,
         renderer,
+        pendingPrompt,
         navigateTo,
         setCommandPaletteOpen,
         setSessionKey,
         setConfig,
         reloadConfig,
         setRenderer,
+        clearPendingPrompt,
       }}
     >
       {children}

@@ -10,7 +10,6 @@ import type { CliRenderer } from '@opentui/core';
 export type TuiMode = 'gateway' | 'status' | 'config' | 'home';
 
 export interface TuiOptions {
-  prompt?: string | undefined;
   interactive?: boolean | undefined;
   key?: string | undefined;
   value?: string | undefined;

@@ -5,16 +5,13 @@ import { Layout } from '../components/Layout';
 import { ChatMessages } from '../components/ChatMessages';
 import { ChatInput } from '../components/ChatInput';
 import { theme } from '../theme';
+import { getSessionKey } from '@/bus/types';
 
-export function GatewayApp({
-  prompt: initialPrompt,
-}: {
-  prompt?: string | undefined;
-  interactive?: boolean | undefined;
-}) {
+export function GatewayApp() {
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [inputDisabled, setInputDisabled] = useState(false);
-  const { navigateTo, configLoaded, config, runtime } = useAppContext();
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const { navigateTo, configLoaded, config, runtime, pendingPrompt, clearPendingPrompt } = useAppContext();
 
   const [status, setStatus] = useState<'idle' | 'responding'>('idle');
   const loading = !configLoaded;
@@ -40,6 +37,30 @@ export function GatewayApp({
     }
   };
 
+  // 从 session 加载历史消息（仅加载一次）
+  useEffect(() => {
+    if (!runtime || historyLoaded) return;
+
+    const loadHistory = async () => {
+      const sessionKey = getSessionKey({
+        channel: 'cli',
+        chatId: 'direct',
+      });
+      const session = await runtime.sessions.getOrCreate(sessionKey);
+      // 将 SessionMessage[] 转换为 MessageItem[]
+      const historyMessages: MessageItem[] = session.messages
+        .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+        .map(msg => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+        }));
+      setMessages(historyMessages);
+      setHistoryLoaded(true);
+    };
+
+    loadHistory();
+  }, [runtime, historyLoaded]);
+
   // 订阅出站消息，将 cli 渠道的回复追加到消息列表
   useEffect(() => {
     if (!runtime) return;
@@ -56,19 +77,32 @@ export function GatewayApp({
     };
   }, [runtime]);
 
-  // 有 initialPrompt 时发一条入站消息（新会话）
+  // 有 pendingPrompt 时发一条入站消息（等待历史消息加载完成）
   useEffect(() => {
-    if (!runtime || !initialPrompt?.trim()) return;
-    setInputDisabled(true);
-    setMessages(m => [...m, { role: 'user', content: initialPrompt.trim() }]);
-    void runtime.bus.publishInbound({
-      channel: 'cli',
-      senderId: 'user',
-      chatId: 'direct',
-      content: initialPrompt.trim(),
-      timestamp: new Date(),
-    });
-  }, [runtime, initialPrompt]);
+    if (!runtime || !pendingPrompt?.trim() || !historyLoaded) return;
+
+    const sendPendingMessage = async () => {
+      setInputDisabled(true);
+      setStatus('responding');
+
+      // 直接将 pendingPrompt 添加到当前消息列表（历史消息已由 loadHistory 加载）
+      setMessages(m => [...m, { role: 'user', content: pendingPrompt.trim() }]);
+
+      // 发送消息
+      await runtime.bus.publishInbound({
+        channel: 'cli',
+        senderId: 'user',
+        chatId: 'direct',
+        content: pendingPrompt.trim(),
+        timestamp: new Date(),
+      });
+
+      // 清除 pendingPrompt
+      clearPendingPrompt();
+    };
+
+    sendPendingMessage();
+  }, [runtime, pendingPrompt, clearPendingPrompt, historyLoaded]);
 
   const handleSend = async (content: string) => {
     if (!runtime) return;

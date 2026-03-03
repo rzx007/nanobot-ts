@@ -45,7 +45,7 @@ interface ChatInputProps {
   onSubmit: (text: string) => void;
   disabled?: boolean;
   placeholder?: string;
-  status?: 'idle' | 'responding' ;
+  status?: 'idle' | 'responding';
   onSlashCommand?: (commandId: string) => void;
 }
 
@@ -96,6 +96,10 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     () => ({
       getValue: () => textareaRef.current?.plainText ?? value,
       submit: handleSubmit,
+      clear: () => {
+        textareaRef.current?.clear();
+        setValue('');
+      },
     }),
     [value, disabled],
   );
@@ -119,7 +123,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     return theme.primary;
   }, []);
 
-  
+
   const spinnerDef = useMemo(() => {
     const color = theme.primary;
     return {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../context';
 import { ChatInput } from '../components/ChatInput';
 import { Layout } from '../components/Layout';
@@ -20,27 +20,26 @@ function getRandomTip() {
   return TIPS[Math.floor(Math.random() * TIPS.length)];
 }
 
-interface HomeViewProps {
-  initialPrompt?: string | undefined;
-}
-
-export function HomeView({ initialPrompt }: HomeViewProps) {
+export function HomeView() {
   const { navigateTo } = useAppContext();
   const [loading, setLoading] = useState(true);
   const [tip] = useState(() => getRandomTip());
+  const chatInputRef = useRef<{ submit: () => void; clear: () => void; getValue: () => string }>(null);
 
   useEffect(() => {
     (async () => {
       setLoading(false);
-      if (initialPrompt?.trim()) {
-        navigateTo('gateway');
-      }
     })();
-  }, [initialPrompt, navigateTo]);
+  }, []);
 
 
-  const handleSubmit = () => {
-    navigateTo('gateway');
+  const handleSubmit = (text: string) => {
+    if (!text.trim()) return;
+    navigateTo('gateway', text);
+    // 清空输入框
+    setTimeout(() => {
+      chatInputRef.current?.clear();
+    }, 0);
   };
 
   const handleSlashCommand = (commandId: string) => {
@@ -106,6 +105,7 @@ export function HomeView({ initialPrompt }: HomeViewProps) {
         <box height={1} minHeight={0} flexShrink={0} />
         <box width="100%" maxWidth={75} flexShrink={0} paddingTop={1}>
           <ChatInput
+            ref={chatInputRef}
             onSubmit={handleSubmit}
             placeholder="Ask anything... e.g. 'What is the tech stack of this project?'"
             onSlashCommand={handleSlashCommand}
