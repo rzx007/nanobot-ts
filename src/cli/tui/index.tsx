@@ -5,6 +5,7 @@
 import { createCliRenderer } from '@opentui/core';
 import { createRoot } from '@opentui/react';
 import { App } from './App';
+import type { CliRenderer } from '@opentui/core';
 
 export type TuiMode = 'gateway' | 'status' | 'config' | 'home';
 
@@ -23,9 +24,9 @@ export interface TuiOptions {
 export async function runTui(mode: TuiMode, options?: TuiOptions): Promise<void> {
   const renderer = await createCliRenderer({
     exitOnCtrlC: true,
-  });
+  }) as CliRenderer;
 
   const root = createRoot(renderer);
 
-  root.render(<App mode={mode} options={options} />);
+  root.render(<App mode={mode} options={options} renderer={renderer} />);
 }

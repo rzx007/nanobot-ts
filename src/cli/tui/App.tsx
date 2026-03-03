@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useKeyboard } from '@opentui/react';
 import { AppProvider, useAppContext } from './context';
 import { HomeView } from './home';
@@ -8,16 +9,19 @@ import { SetupWizard, CheckError } from './setup';
 import { CommandPalette } from './components/CommandPalette';
 import { DialogProvider } from './components/Dialog';
 import { theme } from './theme';
+import { useWindowTitle } from './hooks';
 import type { TuiOptions } from './index';
+import type { CliRenderer } from '@opentui/core';
 
 export type ViewMode = 'home' | 'gateway' | 'status' | 'config' | 'setup' | 'check-error';
 
 interface MainAppProps {
   mode: ViewMode;
   options?: TuiOptions | undefined;
+  renderer: CliRenderer | null;
 }
 
-function MainAppContent({ options }: MainAppProps) {
+function MainAppContent({ options }: Omit<MainAppProps, 'renderer'>) {
   const {
     currentView,
     commandPaletteOpen,
@@ -26,6 +30,17 @@ function MainAppContent({ options }: MainAppProps) {
     selfCheckResult,
     reloadConfig,
   } = useAppContext();
+
+  // 根据当前视图动态设置终端标题
+  useWindowTitle(
+    currentView === 'home' ? 'Nanobot-ts' :
+      currentView === 'gateway' ? 'Nanobot - Gateway' :
+        currentView === 'status' ? 'Nanobot - Status' :
+          currentView === 'config' ? 'Nanobot - Config' :
+            currentView === 'setup' ? 'Nanobot - Setup' :
+              currentView === 'check-error' ? 'Nanobot - Error' :
+                'Nanobot CLI'
+  );
 
   useKeyboard(key => {
     if (key.ctrl && key.name === 'p') {
@@ -91,13 +106,32 @@ function MainAppContent({ options }: MainAppProps) {
   );
 }
 
-export function App({ mode, options }: MainAppProps) {
+interface AppWrapperProps {
+  mode: ViewMode;
+  options?: TuiOptions | undefined;
+  renderer: CliRenderer | null;
+}
+
+function AppWrapper({ mode, options, renderer }: AppWrapperProps) {
+  const { setRenderer } = useAppContext();
+
+  // 设置 renderer 到 context
+  useEffect(() => {
+    if (renderer) {
+      setRenderer(renderer);
+    }
+  }, [renderer, setRenderer]);
+
+  return <MainAppContent mode={mode} options={options} />;
+}
+
+export function App({ mode, options, renderer }: MainAppProps) {
   const initialView = mode === 'home' ? 'home' : mode;
 
   return (
     <AppProvider initialView={initialView}>
       <DialogProvider>
-        <MainAppContent mode={mode} options={options} />
+        <AppWrapper mode={mode} options={options} renderer={renderer} />
       </DialogProvider>
     </AppProvider>
   );

@@ -50,7 +50,7 @@ export function GatewayApp({
       setStatus('idle');
     };
     runtime.bus.on('outbound', handler);
-   
+
     return () => {
       runtime.bus.off('outbound', handler);
     };
@@ -103,20 +103,18 @@ export function GatewayApp({
   }
 
   return (
-    <Layout
-      title="Chat"
-    >
+    <Layout title="">
       <box flexDirection="column" flexGrow={1} height="100%" width="100%">
         <box flexGrow={1} minHeight={0} width="100%" overflow="hidden" flexDirection="column">
           <ChatMessages messages={messages} />
         </box>
         <box paddingTop={1} flexShrink={0} width="100%">
           <ChatInput
-          status={status}
-          onSubmit={handleSend}
-          disabled={inputDisabled}
-          onSlashCommand={handleSlashCommand}
-        />
+            status={status}
+            onSubmit={handleSend}
+            disabled={inputDisabled}
+            onSlashCommand={handleSlashCommand}
+          />
         </box>
       </box>
     </Layout>

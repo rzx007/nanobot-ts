@@ -6,6 +6,7 @@ import { buildAgentRuntime, type AgentRuntime } from '@/cli/setup';
 import { logger } from '@/utils';
 import { useSelfCheck } from '../hooks';
 import type { SelfCheckResult } from '../setup/types';
+import type { CliRenderer } from '@opentui/core';
 
 export type ViewMode = 'home' | 'gateway' | 'status' | 'config' | 'setup' | 'check-error';
 
@@ -20,12 +21,16 @@ export interface AppContextValue {
   runtime: AgentRuntime | null;
   /** 自检结果 */
   selfCheckResult: SelfCheckResult | null;
+  /** opentui renderer 实例，用于设置终端标题等 */
+  renderer: CliRenderer | null;
   navigateTo: (view: ViewMode) => void;
   setCommandPaletteOpen: (open: boolean) => void;
   setSessionKey: (key: string | null) => void;
   setConfig: (config: Config | null) => void;
   /** 从磁盘重新加载配置，供自检/CheckError 使用 */
   reloadConfig: () => Promise<void>;
+  /** 设置 renderer 实例 */
+  setRenderer: (renderer: CliRenderer | null) => void;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -42,6 +47,11 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
   const [config, setConfig] = useState<Config | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [runtime, setRuntime] = useState<AgentRuntime | null>(null);
+  const [renderer, setRendererState] = useState<CliRenderer | null>(null);
+
+  const setRenderer = useCallback((renderer: CliRenderer | null) => {
+    setRendererState(renderer);
+  }, []);
 
   // 使用自检hook
   const { result: selfCheckResult } = useSelfCheck(config);
@@ -141,11 +151,13 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
         configLoaded,
         runtime,
         selfCheckResult,
+        renderer,
         navigateTo,
         setCommandPaletteOpen,
         setSessionKey,
         setConfig,
         reloadConfig,
+        setRenderer,
       }}
     >
       {children}
