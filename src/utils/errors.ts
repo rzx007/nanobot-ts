@@ -7,6 +7,7 @@
 /**
  * nanobot 基础错误
  */
+
 export class NanobotError extends Error {
   /** 错误代码 */
   readonly code: string;

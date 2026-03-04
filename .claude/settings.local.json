@@ -5,7 +5,12 @@
       "Bash(npm run typecheck:*)",
       "Bash(grep:*)",
       "Bash(npm run build:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(tree:*)",
+      "mcp__web-search-prime__webSearchPrime",
+      "mcp__zread__search_doc",
+      "mcp__zread__get_repo_structure",
+      "mcp__zread__read_file"
     ]
   }
 }
