@@ -9,6 +9,8 @@ import { InitHandler } from './InitHandler';
 import { McpsHandler } from './McpsHandler';
 import { ReviewHandler } from './ReviewHandler';
 import { SkillsHandler } from './SkillsHandler';
+import { SkillSelectHandler } from './SkillSelectHandler';
+import { SkillFindHandler } from './SkillFindHandler';
 
 /**
  * 创建所有可用的 Slash 命令处理器
@@ -28,7 +30,11 @@ export function createAllHandlers(): SlashCommandHandler[] {
     new InitHandler(),
     new McpsHandler(),
     new ReviewHandler(),
+
+    // 技能相关命令
     new SkillsHandler(),
+    new SkillSelectHandler(),
+    new SkillFindHandler(),
   ];
 }
 
@@ -43,3 +49,5 @@ export { InitHandler } from './InitHandler';
 export { McpsHandler } from './McpsHandler';
 export { ReviewHandler } from './ReviewHandler';
 export { SkillsHandler } from './SkillsHandler';
+export { SkillSelectHandler } from './SkillSelectHandler';
+export { SkillFindHandler } from './SkillFindHandler';

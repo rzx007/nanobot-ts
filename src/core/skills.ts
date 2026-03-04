@@ -1,12 +1,13 @@
 /**
  * 技能加载器
  *
- * 动态加载工作区中的技能，支持 frontmatter、requirements、always 技能
+ * 动态加载工作区中的技能，支持标准 YAML Frontmatter、依赖检查、always 技能
  */
 
 import path from 'path';
 import fs from 'fs/promises';
 import { execSync } from 'child_process';
+import matter from 'gray-matter';
 import type { Config } from '../config/schema';
 import { expandHome, ensureDir } from '../utils/helpers';
 import { logger } from '../utils/logger';
@@ -27,14 +28,20 @@ export interface SkillInfo {
   /** 描述 */
   description?: string;
 
+  /** 版本号 */
+  version?: string;
+
+  /** 作者 */
+  author?: string;
+
+  /** 触发关键词 (用于自动匹配) */
+  triggers?: string[];
+
   /** 是否满足依赖 */
   available?: boolean;
 
-  /** 解析后的 nanobot 元数据 */
-  _meta?: NanobotMeta;
-
-  /** 原始 frontmatter */
-  _frontmatter?: Record<string, string>;
+  /** 解析后的 frontmatter */
+  _frontmatter?: Record<string, unknown>;
 }
 
 /**
@@ -43,17 +50,15 @@ export interface SkillInfo {
 export interface SkillMetadata {
   name?: string;
   description?: string;
-  metadata?: string;
-  always?: string | boolean;
-  [key: string]: unknown;
-}
-
-/**
- * nanobot 元数据 (metadata JSON 中的 nanobot/openclaw)
- */
-interface NanobotMeta {
+  version?: string;
+  author?: string;
+  triggers?: string[];
   always?: boolean;
-  requires?: { bins?: string[]; env?: string[] };
+  requires?: {
+    bins?: string[];
+    env?: string[];
+  };
+  metadata?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
@@ -72,10 +77,10 @@ export class SkillLoader {
 
   /**
    * 初始化技能加载器
-   * 
+   *
    * 扫描技能目录，加载所有有效的技能文件（SKILL.md），解析其 frontmatter 和元数据，
    * 检查技能依赖是否满足，并将技能信息存储到内部的 Map 中
-   * 
+   *
    * @returns Promise<void> 无返回值的Promise
    */
   async init(): Promise<void> {
@@ -92,24 +97,36 @@ export class SkillLoader {
         if (!stat?.isDirectory()) continue;
 
         // 检查是否存在 SKILL.md 文件
-        if (await fs.access(skillFile).then(() => true).catch(() => false)) {
-          const raw = await fs.readFile(skillFile, 'utf-8');
-          const content = this._stripFrontmatter(raw);
-          const frontmatter = await this._readFrontmatter(skillFile);
-          const skillMeta = this._parseNanobotMetadata(frontmatter.metadata);
-          const available = this._checkRequirements(skillMeta);
+        if (
+          await fs
+            .access(skillFile)
+            .then(() => true)
+            .catch(() => false)
+        ) {
+          try {
+            const raw = await fs.readFile(skillFile, 'utf-8');
+            const { data: frontmatter, content } = matter(raw);
 
-          // 将解析出的技能信息存入 Map
-          this.skills.set(entry, {
-            name: entry,
-            path: skillFile,
-            content,
-            description: frontmatter.description ?? entry,
-            available,
-            _meta: skillMeta,
-            _frontmatter: frontmatter,
-          });
-          logger.info(`Loaded skill: ${entry}`);
+            // 解析技能元数据
+            const requires = (frontmatter.requires as any) ?? {};
+            const available = this._checkRequirements(requires);
+
+            // 将解析出的技能信息存入 Map
+            this.skills.set(entry, {
+              name: entry,
+              path: skillFile,
+              content,
+              description: (frontmatter.description as string) ?? entry,
+              version: frontmatter.version as string,
+              author: frontmatter.author as string,
+              triggers: frontmatter.triggers as string[],
+              available,
+              _frontmatter: frontmatter as Record<string, unknown>,
+            });
+            logger.info(`Loaded skill: ${entry}`);
+          } catch (error) {
+            logger.error({ err: error, skill: entry }, `Failed to load skill`);
+          }
         }
       }
       logger.info(`Loaded ${this.skills.size} skills`);
@@ -136,9 +153,8 @@ export class SkillLoader {
   getAlwaysSkills(): SkillInfo[] {
     const result: SkillInfo[] = [];
     for (const s of this.skills.values()) {
-      const skillMeta = s._meta ?? {};
-      const fm = s._frontmatter ?? {};
-      const isAlways = skillMeta.always || fm.always === 'true';
+      const frontmatter = s._frontmatter ?? {};
+      const isAlways = frontmatter.always === true;
       if (isAlways && s.available !== false) {
         result.push(s);
       }
@@ -155,18 +171,27 @@ export class SkillLoader {
 
     const lines: string[] = ['<skills>'];
     for (const s of all) {
-      const skillMeta = s._meta ?? {};
-      const available = this._checkRequirements(skillMeta);
+      const frontmatter = s._frontmatter ?? {};
+      const requires = (frontmatter.requires as any) ?? {};
+      const available = this._checkRequirements(requires);
       const desc = this._escapeXml(s.description ?? s.name);
       const name = this._escapeXml(s.name);
       const pathStr = this._escapeXml(s.path);
+      const triggers = s.triggers ?? [];
 
       lines.push(`  <skill available="${String(available).toLowerCase()}">`);
       lines.push(`    <name>${name}</name>`);
       lines.push(`    <description>${desc}</description>`);
       lines.push(`    <location>${pathStr}</location>`);
+
+      // 添加触发关键词
+      if (triggers.length > 0) {
+        const triggersStr = this._escapeXml(triggers.join(', '));
+        lines.push(`    <triggers>${triggersStr}</triggers>`);
+      }
+
       if (!available) {
-        const missing = this._getMissingRequirements(skillMeta);
+        const missing = this._getMissingRequirements(requires);
         if (missing) lines.push(`    <requires>${this._escapeXml(missing)}</requires>`);
       }
       lines.push('  </skill>');
@@ -184,36 +209,10 @@ export class SkillLoader {
     return skill._frontmatter as unknown as SkillMetadata;
   }
 
-  private async _readFrontmatter(filePath: string): Promise<Record<string, string>> {
-    const content = await fs.readFile(filePath, 'utf-8');
-    if (!content.startsWith('---')) return {};
-    const match = content.match(/^---\n(.*?)\n---/s);
-    if (!match?.[1]) return {};
-
-    const metadata: Record<string, string> = {};
-    for (const line of match[1].split('\n')) {
-      if (line.includes(':')) {
-        const idx = line.indexOf(':');
-        const key = line.slice(0, idx).trim();
-        const value = line.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
-        metadata[key] = value;
-      }
-    }
-    return metadata;
-  }
-
-  private _parseNanobotMetadata(raw: string | undefined): NanobotMeta {
-    if (!raw || typeof raw !== 'string') return {};
-    try {
-      const data = JSON.parse(raw) as Record<string, unknown>;
-      return (data.nanobot ?? data.openclaw ?? {}) as NanobotMeta;
-    } catch {
-      return {};
-    }
-  }
-
-  private _checkRequirements(meta: NanobotMeta): boolean {
-    const requires = meta.requires ?? {};
+  /**
+   * 检查技能依赖是否满足
+   */
+  private _checkRequirements(requires: { bins?: string[]; env?: string[] }): boolean {
     for (const bin of requires.bins ?? []) {
       if (!this._which(bin)) return false;
     }
@@ -233,9 +232,8 @@ export class SkillLoader {
     }
   }
 
-  private _getMissingRequirements(meta: NanobotMeta): string {
+  private _getMissingRequirements(requires: { bins?: string[]; env?: string[] }): string {
     const missing: string[] = [];
-    const requires = meta.requires ?? {};
     for (const bin of requires.bins ?? []) {
       if (!this._which(bin)) missing.push(`CLI: ${bin}`);
     }
@@ -245,19 +243,8 @@ export class SkillLoader {
     return missing.join(', ');
   }
 
-  private _stripFrontmatter(content: string): string {
-    if (content.startsWith('---')) {
-      const match = content.match(/^---\n.*?\n---\n/s);
-      if (match) return content.slice(match[0].length).trim();
-    }
-    return content;
-  }
-
   private _escapeXml(s: string): string {
-    return s
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   clear(): void {

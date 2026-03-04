@@ -11,6 +11,8 @@ export function SkillsDialog({
   skills,
   onToggleSkill,
   onViewDetails,
+  onUseSkill,
+  onRefresh,
 }: SkillsDialogProps) {
   const dialog = useDialog();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -31,9 +33,23 @@ export function SkillsDialog({
     }
   };
 
+  // 使用技能
+  const useSkill = () => {
+    const skill = skills[selectedIndex];
+    if (skill && onUseSkill) {
+      onUseSkill(skill.id);
+    }
+  };
+
+  // 刷新技能列表
+  const refresh = () => {
+    if (onRefresh) {
+      onRefresh();
+    }
+  };
+
   // 键盘导航
   useKeyboard(evt => {
-
     if (evt.name === 'up' || (evt.ctrl && evt.name === 'p')) {
       setSelectedIndex(i => Math.max(0, i - 1));
       evt.preventDefault();
@@ -49,9 +65,18 @@ export function SkillsDialog({
       toggleSkill(selectedIndex);
       return;
     }
-    if (evt.name === 'return' && onViewDetails) {
+    if (evt.name === 'return') {
       evt.preventDefault();
-      viewDetails();
+      if (evt.shift && onUseSkill) {
+        useSkill();
+      } else if (onViewDetails) {
+        viewDetails();
+      }
+      return;
+    }
+    if (evt.name === 'r' && onRefresh) {
+      evt.preventDefault();
+      refresh();
       return;
     }
   });
@@ -103,21 +128,15 @@ export function SkillsDialog({
                 {index === selectedIndex ? '> ' : '  '}
                 {skill.id}
                 {skill.version ? ` (${skill.version})` : ''}
+              </text>
+              <text fg={skill.enabled ? '#00ff00' : '#ff0000'}>
                 {' - '}
-                {skill.enabled ? (
-                  <text fg="#00ff00">✓ Active</text>
-                ) : (
-                  <text fg="#ff0000">✗ Inactive</text>
-                )}
+                {skill.enabled ? 'Active' : 'Inactive'}
               </text>
             </box>
           ))}
-          {skills.map((skill) => (
-            <box
-              key={`desc-${skill.id}`}
-              paddingLeft={6}
-              paddingBottom={0.5}
-            >
+          {skills.map(skill => (
+            <box key={`desc-${skill.id}`} paddingLeft={6} paddingBottom={0.5}>
               <text fg="#a0a0a0">{skill.description}</text>
             </box>
           ))}
@@ -128,9 +147,11 @@ export function SkillsDialog({
       {skills.length > 0 && (
         <box paddingLeft={2} paddingRight={2}>
           <text fg="#a0a0a0">
-            ↑↓ Navigate{' '}
-            {onViewDetails && '• Enter View Details • '}
-            Space Toggle • Esc Close
+            ↑↓ Navigate {onViewDetails && '• Enter Details • '}
+            {onUseSkill && '• Shift+Enter Use • '}
+            Space Toggle
+            {onRefresh && ' • R Refresh'}
+            {' • Esc Close'}
           </text>
         </box>
       )}

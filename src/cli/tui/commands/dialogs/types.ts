@@ -139,6 +139,10 @@ export interface SkillsDialogProps {
   onToggleSkill: (skillId: string, enabled: boolean) => void;
   /** 查看技能详情回调（可选） */
   onViewDetails?: (skillId: string) => void;
+  /** 使用技能回调（可选） */
+  onUseSkill?: (skillId: string) => void;
+  /** 刷新技能列表回调（可选） */
+  onRefresh?: () => void;
   /** 关闭回调 */
   onClose?: () => void;
 }
@@ -187,6 +191,8 @@ export interface CreateSkillsDialogParams {
   skills: SkillInfo[];
   onToggleSkill: (skillId: string, enabled: boolean) => void;
   onViewDetails?: (skillId: string) => void;
+  onUseSkill?: (skillId: string) => void;
+  onRefresh?: () => void;
 }
 
 /**
