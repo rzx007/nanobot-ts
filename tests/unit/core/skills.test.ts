@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { SkillLoader } from '../../../src/core/skills';
+import { SkillLoader } from '../../../src/skills';
 import type { Config } from '../../../src/config/schema';
 import path from 'path';
 import fs from 'fs/promises';

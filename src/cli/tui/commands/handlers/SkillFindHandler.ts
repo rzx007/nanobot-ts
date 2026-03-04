@@ -1,5 +1,5 @@
 import type { SlashCommandHandler, SlashCommandContext } from '../types';
-import { SkillDiscoverer } from '@/core/skill-discovery';
+import { SkillDiscoverer } from '@/skills';
 import { createSkillFindDialog } from '../dialogs';
 import { SkillInfo } from '@/core';
 

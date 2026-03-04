@@ -12,7 +12,7 @@ import { SessionManager } from '@/storage';
 import { LLMProvider } from '@/providers';
 import { AgentLoop } from '@/core/agent';
 import { MemoryConsolidator } from '@/core/memory';
-import { SkillLoader } from '@/core/skills';
+import { SkillLoader } from '@/skills';
 import { ApprovalManager } from '@/core/approval';
 import {
   ToolRegistry,
