@@ -6,6 +6,9 @@
 
 import { Tool } from './base';
 import { execa } from 'execa';
+import fs from 'fs/promises';
+import path from 'path';
+import os from 'os';
 import type { Config } from '../config/schema';
 import { RiskLevel } from './safety';
 import { logger } from '../utils/logger';
@@ -156,6 +159,78 @@ abstract class BrowserTool extends Tool {
   protected getDefaultSession(): string {
     return this.sessionName ?? this.config.tools.browser?.defaultSession ?? 'default';
   }
+
+  /**
+   * 展开 ~ 路径为完整路径
+   */
+  protected expandHome(filePath: string): string {
+    if (filePath.startsWith('~')) {
+      return path.join(os.homedir(), filePath.slice(1));
+    }
+    return filePath;
+  }
+
+  /**
+   * 获取完整的下载基础路径（workspace + downloadPath）
+   */
+  protected getDownloadBasePath(): string {
+    const workspace = this.expandHome(this.config.agents.defaults.workspace);
+    const downloadPath = this.config.tools.browser?.downloadPath ?? './downloads';
+    return path.join(workspace, downloadPath);
+  }
+
+  /**
+   * 确保目录存在
+   */
+  protected async ensureDir(dirPath: string): Promise<void> {
+    await fs.mkdir(dirPath, { recursive: true });
+  }
+
+  /**
+   * 从 URL 提取域名（用作文件名前缀）
+   */
+  protected extractDomain(url: string): string {
+    try {
+      const urlObj = new URL(url);
+      let hostname = urlObj.hostname;
+      hostname = hostname.replace(/^www\./, '');
+      return hostname.replace(/\./g, '-');
+    } catch {
+      return 'screenshot';
+    }
+  }
+
+  /**
+   * 生成毫秒级时间戳字符串
+   */
+  protected generateTimestamp(): string {
+    const now = new Date();
+    const iso = now.toISOString();
+    const date = iso.split('T')[0];
+    const timePart = iso.split('T')[1];
+    const time = timePart?.split('.')[0]?.replace(/:/g, '-') ?? '00-00-00';
+    const msPart = timePart?.split('.')[1];
+    const ms = (msPart?.replace('Z', '') ?? '000').padStart(3, '0');
+    return `${date}-${time}-${ms}`;
+  }
+
+  /**
+   * 获取当前浏览器 URL
+   */
+  protected async getCurrentUrl(): Promise<string | null> {
+    try {
+      const args = this.buildCommandArgs(['get', 'url']);
+      const result = await this.executeCommand(args);
+
+      if (result.startsWith('Error:')) {
+        return null;
+      }
+
+      return result.trim();
+    } catch {
+      return null;
+    }
+  }
 }
 
 // ==================== 导航类工具 ====================
@@ -163,7 +238,7 @@ abstract class BrowserTool extends Tool {
 export class BrowserOpenTool extends BrowserTool {
   name = 'browser_open';
   description =
-    '打开浏览器并导航到指定 URL。支持指定会话名称、有头模式等。重要提示：如果使用 wait 参数，页面打开后会自动等待加载完成，无需再次调用 browser_wait 或 browser_snapshot。如果未使用 wait 参数，建议在打开后立即执行目标操作（如截图、填写表单等），不要反复检查页面状态。';
+    '打开浏览器并导航到指定 URL。支持指定会话名称、有头模式等。使用场景：需要访问网页进行交互操作（如登录、填写表单、浏览内容等）。重要提示：页面打开后会自动等待加载完成（使用配置中的 waitForLoad 策略，默认 networkidle），等待完成后即可直接使用其他浏览器工具（如 browser_snapshot、browser_fill、browser_click、browser_screenshot 等），无需再次调用 browser_wait。如果需要立即进行交互操作，可以直接在打开后调用相应工具，不需要额外的检查步骤。';
   riskLevel = RiskLevel.LOW;
 
   parameters = {
@@ -197,29 +272,42 @@ export class BrowserOpenTool extends BrowserTool {
     const session = (sessionName ?? this.getDefaultSession()) as string;
     this.setSessionName(session);
 
-    const args: string[] = ['--session', session, 'open', url as string];
+    const downloadDir = this.getDownloadBasePath();
+    await this.ensureDir(downloadDir);
+
+    const args: string[] = ['open', url as string];
     if (headed) args.push('--headed');
 
-    const openArgs = this.buildCommandArgs(args);
-    const result = await this.executeCommand(openArgs);
+    const commandArgs = [
+      'agent-browser',
+      '--session',
+      session,
+      '--download-path',
+      downloadDir,
+      ...args,
+    ];
+    const result = await this.executeCommand(commandArgs);
 
-    // 如果指定了 wait 策略，自动等待页面加载
+    let finalResult = result;
+    let waitResult = '';
+
     if (wait) {
       const waitStrategy = wait as string;
       const waitArgs = this.buildCommandArgs(['wait', '--load', waitStrategy], { session });
-      const waitResult = await this.executeCommand(waitArgs);
-      return result + '\n' + waitResult;
+      waitResult = await this.executeCommand(waitArgs);
+    } else {
+      const defaultWait = this.config.tools.browser?.waitForLoad;
+      if (defaultWait) {
+        const waitArgs = this.buildCommandArgs(['wait', '--load', defaultWait], { session });
+        waitResult = await this.executeCommand(waitArgs);
+      }
     }
 
-    // 使用配置中的默认等待策略
-    const defaultWait = this.config.tools.browser?.waitForLoad;
-    if (defaultWait) {
-      const waitArgs = this.buildCommandArgs(['wait', '--load', defaultWait], { session });
-      const waitResult = await this.executeCommand(waitArgs);
-      return result + '\n' + waitResult;
+    if (waitResult) {
+      finalResult = result + '\n' + waitResult;
     }
 
-    return result;
+    return finalResult + '\n\n浏览器已成功打开页面，现在可以使用其他浏览器工具进行操作。';
   }
 }
 
@@ -407,7 +495,7 @@ export class BrowserTypeTool extends BrowserTool {
 export class BrowserScreenshotTool extends BrowserTool {
   name = 'browser_screenshot';
   description =
-    '截取页面截图并返回图片路径。使用场景：用户明确要求"截图"或"截屏"时必须使用此工具、保存页面当前状态、调试页面问题、展示页面内容给用户查看。功能：全页截图（包括滚动区域）、元素截图（使用选择器）、标注模式（标注元素引用，用于视觉模型）。重要提示：当用户说"截图"、"截图给我"、"截个屏"、"把页面截下来"等类似表述时，请直接使用此工具，不要使用其他工具（如 browser_get）代替。';
+    '截取页面截图并返回图片路径。使用场景：用户明确要求"截图"或"截屏"时必须使用此工具、保存页面当前状态、调试页面问题、展示页面内容给用户查看。功能：全页截图（包括滚动区域）、元素截图（使用选择器）、标注模式（标注元素引用，用于视觉模型）。重要提示：当用户说"截图"、"截图给我"、"截个屏"、"把页面截下来"等类似表述时，请直接使用此工具，不要使用其他工具（如 browser_get）代替。如果未指定 path 参数，截图会自动保存到工作空间的 downloadPath/screenshots/ 目录（默认 ~/.nanobot/workspace/downloads/screenshots/），文件名格式为 {域名}-{时间戳}.png（例如：baidu-2026-03-04-15-27-00-123.png）。返回的信息会包含完整的文件路径。';
   riskLevel = RiskLevel.LOW;
 
   parameters = {
@@ -434,15 +522,32 @@ export class BrowserScreenshotTool extends BrowserTool {
   };
 
   async execute(params: Record<string, unknown>): Promise<string> {
-    const { full, annotate, path, selector } = params;
+    const { full, annotate, path: userPath, selector } = params;
+
+    let filePath = userPath as string;
+    if (!filePath) {
+      const screenshotDir = path.join(this.getDownloadBasePath(), 'screenshots');
+      await this.ensureDir(screenshotDir);
+
+      const currentUrl = await this.getCurrentUrl();
+      const domain = this.extractDomain(currentUrl ?? 'unknown');
+      const timestamp = this.generateTimestamp();
+
+      filePath = path.join(screenshotDir, `${domain}-${timestamp}.png`);
+    }
 
     const args: string[] = ['screenshot'];
     if (full) args.push('--full');
     if (annotate) args.push('--annotate');
     if (selector) args.push('--selector', selector as string);
-    if (path) args.push(path as string);
+    args.push(filePath);
 
-    return await this.executeCommand(this.buildCommandArgs(args));
+    const result = await this.executeCommand(this.buildCommandArgs(args));
+
+    const absolutePath = path.resolve(filePath);
+    const relativePath = path.relative(process.cwd(), absolutePath);
+
+    return `${result}\nAbsolute path: ${absolutePath}\nRelative path: ${relativePath}`;
   }
 }
 
@@ -739,7 +844,7 @@ export class BrowserReloadTool extends BrowserTool {
 
 export class BrowserPdfTool extends BrowserTool {
   name = 'browser_pdf';
-  description = '将页面导出为 PDF 文件。';
+  description = '将页面导出为 PDF 文件。返回的信息会包含完整的文件路径。';
   riskLevel = RiskLevel.LOW;
 
   parameters = {
@@ -754,9 +859,14 @@ export class BrowserPdfTool extends BrowserTool {
   };
 
   async execute(params: Record<string, unknown>): Promise<string> {
-    const { path } = params;
+    const { path: userPath } = params;
 
-    const args = this.buildCommandArgs(['pdf', path as string]);
-    return await this.executeCommand(args);
+    const args = this.buildCommandArgs(['pdf', userPath as string]);
+    const result = await this.executeCommand(args);
+
+    const absolutePath = path.resolve(userPath as string);
+    const relativePath = path.relative(process.cwd(), absolutePath);
+
+    return `${result}\nAbsolute path: ${absolutePath}\nRelative path: ${relativePath}`;
   }
 }
