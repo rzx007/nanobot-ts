@@ -199,6 +199,38 @@ export const WebConfigSchema = z.object({
 });
 
 /**
+ * 浏览器自动化配置
+ */
+export const BrowserConfigSchema = z.object({
+  /** 是否启用浏览器工具 */
+  enabled: z.boolean().default(false),
+
+  /** 默认等待策略 */
+  waitForLoad: z.enum(['load', 'domcontentloaded', 'networkidle']).default('networkidle'),
+
+  /** 超时时间 (秒) */
+  timeout: z.number().int().positive().default(60),
+
+  /** 默认下载路径 */
+  downloadPath: z.string().default('./downloads'),
+
+  /** 允许的域名白名单 (逗号分隔，支持通配符 *.example.com) */
+  allowedDomains: z.array(z.string()).default([]),
+
+  /** 是否启用内容边界标记 (用于 AI 安全) */
+  contentBoundaries: z.boolean().default(true),
+
+  /** 最大输出字符数 (防止上下文溢出) */
+  maxOutput: z.number().int().positive().default(50000),
+
+  /** 是否有头模式 (显示浏览器窗口) */
+  headed: z.boolean().default(false),
+
+  /** 默认会话名称 (用于隔离不同聊天会话) */
+  defaultSession: z.string().default('default'),
+});
+
+/**
  * 工具配置
  */
 export const ToolsConfigSchema = z.object({
@@ -210,6 +242,9 @@ export const ToolsConfigSchema = z.object({
 
   /** Web 配置 */
   web: WebConfigSchema,
+
+  /** 浏览器配置 */
+  browser: BrowserConfigSchema.optional(),
 
   /** 确认配置 */
   approval: ApprovalConfigSchema,
@@ -326,6 +361,7 @@ export type EmailConfig = z.infer<typeof EmailConfigSchema>;
 export type ChannelsConfig = z.infer<typeof ChannelsConfigSchema>;
 export type ExecConfig = z.infer<typeof ExecConfigSchema>;
 export type WebConfig = z.infer<typeof WebConfigSchema>;
+export type BrowserConfig = z.infer<typeof BrowserConfigSchema>;
 export type ApprovalConfig = z.infer<typeof ApprovalConfigSchema>;
 export type ToolsConfig = z.infer<typeof ToolsConfigSchema>;
 export type MCPServerTypeEnum = z.infer<typeof MCPServerTypeEnum>;

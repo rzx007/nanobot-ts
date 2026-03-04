@@ -94,7 +94,7 @@ export function getChannelsFromConfig(config: Config | null): ChannelsEnabledMap
   const keys =
     config?.channels ?
       [...defaultKeys, ...Object.keys(config.channels).filter(k => !defaultKeys.includes(k))]
-    : defaultKeys;
+      : defaultKeys;
   return Object.fromEntries(
     keys.map(k => [
       k,
@@ -186,6 +186,17 @@ export function createDefaultConfig(): Config {
         search: {
           apiKey: '',
         },
+      },
+      browser: {
+        enabled: true,
+        waitForLoad: 'networkidle',
+        timeout: 60,
+        downloadPath: './downloads',
+        allowedDomains: [],
+        contentBoundaries: true,
+        maxOutput: 50000,
+        headed: false,
+        defaultSession: 'default',
       },
       approval: {
         enabled: true,

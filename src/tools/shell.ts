@@ -56,7 +56,7 @@ export class ExecTool extends Tool {
       const { command } = params;
       const timeoutMs = this.config.tools.exec.timeout * 1000;
 
-      logger.info(`Executing command: ${command}`);
+      logger.info(`🥝🥝🥝 Executing command: ${command}`);
 
       // 检查命令是否在允许列表中
       const commandName = command.split(' ')[0] ?? command;

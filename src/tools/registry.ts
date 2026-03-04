@@ -212,7 +212,7 @@ export class ToolRegistry {
 
     // 执行工具
     try {
-      logger.info(`Executing tool: ${name}`);
+      logger.info(`✈️✈️✈️ Executing tool: ${name}`);
       const result = await tool.execute(params);
 
       // 检查结果是否为错误
@@ -220,7 +220,7 @@ export class ToolRegistry {
         return result + ERROR_HINT;
       }
 
-      logger.info(`Tool "${name}" executed successfully`);
+      logger.info(`🐯🐯🐯 Tool "${name}" executed successfully`);
       return result;
     } catch (error) {
       const errorMsg = `Error executing tool "${name}": ${error instanceof Error ? error.message : String(error)}`;

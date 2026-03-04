@@ -24,6 +24,25 @@ import {
   ExecTool,
   WebSearchTool,
   WebFetchTool,
+  BrowserOpenTool,
+  BrowserCloseTool,
+  BrowserSnapshotTool,
+  BrowserClickTool,
+  BrowserFillTool,
+  BrowserTypeTool,
+  BrowserScreenshotTool,
+  BrowserWaitTool,
+  BrowserGetTool,
+  BrowserEvalTool,
+  BrowserPressTool,
+  BrowserSelectTool,
+  BrowserCheckTool,
+  BrowserUncheckTool,
+  BrowserScrollTool,
+  BrowserBackTool,
+  BrowserForwardTool,
+  BrowserReloadTool,
+  BrowserPdfTool,
   MessageTool,
   SpawnTool,
   CronTool,
@@ -83,9 +102,7 @@ export async function buildAgentRuntime(config: Config, tui?: boolean): Promise<
   approvalManager.initializeDefaultHandlers(bus, tui);
 
   // 设置消息过滤器（更通用的方式）
-  bus.addInboundFilter((m) =>
-    approvalManager.handleUserMessage(m.channel, m.chatId, m.content),
-  );
+  bus.addInboundFilter(m => approvalManager.handleUserMessage(m.channel, m.chatId, m.content));
 
   tools.register(new ReadFileTool(config));
   tools.register(new WriteFileTool(config));
@@ -96,6 +113,29 @@ export async function buildAgentRuntime(config: Config, tui?: boolean): Promise<
   tools.register(new WebSearchTool(config));
   tools.register(new WebFetchTool());
   tools.register(new MessageTool(config, bus));
+
+  // 注册浏览器工具
+  if (config.tools.browser?.enabled) {
+    tools.register(new BrowserOpenTool(config));
+    tools.register(new BrowserCloseTool(config));
+    tools.register(new BrowserSnapshotTool(config));
+    tools.register(new BrowserClickTool(config));
+    tools.register(new BrowserFillTool(config));
+    tools.register(new BrowserTypeTool(config));
+    tools.register(new BrowserScreenshotTool(config));
+    tools.register(new BrowserWaitTool(config));
+    tools.register(new BrowserGetTool(config));
+    tools.register(new BrowserEvalTool(config));
+    tools.register(new BrowserPressTool(config));
+    tools.register(new BrowserSelectTool(config));
+    tools.register(new BrowserCheckTool(config));
+    tools.register(new BrowserUncheckTool(config));
+    tools.register(new BrowserScrollTool(config));
+    tools.register(new BrowserBackTool(config));
+    tools.register(new BrowserForwardTool(config));
+    tools.register(new BrowserReloadTool(config));
+    tools.register(new BrowserPdfTool(config));
+  }
 
   const mcpToolLoader = new MCPToolLoader();
   await mcpToolLoader.load(config, tools);

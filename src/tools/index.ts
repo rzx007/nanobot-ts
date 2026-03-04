@@ -7,6 +7,7 @@ export * from './registry';
 export * from './filesystem';
 export * from './shell';
 export * from './web';
+export * from './browser';
 export * from './message';
 export * from './spawn';
 export * from './cron';
