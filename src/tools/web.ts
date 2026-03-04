@@ -1,6 +1,6 @@
 /**
  * Web 工具
- * 
+ *
  * 网络搜索和获取的工具实现
  */
 
@@ -39,7 +39,7 @@ export class WebSearchTool extends Tool {
 
   /**
    * 构造函数
-   * 
+   *
    * @param config - 配置对象
    */
   constructor(config: Config) {
@@ -60,7 +60,7 @@ export class WebSearchTool extends Tool {
 
   /**
    * 执行网络搜索
-   * 
+   *
    * @param params - 工具参数
    * @returns 搜索结果
    */
@@ -79,14 +79,14 @@ export class WebSearchTool extends Tool {
       const response = await fetch('https://api.search.brave.com/res/v1/web/search', {
         method: 'POST',
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
           'Accept-Encoding': 'gzip',
           'X-Subscription-Token': apiKey,
         },
         body: JSON.stringify({ q: query, count: 5 }),
       });
 
-      const data = await response.json() as SearchResponse;
+      const data = (await response.json()) as SearchResponse;
 
       if (!response.ok) {
         throw new Error(data.error?.message ?? 'Search request failed');
@@ -112,7 +112,8 @@ export class WebSearchTool extends Tool {
 export class WebFetchTool extends Tool {
   name = 'web_fetch';
 
-  description = '获取网页内容';
+  description =
+    '获取网页的文本内容（仅 HTML 文本，不包含图片或截图）。警告：此工具仅适用于获取文本内容，无法用于截图或获取页面视觉效果。如果用户要求"截图"或查看页面视觉效果，请使用 browser_screenshot 工具，不要使用此工具。';
 
   constructor(_config?: Config) {
     super();
@@ -131,7 +132,7 @@ export class WebFetchTool extends Tool {
 
   /**
    * 执行网页获取
-   * 
+   *
    * @param params - 工具参数
    * @returns 网页内容
    */

@@ -163,7 +163,7 @@ abstract class BrowserTool extends Tool {
 export class BrowserOpenTool extends BrowserTool {
   name = 'browser_open';
   description =
-    '打开浏览器并导航到指定 URL。支持指定会话名称、有头模式等。重要提示：如果使用 wait 参数，页面打开后会自动等待加载完成，无需再次调用 browser_wait 或 browser_snapshot。如果未使用 wait 参数，建议在打开后立即执行目标操作（如截图、填写表单等），不要反复检查页面状态。';
+    '打开浏览器并导航到指定 URL。重要提示：此工具仅用于导航到网页，不会返回页面内容或截图。打开网页后，必须根据用户需求执行后续操作：如果用户要求截图，必须调用 browser_screenshot；如果用户要求填写表单，必须调用 browser_snapshot 获取元素引用后再交互。不要使用此工具代替截图功能。';
   riskLevel = RiskLevel.LOW;
 
   parameters = {
@@ -407,7 +407,7 @@ export class BrowserTypeTool extends BrowserTool {
 export class BrowserScreenshotTool extends BrowserTool {
   name = 'browser_screenshot';
   description =
-    '截取页面截图并返回图片路径。使用场景：用户明确要求"截图"或"截屏"时必须使用此工具、保存页面当前状态、调试页面问题、展示页面内容给用户查看。功能：全页截图（包括滚动区域）、元素截图（使用选择器）、标注模式（标注元素引用，用于视觉模型）。重要提示：当用户说"截图"、"截图给我"、"截个屏"、"把页面截下来"等类似表述时，请直接使用此工具，不要使用其他工具（如 browser_get）代替。';
+    '截取页面截图并返回图片路径。这是获取页面视觉效果的唯一工具，无法用其他工具替代。当用户要求"截图"、"截屏"、"打开网页并截图"、"截个图"、"把页面截下来"、"截图给我看"等任何与截图相关的需求时，必须使用此工具。不要使用 browser_get 或 web_fetch 等文本获取工具来响应截图需求。';
   riskLevel = RiskLevel.LOW;
 
   parameters = {
@@ -496,7 +496,7 @@ export class BrowserWaitTool extends BrowserTool {
 export class BrowserGetTool extends BrowserTool {
   name = 'browser_get';
   description =
-    '获取页面的文本信息（不是截图）。支持的类型：text（元素文本）、url（当前页面 URL）、title（页面标题）、html（元素 HTML）、value（表单字段值）、attr <name>（元素属性值）。重要提示：此工具只返回文本信息，不产生图片。如果用户要求"截图"或查看页面视觉效果，必须使用 browser_screenshot 工具，不要用此工具代替。';
+    '获取页面的文本信息。支持的类型：text（元素文本）、url（当前页面 URL）、title（页面标题）、html（元素 HTML）、value（表单字段值）、attr <name>（元素属性值）。';
   riskLevel = RiskLevel.LOW;
 
   parameters = {
