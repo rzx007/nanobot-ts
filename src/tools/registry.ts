@@ -193,7 +193,6 @@ export class ToolRegistry {
         context.channel,
         context.chatId,
       );
-      console.log("🚀 ~ ToolRegistry ~ execute ~ needsApproval:", needsApproval)
       if (needsApproval) {
         const approved = await this.approvalCheck.requestApproval(
           name,
@@ -220,7 +219,7 @@ export class ToolRegistry {
         return result + ERROR_HINT;
       }
 
-      logger.info(`🐯🐯🐯 Tool "${name}" executed successfully`);
+      logger.info(`🚀🚀🚀 Tool "${name}" executed successfully`);
       return result;
     } catch (error) {
       const errorMsg = `Error executing tool "${name}": ${error instanceof Error ? error.message : String(error)}`;
