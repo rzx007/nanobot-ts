@@ -601,7 +601,7 @@ export class BrowserWaitTool extends BrowserTool {
 export class BrowserGetTool extends BrowserTool {
   name = 'browser_get';
   description =
-    '获取页面的文本信息（不是截图）。支持的类型：text（元素文本）、url（当前页面 URL）、title（页面标题）、html（元素 HTML）、value（表单字段值）、attr <name>（元素属性值）。重要提示：此工具只返回文本信息，不产生图片。如果用户要求"截图"或查看页面视觉效果，必须使用 browser_screenshot 工具，不要用此工具代替。';
+    '获取页面的文本信息。支持的类型：text（元素文本）、url（当前页面 URL）、title（页面标题）、html（元素 HTML）、value（表单字段值）、attr <name>（元素属性值）。';
   riskLevel = RiskLevel.LOW;
 
   parameters = {

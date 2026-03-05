@@ -12,7 +12,7 @@ import { SessionManager } from '@/storage';
 import { LLMProvider } from '@/providers';
 import { AgentLoop } from '@/core/agent';
 import { MemoryConsolidator } from '@/core/memory';
-import { SkillLoader } from '@/core/skills';
+import { SkillLoader } from '@/skills';
 import { ApprovalManager } from '@/core/approval';
 import {
   ToolRegistry,
@@ -49,6 +49,7 @@ import {
 } from '@/tools';
 import { CronService } from '@/cron';
 import { MCPToolLoader } from '@/mcp/loader';
+import { LoadSkillTool, MatchSkillTool } from '@/tools/skill';
 import { error } from './ui';
 
 /**
@@ -163,6 +164,14 @@ export async function buildAgentRuntime(config: Config, tui?: boolean): Promise<
   const memory = new MemoryConsolidator(config);
   const skills = new SkillLoader(config);
   await skills.init();
+
+  // 设置并注册技能工具
+  const loadSkillTool = new LoadSkillTool();
+  const matchSkillTool = new MatchSkillTool();
+  loadSkillTool.setSkillLoader(skills);
+  matchSkillTool.setSkillLoader(skills);
+  tools.register(loadSkillTool);
+  tools.register(matchSkillTool);
 
   const agent = new AgentLoop({
     bus,

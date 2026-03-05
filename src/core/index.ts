@@ -5,4 +5,4 @@
 export * from './agent';
 export * from './context';
 export * from './memory';
-export * from './skills';
+export * from '../skills/skills';

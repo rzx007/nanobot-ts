@@ -15,7 +15,7 @@
         "@openrouter/ai-sdk-provider": "^2.2.3",
         "@opentui/core": "latest",
         "@opentui/react": "latest",
-        "agent-browser": "^0.16.1",
+        "agent-browser": "^0.16.3",
         "ai": "^6.0.99",
         "baileys": "7.0.0-rc.9",
         "chalk": "^5.6.2",
@@ -34,7 +34,6 @@
         "nodemailer": "^8.0.1",
         "opentui-spinner": "^0.0.6",
         "ora": "^9.3.0",
-        "playwright-core": "^1.58.2",
         "qrcode-terminal": "^0.12.0",
         "react": "^19.0.0",
         "winston": "^3.19.0",
@@ -608,7 +607,7 @@
 
     "agent-base": ["agent-base@7.1.4", "https://registry.npmmirror.com/agent-base/-/agent-base-7.1.4.tgz", {}, "sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ=="],
 
-    "agent-browser": ["agent-browser@0.16.1", "https://registry.npmmirror.com/agent-browser/-/agent-browser-0.16.1.tgz", { "dependencies": { "node-simctl": "^7.4.0", "playwright-core": "^1.57.0", "webdriverio": "^9.15.0", "ws": "^8.19.0", "zod": "^3.22.4" }, "bin": { "agent-browser": "bin/agent-browser.js" } }, "sha512-AxL0IB3n/Ov83cJB7tdPRd8HKDR9dRtVgV80QfLaHuH8c4a+0cSC2p4bTsRQybZrbXcV1CbMthIjkk7PlAh3Zg=="],
+    "agent-browser": ["agent-browser@0.16.3", "https://registry.npmmirror.com/agent-browser/-/agent-browser-0.16.3.tgz", { "dependencies": { "node-simctl": "^7.4.0", "playwright-core": "^1.57.0", "webdriverio": "^9.15.0", "ws": "^8.19.0", "zod": "^3.22.4" }, "bin": { "agent-browser": "bin/agent-browser.js" } }, "sha512-dsg8PTJNBIQ7/LPp/La42KQwLTzsP8sudbCLpP1atsJXps4Fbuz1CeepUJAGrgxb8koc9y4yKobYVPAsds8hPQ=="],
 
     "ai": ["ai@6.0.105", "https://registry.npmmirror.com/ai/-/ai-6.0.105.tgz", { "dependencies": { "@ai-sdk/gateway": "3.0.59", "@ai-sdk/provider": "3.0.8", "@ai-sdk/provider-utils": "4.0.16", "@opentelemetry/api": "1.9.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-rp+exWtZS3J0DDvZIfetpKCIg7D3cCsvBPoFN3I67IDTs9aoBZDbpecoIkmNLT+U9RBkoEial3OGHRvme23HCw=="],
 
