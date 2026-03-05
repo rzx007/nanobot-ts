@@ -128,6 +128,9 @@ For MCP configuration, create `~/.nanobot/workspace/mcp.json`:
 
 ```bash
 # Start gateway with TUI (Terminal User Interface)
+nanobot
+
+# Start gateway with cli command
 nanobot gateway
 
 # Single-shot message
