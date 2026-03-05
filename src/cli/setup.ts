@@ -165,6 +165,7 @@ export async function buildAgentRuntime(config: Config, tui?: boolean): Promise<
   tools.register(new CronTool(cronService));
 
   const memory = new MemoryConsolidator(config);
+
   const skills = new SkillLoader(config);
   await skills.init();
 

@@ -30,7 +30,6 @@ async function runInit(force?: boolean): Promise<void> {
   await ensureDir(workspacePath);
   await ensureDir(path.join(workspacePath, 'memory'));
   await ensureDir(path.join(workspacePath, 'sessions'));
-  await ensureDir(path.join(workspacePath, 'skills'));
   await ensureDir(path.join(workspacePath, 'logs'));
 
   const mcpConfigPath = path.join(workspacePath, 'mcp.json');
