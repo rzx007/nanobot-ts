@@ -2,7 +2,6 @@
 
  [中文](README_CN.md)
 
-
 Ultra-lightweight personal AI assistant - TypeScript implementation
 
 ## 🎯 Overview
@@ -128,23 +127,24 @@ For MCP configuration, create `~/.nanobot/workspace/mcp.json`:
 
 ```bash
 # Start gateway with TUI (Terminal User Interface)
-nanobot
+nanobot-ts
 
 # Start gateway with cli command
-nanobot gateway
+nanobot-ts gateway
 
 # Single-shot message
-nanobot chat "Hello!"
+nanobot-ts chat "Hello!"
 
 # Interactive mode (CLI-based)
-nanobot chat --interactive
+nanobot-ts chat --interactive
 ```
 
 ### TUI Mode
 
-The `nanobot gateway` command now includes a modern Terminal User Interface (TUI) powered by opentui:
+The `nanobot-ts gateway` command now includes a modern Terminal User Interface (TUI) powered by opentui:
 
 **Features**:
+
 - 🎨 **Beautiful Interface**: Modern TUI with responsive design
 - 💬 **Chat Interface**: Real-time chat with message history
 - 🎯 **Slash Commands**: Quick access to commands with `/` prefix
@@ -169,6 +169,7 @@ The `nanobot gateway` command now includes a modern Terminal User Interface (TUI
 | `/skills` | Manage skills |
 
 **Usage**:
+
 1. Type `/` in the chat input to see all available commands
 2. Type `/` followed by text to search (e.g., `/stat` to find `/status`)
 3. Use arrow keys to navigate, Enter to select
@@ -178,76 +179,72 @@ The `nanobot gateway` command now includes a modern Terminal User Interface (TUI
 
 | Command                                              | Description                                                                  |
 | ---------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `nanobot init`                                       | Initialize config & workspace in `~/.nanobot`, use `-f/--force` to overwrite |
-| `nanobot chat [prompt]`                              | Send a prompt and get reply; add `-i/--interactive` for interactive mode     |
-| `nanobot gateway`                                    | Start message bus and Agent (default port: `--port 18790`)                   |
-| `nanobot status`                                     | View configuration and runtime status                                        |
-| `nanobot session`                                    | List all sessions                                                            |
-| `nanobot config [key] [value]`                       | View or set config (e.g., `agents.defaults.model`)                           |
-| `nanobot channels status`                            | Check channel status                                                         |
-| `nanobot logs`                                       | View logs, use `-t/--tail <n>` (default 50)                                  |
-| `nanobot whatsapp:auth`                              | WhatsApp QR code / pairing code login                                        |
-| `nanobot whatsapp:status`                            | Check WhatsApp login status                                                  |
-| `nanobot whatsapp:logout`                            | Clear WhatsApp credentials                                                   |
-| `nanobot mcp:list`                                   | List connected MCP servers and tools                                         |
-| `nanobot mcp:tools`                                  | List MCP tools in nanobot format                                             |
-| `nanobot mcp:test <serverName> <toolName> [args...]` | Test specific MCP tool                                                       |
+| `nanobot-ts init`                                       | Initialize config & workspace in `~/.nanobot`, use `-f/--force` to overwrite |
+| `nanobot-ts chat [prompt]`                              | Send a prompt and get reply; add `-i/--interactive` for interactive mode     |
+| `nanobot-ts gateway`                                    | Start message bus and Agent (default port: `--port 18790`)                   |
+| `nanobot-ts status`                                     | View configuration and runtime status                                        |
+| `nanobot-ts session`                                    | List all sessions                                                            |
+| `nanobot-ts config [key] [value]`                       | View or set config (e.g., `agents.defaults.model`)                           |
+| `nanobot-ts channels status`                            | Check channel status                                                         |
+| `nanobot-ts logs`                                       | View logs, use `-t/--tail <n>` (default 50)                                  |
+| `nanobot-ts whatsapp:auth`                              | WhatsApp QR code / pairing code login                                        |
+| `nanobot-ts whatsapp:status`                            | Check WhatsApp login status                                                  |
+| `nanobot-ts whatsapp:logout`                            | Clear WhatsApp credentials                                                   |
+| `nanobot-ts mcp:list`                                   | List connected MCP servers and tools                                         |
 
 ### Examples
 
 ```bash
 # Initialize or reinitialize
-nanobot init
-nanobot init --force
+nanobot-ts init
+nanobot-ts init --force
 
 # Chat with AI
-nanobot chat "Help me write a Python function"
-nanobot chat -i
+nanobot-ts chat "Help me write a Python function"
+nanobot-ts chat -i
 
 # Start gateway with custom port
-nanobot gateway --port 8080
+nanobot-ts gateway --port 8080
 
 # Check status
-nanobot status
-nanobot channels status
+nanobot-ts status
+nanobot-ts channels status
 
 # View logs
-nanobot logs
-nanobot logs --tail 100
+nanobot-ts logs
+nanobot-ts logs --tail 100
 
 # Configure model
-nanobot config get
-nanobot config set agents.defaults.model openai:gpt-4o
+nanobot-ts config get
+nanobot-ts config set agents.defaults.model openai:gpt-4o
 
 # WhatsApp authentication
-nanobot whatsapp:auth
-nanobot whatsapp:auth --pairing-code --phone 86123456789
-nanobot whatsapp:status
-nanobot whatsapp:logout
+nanobot-ts whatsapp:auth
+nanobot-ts whatsapp:auth --pairing-code --phone 86123456789
+nanobot-ts whatsapp:status
+nanobot-ts whatsapp:logout
 
 # MCP operations
-nanobot mcp:list
-nanobot mcp:tools
-nanobot mcp:test filesystem read_file '{"path":"~/test.txt"}'
+nanobot-ts mcp:list
 ```
 
 ### WhatsApp Authentication
 
 ```bash
 # Authenticate with QR code (default)
-nanobot whatsapp:auth
+nanobot-ts whatsapp:auth
 
 # Authenticate with pairing code
-nanobot whatsapp:auth --pairing-code --phone 86123456789
+nanobot-ts whatsapp:auth --pairing-code --phone 86123456789
 
 # Force re-authentication
-nanobot whatsapp:auth --force
+nanobot-ts whatsapp:auth --force
 
 # Check authentication status
-nanobot whatsapp:status
+nanobot-ts whatsapp:status
 
 # Clear authentication (logout)
-nanobot whatsapp:logout
+nanobot-ts whatsapp:logout
 ```
 
 ## 📦 Architecture
@@ -353,24 +350,24 @@ For detailed architecture diagrams and flows, see:
 
 ```bash
 # QR code login (default)
-nanobot whatsapp:auth
+nanobot-ts whatsapp:auth
 
 # Pairing code login
-nanobot whatsapp:auth --pairing-code --phone 86123456789
+nanobot-ts whatsapp:auth --pairing-code --phone 86123456789
 
 # Force re-authentication
-nanobot whatsapp:auth --force
+nanobot-ts whatsapp:auth --force
 
 # Check authentication status
-nanobot whatsapp:status
+nanobot-ts whatsapp:status
 
 # Clear authentication (logout)
-nanobot whatsapp:logout
+nanobot-ts whatsapp:logout
 ```
 
 **Authentication Flow**:
 
-1. Run `nanobot whatsapp:auth`
+1. Run `nanobot-ts whatsapp:auth`
 2. Scan QR code with WhatsApp on your phone
    - Open WhatsApp → Settings → Linked Devices → Link a Device
    - Or use pairing code mode
@@ -520,25 +517,25 @@ Configuration example:
 
 ```bash
 # Development mode (with watch)
-pnpm dev
+bun dev
 
 # Build
-pnpm build
+bun build
 
 # Run tests
-pnpm test
+bun test
 
 # Test with coverage
-pnpm test:coverage
+bun test:coverage
 
 # Lint
-pnpm lint
+bun lint
 
 # Format code
-pnpm format
+bun format
 
 # Type check
-pnpm typecheck
+bun typecheck
 ```
 
 ## 📊 Project Structure

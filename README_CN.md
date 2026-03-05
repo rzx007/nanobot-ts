@@ -125,18 +125,21 @@ pnpm run start
 
 ```bash
 # 启动网关及 TUI（终端用户界面）
-nanobot gateway
+nanobot-ts
+
+# 启动网关及终端命令
+nanobot-ts gateway
 
 # 单条消息
-nanobot chat "Hello!"
+nanobot-ts chat "Hello!"
 
 # 交互模式（基于 CLI）
-nanobot chat --interactive
+nanobot-ts chat --interactive
 ```
 
 ### TUI 模式
 
-`nanobot gateway` 命令现在包含一个由 opentui 驱动的现代化终端用户界面（TUI）：
+`nanobot` 命令现在包含一个由 opentui 驱动的现代化终端用户界面（TUI）：
 
 **特性**：
 
@@ -174,76 +177,73 @@ nanobot chat --interactive
 
 | 命令                                                 | 描述                                                       |
 | ---------------------------------------------------- | ---------------------------------------------------------- |
-| `nanobot init`                                       | 在 `~/.nanobot` 初始化配置和工作区，使用 `-f/--force` 覆盖 |
-| `nanobot chat [prompt]`                              | 发送提示并获取回复；添加 `-i/--interactive` 进入交互模式   |
-| `nanobot gateway`                                    | 启动消息总线和 Agent（默认端口：`--port 18790`）           |
-| `nanobot status`                                     | 查看配置和运行状态                                         |
-| `nanobot session`                                    | 列出所有会话                                               |
-| `nanobot config [key] [value]`                       | 查看或设置配置（例如：`agents.defaults.model`）            |
-| `nanobot channels status`                            | 检查渠道状态                                               |
-| `nanobot logs`                                       | 查看日志，使用 `-t/--tail <n>`（默认 50）                  |
-| `nanobot whatsapp:auth`                              | WhatsApp 二维码 / 配对码登录                               |
-| `nanobot whatsapp:status`                            | 检查 WhatsApp 登录状态                                     |
-| `nanobot whatsapp:logout`                            | 清除 WhatsApp 凭据                                         |
-| `nanobot mcp:list`                                   | 列出已连接的 MCP 服务器和工具                              |
-| `nanobot mcp:tools`                                  | 以 nanobot 格式列出 MCP 工具                               |
-| `nanobot mcp:test <serverName> <toolName> [args...]` | 测试特定 MCP 工具                                          |
+| `nanobot-ts init`                                       | 在 `~/.nanobot` 初始化配置和工作区，使用 `-f/--force` 覆盖 |
+| `nanobot-ts chat [prompt]`                              | 发送提示并获取回复；添加 `-i/--interactive` 进入交互模式   |
+| `nanobot-ts gateway`                                    | 启动消息总线和 Agent（默认端口：`--port 18790`）           |
+| `nanobot-ts status`                                     | 查看配置和运行状态                                         |
+| `nanobot-ts session`                                    | 列出所有会话                                               |
+| `nanobot-ts config [key] [value]`                       | 查看或设置配置（例如：`agents.defaults.model`）            |
+| `nanobot-ts channels status`                            | 检查渠道状态                                               |
+| `nanobot-ts logs`                                       | 查看日志，使用 `-t/--tail <n>`（默认 50）                  |
+| `nanobot-ts whatsapp:auth`                              | WhatsApp 二维码 / 配对码登录                               |
+| `nanobot-ts whatsapp:status`                            | 检查 WhatsApp 登录状态                                     |
+| `nanobot-ts whatsapp:logout`                            | 清除 WhatsApp 凭据                                         |
+| `nanobot-ts mcp:list`                                   | 列出已连接的 MCP 服务器和工具                              |
 
 ### 示例
 
 ```bash
 # 初始化或重新初始化
-nanobot init
-nanobot init --force
+nanobot-ts init
+nanobot-ts init --force
 
 # 与 AI 对话
-nanobot chat "Help me write a Python function"
-nanobot chat -i
+nanobot-ts chat "Help me write a Python function"
+nanobot-ts chat -i
 
 # 使用自定义端口启动网关
-nanobot gateway --port 8080
+nanobot-ts gateway --port 8080
 
 # 检查状态
-nanobot status
-nanobot channels status
+nanobot-ts status
+nanobot-ts channels status
 
 # 查看日志
-nanobot logs
-nanobot logs --tail 100
+nanobot-ts logs
+nanobot-ts logs --tail 100
 
 # 配置模型
-nanobot config get
-nanobot config set agents.defaults.model openai:gpt-4o
+nanobot-ts config get
+nanobot-ts config set agents.defaults.model openai:gpt-4o
 
 # WhatsApp 认证
-nanobot whatsapp:auth
-nanobot whatsapp:auth --pairing-code --phone 86123456789
-nanobot whatsapp:status
-nanobot whatsapp:logout
+nanobot-ts whatsapp:auth
+nanobot-ts whatsapp:auth --pairing-code --phone 86123456789
+nanobot-ts whatsapp:status
+nanobot-ts whatsapp:logout
 
 # MCP 操作
-nanobot mcp:list
-nanobot mcp:tools
-nanobot mcp:test filesystem read_file '{"path":"~/test.txt"}'
+nanobot-ts mcp:list
+
 ```
 
 ### WhatsApp 认证
 
 ```bash
 # 使用二维码认证（默认）
-nanobot whatsapp:auth
+nanobot-ts whatsapp:auth
 
 # 使用配对码认证
-nanobot whatsapp:auth --pairing-code --phone 86123456789
+nanobot-ts whatsapp:auth --pairing-code --phone 86123456789
 
 # 强制重新认证
-nanobot whatsapp:auth --force
+nanobot-ts whatsapp:auth --force
 
 # 检查认证状态
-nanobot whatsapp:status
+nanobot-ts whatsapp:status
 
 # 清除认证（登出）
-nanobot whatsapp:logout
+nanobot-ts whatsapp:logout
 ```
 
 ## 📦 架构
@@ -349,24 +349,24 @@ LLM 决策 → 工具注册表 → 审批检查 → 执行 → 返回结果
 
 ```bash
 # 二维码登录（默认）
-nanobot whatsapp:auth
+nanobot-ts whatsapp:auth
 
 # 配对码登录
-nanobot whatsapp:auth --pairing-code --phone 86123456789
+nanobot-ts whatsapp:auth --pairing-code --phone 86123456789
 
 # 强制重新认证
-nanobot whatsapp:auth --force
+nanobot-ts whatsapp:auth --force
 
 # 检查认证状态
-nanobot whatsapp:status
+nanobot-ts whatsapp:status
 
 # 清除认证（登出）
-nanobot whatsapp:logout
+nanobot-ts whatsapp:logout
 ```
 
 **认证流程**:
 
-1. 运行 `nanobot whatsapp:auth`
+1. 运行 `nanobot-ts whatsapp:auth`
 2. 使用手机上的 WhatsApp 扫描二维码
    - 打开 WhatsApp → 设置 → 关联设备 → 关联新设备
    - 或使用配对码模式
@@ -476,7 +476,7 @@ nanobot whatsapp:logout
 
 ### MCP 工具
 
-连接外部 MCP（模型上下文协议）服务器以扩展 nanobot 的能力：
+连接外部 MCP（模型上下文协议）服务器以扩展 nanobot-ts 的能力：
 
 - ✅ 支持本地（STDIO）和远程（HTTP）服务器
 - ✅ 受保护端点的 OAuth 认证
@@ -516,25 +516,25 @@ nanobot whatsapp:logout
 
 ```bash
 # 开发模式（监听）
-pnpm dev
+bun dev
 
 # 构建
-pnpm build
+bun build
 
 # 运行测试
-pnpm test
+bun test
 
 # 测试并生成覆盖率
-pnpm test:coverage
+bun test:coverage
 
 # 代码检查
-pnpm lint
+bun lint
 
 # 格式化代码
-pnpm format
+bun format
 
 # 类型检查
-pnpm typecheck
+bun typecheck
 ```
 
 ## 📊 项目结构
