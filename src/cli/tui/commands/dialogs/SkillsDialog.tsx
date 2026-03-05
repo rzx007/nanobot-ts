@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useKeyboard } from '@opentui/react';
 import { useDialog } from '../../components/Dialog';
 import type { SkillsDialogProps } from './types';
+import { theme } from '../../theme';
 
 /**
  * 技能查看 Dialog
@@ -116,8 +117,8 @@ export function SkillsDialog({
             <box
               key={skill.id}
               flexDirection="row"
-              padding={0.5}
-              backgroundColor={index === selectedIndex ? '#e94560' : 'transparent'}
+
+              backgroundColor={index === selectedIndex ? theme.success : 'transparent'}
               onMouseDown={() => setSelectedIndex(index)}
               onMouseUp={evt => {
                 evt.stopPropagation();
@@ -135,11 +136,11 @@ export function SkillsDialog({
               </text>
             </box>
           ))}
-          {skills.map(skill => (
+          {/* {skills.map(skill => (
             <box key={`desc-${skill.id}`} paddingLeft={6} paddingBottom={0.5}>
               <text fg="#a0a0a0">{skill.description}</text>
             </box>
-          ))}
+          ))} */}
         </box>
       )}
 

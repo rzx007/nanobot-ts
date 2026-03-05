@@ -6,6 +6,8 @@
  */
 
 import winston from 'winston';
+import path from 'path';
+import { expandHome } from './helpers';
 
 /**
  * 日志级别
@@ -19,17 +21,17 @@ export enum LogLevel {
 }
 
 /** Pino 风格兼容：支持 (msg) 或 (obj, msg)，内部转为 Winston 的 (msg, meta) */
-function wrapLog(
-  winstonLogger: winston.Logger,
-  level: 'debug' | 'info' | 'warn' | 'error',
-) {
+function wrapLog(winstonLogger: winston.Logger, level: 'debug' | 'info' | 'warn' | 'error') {
   return (first?: unknown, second?: unknown) => {
     if (typeof second === 'string' && typeof first === 'object' && first !== null) {
       // Pino 风格：(obj, msg) -> Winston (msg, meta)
       winstonLogger.log(level, second, first as Record<string, unknown>);
     } else if (typeof first === 'string') {
       // 单参数 msg 或 Winston 风格 (msg, meta)
-      const meta = typeof second === 'object' && second !== null ? (second as Record<string, unknown>) : undefined;
+      const meta =
+        typeof second === 'object' && second !== null
+          ? (second as Record<string, unknown>)
+          : undefined;
       winstonLogger.log(level, first, meta);
     } else {
       winstonLogger.log(level, first != null ? String(first) : '', undefined);
@@ -90,11 +92,31 @@ export function createLogger(name?: string, options?: { level?: string }): PinoC
       )
     : winston.format.combine(winston.format.timestamp(), winston.format.json());
 
+  const transports: winston.transport[] = [new winston.transports.Console()];
+
+  // 添加文件日志传输
+  const logDir = expandHome('~/.nanobot/workspace/logs');
+  const logFile = path.join(logDir, 'nanobot.log');
+
+  transports.push(
+    new winston.transports.File({
+      filename: logFile,
+      format: winston.format.combine(
+        winston.format.uncolorize(),
+        winston.format.timestamp(),
+        winston.format.json(),
+      ),
+      maxsize: 10 * 1024 * 1024, // 10MB
+      maxFiles: 5, // 保留最近5个文件
+      tailable: true, // 允许滚动
+    }),
+  );
+
   const baseLogger = winston.createLogger({
     level,
     format,
     defaultMeta: name ? { name } : {},
-    transports: [new winston.transports.Console()],
+    transports,
   });
 
   return wrapLogger(baseLogger, level);

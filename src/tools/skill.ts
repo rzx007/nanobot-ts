@@ -6,7 +6,7 @@
 
 import { Tool } from './base';
 import { RiskLevel } from './safety';
-import type { SkillInfo, SkillLoader } from '@/core/skills';
+import type { SkillInfo, SkillLoader } from '@/skills';
 import { execSync } from 'child_process';
 
 /**
