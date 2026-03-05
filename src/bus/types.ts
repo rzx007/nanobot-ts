@@ -38,7 +38,9 @@ export interface InboundMessage {
 /**
  * 获取入站消息的会话密钥
  */
-export function getSessionKey(msg: Pick<InboundMessage, 'channel' | 'chatId' | 'sessionKeyOverride'>): string {
+export function getSessionKey(
+  msg: Pick<InboundMessage, 'channel' | 'chatId' | 'sessionKeyOverride'>,
+): string {
   return msg.sessionKeyOverride ?? `${msg.channel}:${msg.chatId}`;
 }
 
@@ -116,6 +118,39 @@ export type ToolDefinition = Tool;
  * 工具集合 - Record<工具名, Tool>
  */
 export type ToolSet = Record<string, ToolDefinition>;
+
+/**
+ * 流式文本事件
+ * 用于消息总线的流式输出事件
+ */
+export interface StreamTextEvent {
+  /** 目标渠道 */
+  channel: string;
+
+  /** 聊天标识 */
+  chatId: string;
+
+  /** 文本块内容 */
+  chunk: string;
+
+  /** 渠道特定的元数据 */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * 工具提示事件
+ * 用于消息总线的工具执行提示事件
+ */
+export interface ToolHintEvent {
+  /** 目标渠道 */
+  channel: string;
+
+  /** 聊天标识 */
+  chatId: string;
+
+  /** 提示内容 */
+  content: string;
+}
 
 /**
  * 进度选项

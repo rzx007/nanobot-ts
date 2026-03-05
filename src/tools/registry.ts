@@ -211,7 +211,7 @@ export class ToolRegistry {
 
     // 执行工具
     try {
-      logger.info(`✈️✈️✈️ Executing tool: ${name}`);
+      logger.info(`✈️✈️✈️  Executing tool: ${name}`);
       const result = await tool.execute(params);
 
       // 检查结果是否为错误

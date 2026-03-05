@@ -6,8 +6,10 @@ import { EmptyBorder } from './Border';
 export interface MessageItem {
   role: 'user' | 'assistant';
   content: string;
-  model?: string;
-  timestamp?: string;
+  isStreaming?: boolean | undefined;
+  model?: string | undefined;
+  timestamp?: string | undefined;
+  toolHints?: string[] | undefined;
 }
 
 interface MessageListProps {
@@ -66,7 +68,6 @@ export function MessageList({ messages }: MessageListProps) {
                 width="100%"
                 backgroundColor={theme.backgroundElement}
               >
-
                 <MessageContent content={msg.content} />
               </box>
             </box>
@@ -75,18 +76,25 @@ export function MessageList({ messages }: MessageListProps) {
 
         // Bot 消息：无指示条
         return (
-          <box
-            key={i}
-            flexDirection="column"
-            paddingY={1}
-            paddingLeft={2}
-            width="100%"
-          >
+          <box key={i} flexDirection="column" paddingY={1} paddingLeft={2} width="100%">
+            <MessageContent content={msg.content} streaming={msg.isStreaming ?? false} />
 
-            <MessageContent content={msg.content} />
-            {/* 展示模型信息 */}
-            <box flexDirection='row' alignItems='center' paddingTop={1}>
-              <text fg={theme.primary} marginRight={1}>▣</text>
+            {/* 显示工具提示 */}
+            {msg.toolHints && msg.toolHints.length > 0 && (
+              <box flexDirection="column" paddingTop={1}>
+                {msg.toolHints.map((hint, hi) => (
+                  <text key={hi} fg={theme.textMuted}>
+                    🔧 {hint}
+                  </text>
+                ))}
+              </box>
+            )}
+
+            {/* 显示模型信息 */}
+            <box flexDirection="row" alignItems="center" paddingTop={1}>
+              <text fg={theme.primary} marginRight={1}>
+                ▣
+              </text>
               <text fg={theme.textTertiary}>{msg.model}</text>
             </box>
           </box>

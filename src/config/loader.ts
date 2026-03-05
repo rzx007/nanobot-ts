@@ -118,6 +118,7 @@ export function createDefaultConfig(): Config {
         maxTokens: 8192,
         maxIterations: 40,
         memoryWindow: 100,
+        streaming: true,
       },
     },
     providers: {

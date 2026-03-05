@@ -10,6 +10,8 @@ interface MessageContentProps {
   content: string;
   /** 为 true 时隐藏 markdown 语法符号，只显示渲染结果（默认 true） */
   conceal?: boolean;
+  /** 流式输出模式，启用 incremental updates 优化 */
+  streaming?: boolean;
 }
 
 const defaultSyntaxStyle = SyntaxStyle.fromStyles({
@@ -20,15 +22,16 @@ const defaultSyntaxStyle = SyntaxStyle.fromStyles({
   default: { fg: RGBA.fromHex(theme.text) },
 });
 
-export function MessageContent({ content, conceal = true }: MessageContentProps) {
+export function MessageContent({ content, conceal = true, streaming }: MessageContentProps) {
   if (!content.trim()) {
-    return null;
+    return streaming ? <text fg={theme.textMuted}>...</text> : null;
   }
   return (
     <markdown
       content={content}
       syntaxStyle={defaultSyntaxStyle}
       conceal={conceal}
+      streaming={streaming ?? false}
     />
   );
 }

@@ -5,7 +5,7 @@
  * 参考: https://sdk.vercel.ai/docs/ai-sdk-core/generating-text
  */
 
-import { generateText, stepCountIs, type LanguageModel, type ModelMessage } from 'ai';
+import { generateText, streamText, stepCountIs, type LanguageModel, type ModelMessage } from 'ai';
 import type { LLMResponse, ToolSet } from '../bus/types';
 import type { Config } from '../config/schema';
 import { parseModelString } from '../utils/helpers';
@@ -81,8 +81,7 @@ export class LLMProvider {
    * 未指定或未知 provider 时回退到 deepseek
    */
   private getModel(providerName: string, modelName: string): LanguageModel {
-    const factory =
-      this.registry.get(providerName) ?? this.registry.get('deepseek');
+    const factory = this.registry.get(providerName) ?? this.registry.get('deepseek');
     if (!factory) {
       throw new Error(
         `No provider available for "${providerName}". Ensure at least one provider (e.g. deepseek) is configured with apiKey.`,
@@ -168,6 +167,89 @@ export class LLMProvider {
         error ??
         new Error('LLM call failed (rejected with undefined/null); check generateText/tools.');
       const errorMsg = `LLM call failed: ${err instanceof Error ? err.message : String(err)}`;
+      logger.error(errorMsg);
+      throw new ProviderError(errorMsg);
+    }
+  }
+
+  /**
+   * 调用 LLM (使用 streamText 实现流式输出)
+   * 使用 onChunk 回调实时传递文本块
+   */
+  async streamChat(params: {
+    messages: Array<{ role: string; content: unknown; timestamp?: string }>;
+    tools: ToolSet;
+    model: string;
+    temperature?: number;
+    maxTokens?: number;
+    /** 工具执行器；传入后 SDK 会自动执行工具并循环直到无 tool call 或达到 maxSteps */
+    executeTool?: (name: string, args: Record<string, unknown>) => Promise<string>;
+    /** 最大步数（每步一次 LLM 调用 + 可选工具执行），默认 1；与 executeTool 配合使用 */
+    maxSteps?: number;
+    /** 每步结束回调（如用于进度） */
+    onStepFinish?: (step: { text?: string; toolCalls?: unknown[] }) => void;
+    /** 文本块回调，用于流式输出 */
+    onTextChunk?: (chunk: string) => void;
+  }): Promise<LLMResponse> {
+    try {
+      const {
+        messages,
+        tools,
+        model: modelStr,
+        temperature,
+        maxTokens,
+        executeTool,
+        maxSteps = 1,
+        onStepFinish,
+        onTextChunk,
+      } = params;
+      const { provider, modelName } = parseModelString(modelStr);
+
+      logger.info(`Calling LLM stream: ${provider}:${modelName}`);
+
+      const model = this.getModel(provider, modelName);
+      const normalizedMessages = normalizeMessages(messages);
+
+      const toolsToUse =
+        executeTool != null ? this.buildToolsWithExecute(tools, executeTool) : tools;
+
+      const result = streamText({
+        model,
+        messages: normalizedMessages,
+        tools: toolsToUse,
+        temperature: temperature ?? 0.7,
+        maxOutputTokens: maxTokens ?? 4096,
+        stopWhen: [stepCountIs(maxSteps ?? 5)],
+        ...(onStepFinish && { onStepFinish }),
+        onChunk: event => {
+          if (event.chunk.type === 'text-delta' && onTextChunk) {
+            onTextChunk((event.chunk as { type: 'text-delta'; text: string }).text);
+          }
+        },
+      });
+
+      // streamText 返回的 text、usage 等是 Promise，需 await 才会消费流并得到最终值（见 AI SDK 文档 Returns）
+      const [content, usage] = await Promise.all([result.text, result.usage]);
+      const contentStr = typeof content === 'string' ? content : '';
+      const usageInfo = usage
+        ? {
+          promptTokens: usage.inputTokens ?? 0,
+          completionTokens: usage.outputTokens ?? 0,
+          totalTokens: usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+        }
+        : undefined;
+
+      return {
+        content: contentStr,
+        hasToolCalls: false,
+        toolCalls: [],
+        ...(usageInfo && { usage: usageInfo }),
+      };
+    } catch (error) {
+      const err =
+        error ??
+        new Error('LLM stream call failed (rejected with undefined/null); check streamText/tools.');
+      const errorMsg = `LLM stream call failed: ${err instanceof Error ? err.message : String(err)}`;
       logger.error(errorMsg);
       throw new ProviderError(errorMsg);
     }

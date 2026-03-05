@@ -4,7 +4,7 @@
  * AI 对话的核心处理引擎
  */
 
-import type { InboundMessage, OutboundMessage, ProgressOptions } from '../bus/types';
+import type { InboundMessage, OutboundMessage, StreamTextEvent, ToolHintEvent } from '../bus/types';
 import { getSessionKey } from '../bus/types';
 import type { ToolRegistry } from '../tools';
 import type { LLMProvider } from '../providers';
@@ -12,13 +12,14 @@ import type { Config } from '../config/schema';
 import type { SessionManager } from '../storage';
 import { logger } from '../utils/logger';
 import { ContextBuilder } from './context';
+import type { MessageBus } from '../bus';
 
 /**
  * Agent 配置选项
  */
 export interface AgentOptions {
   /** 消息总线 */
-  bus: any;
+  bus: MessageBus;
 
   /** LLM 提供商 */
   provider: LLMProvider;
@@ -36,7 +37,7 @@ export interface AgentOptions {
   memory?: import('./memory').MemoryConsolidator;
 
   /** 技能加载器 (可选，用于系统提示词中的技能) */
-  skills?: import('./skills').SkillLoader;
+  skills?: import('../skills').SkillLoader;
 }
 
 /**
@@ -49,7 +50,7 @@ export class AgentLoop {
   private config: Config;
 
   /** 消息总线 */
-  private bus: any;
+  private bus: MessageBus;
 
   /** LLM 提供商 */
   private provider: LLMProvider;
@@ -64,7 +65,7 @@ export class AgentLoop {
   private memory: import('./memory').MemoryConsolidator | null = null;
 
   /** 技能加载器 (可选) */
-  private skills: import('./skills').SkillLoader | null = null;
+  private skills: import('../skills').SkillLoader | null = null;
 
   /** 是否正在运行 */
   private running = false;
@@ -151,15 +152,12 @@ export class AgentLoop {
 
   /**
    * 处理单条消息 (用于 CLI 模式)
+   * 默认使用流式输出，通过消息总线发布事件
    *
    * @param msg - 入站消息
-   * @param onProgress - 进度回调
    * @returns 出站消息或 null
    */
-  async process(
-    msg: InboundMessage,
-    onProgress?: (content: string, options?: ProgressOptions) => Promise<void>,
-  ): Promise<OutboundMessage | null> {
+  async process(msg: InboundMessage): Promise<OutboundMessage | null> {
     logger.info(`Processing message: ${msg.channel}:${msg.chatId}`);
 
     // CLI 单次调用时未走 run()，this.running 一直为 false，会导致 _processMessage 内 while 不执行
@@ -167,7 +165,8 @@ export class AgentLoop {
     this.running = true;
     try {
       // 执行消息处理流程
-      const response = await this._processMessage(msg, onProgress);
+      const response = await this._processMessage(msg);
+
       // 发布到出站队列(未消费)
       // if (response) {
       //   await this.bus.publishOutbound(response);
@@ -183,7 +182,7 @@ export class AgentLoop {
   }
 
   /**
-   * 去除 <think>...</think> 块 (部分模型会在 content 中嵌入思考)
+   * 去除 <think> 块 (部分模型会在 content 中嵌入思考)
    */
   private static _stripThink(text: string | null | undefined): string {
     if (!text || typeof text !== 'string') return '';
@@ -192,15 +191,12 @@ export class AgentLoop {
 
   /**
    * 处理消息的核心逻辑
+   * 默认使用流式输出，通过消息总线发布事件
    *
    * @param msg - 入站消息
-   * @param onProgress - 进度回调
    * @returns 出站消息
    */
-  private async _processMessage(
-    msg: InboundMessage,
-    onProgress?: (content: string, options?: ProgressOptions) => Promise<void>,
-  ): Promise<OutboundMessage> {
+  private async _processMessage(msg: InboundMessage): Promise<OutboundMessage> {
     const { channel, chatId, content } = msg;
     const sessionKey = getSessionKey(msg);
 
@@ -277,14 +273,14 @@ export class AgentLoop {
     // 获取工具定义，由 SDK 自动执行工具（executeTool + maxSteps）
     const tools = this.tools.getDefinitions();
 
-    const chatParams: Parameters<LLMProvider['chat']>[0] = {
+    const commonParams = {
       messages,
       tools,
       model: this.config.agents.defaults.model,
       temperature: this.config.agents.defaults.temperature,
       maxTokens: this.config.agents.defaults.maxTokens,
       maxSteps: this.maxIterations,
-      executeTool: async (name, args) => {
+      executeTool: async (name: string, args: Record<string, unknown>) => {
         // 传递上下文信息给工具注册表（用于确认机制）
         let result = await this.tools.execute(name, args, {
           channel,
@@ -296,18 +292,37 @@ export class AgentLoop {
         return `Tool "${name}" returned:\n${result}`;
       },
     };
-    if (onProgress) {
-      chatParams.onStepFinish = step => {
-        if (step?.text != null && step.text !== '') {
-          onProgress(step.text, { toolHint: true }).catch(() => { });
-        }
-      };
-    }
-    const llmResponse = await this.provider.chat(chatParams);
 
+    // 发布工具提示事件到消息总线
+    (commonParams as any).onStepFinish = (step: { text?: string; toolCalls?: unknown[] }) => {
+      if (step?.text != null && step.text !== '') {
+        this.bus.publishToolHint({
+          channel,
+          chatId,
+          content: step.text,
+        } as ToolHintEvent);
+      }
+    };
+
+    // 发布流式文本事件到消息总线
+    (commonParams as any).onTextChunk = (chunk: string) => {
+      this.bus.publishStreamText({
+        channel,
+        chatId,
+        chunk,
+      } as StreamTextEvent);
+    };
+
+    // 根据是否需要流式选择调用方式
+    const isStreamResponse = this.config.agents.defaults.streaming ?? true;
+    console.log("🚀 ~ AgentLoop ~ _processMessage ~ isStreamResponse:", isStreamResponse)
+    const llmResponse = isStreamResponse
+      ? await this.provider.streamChat(commonParams as Parameters<LLMProvider['streamChat']>[0])
+      : await this.provider.chat(commonParams);
     const assistantContent = AgentLoop._stripThink(llmResponse.content ?? '');
 
     if (assistantContent) {
+      // 存储消息
       await this.sessions.addMessage(sessionKey, {
         role: 'assistant',
         content: assistantContent,
@@ -323,11 +338,6 @@ export class AgentLoop {
         await this.memory.consolidate(session);
         await this.sessions.saveSession(session);
       }
-    }
-
-    // 发送最终响应
-    if (onProgress) {
-      await onProgress(assistantContent);
     }
 
     return {

@@ -5,6 +5,7 @@
  */
 
 import type { LanguageModel } from 'ai';
+import type { ToolSet, LLMResponse } from '../bus/types';
 
 /**
  * 模型工厂：根据模型名返回 AI SDK 的 LanguageModel
@@ -21,12 +22,40 @@ export type ProviderRegistry = Map<string, ModelFactory>;
 /**
  * 支持的 Provider 名称（与 parseModelString 的 provider 及配置 key 一致）
  */
-export const PROVIDER_IDS = [
-  'openai',
-  'anthropic',
-  'deepseek',
-  'openrouter',
-  'groq',
-] as const;
+export const PROVIDER_IDS = ['openai', 'anthropic', 'deepseek', 'openrouter', 'groq'] as const;
 
 export type ProviderId = (typeof PROVIDER_IDS)[number];
+
+/**
+ * LLM Provider 接口
+ */
+export interface LLMProvider {
+  /**
+   * 调用 LLM（使用 generateText）
+   */
+  chat(params: {
+    messages: Array<{ role: string; content: unknown; timestamp?: string }>;
+    tools: ToolSet;
+    model: string;
+    temperature?: number;
+    maxTokens?: number;
+    executeTool?: (name: string, args: Record<string, unknown>) => Promise<string>;
+    maxSteps?: number;
+    onStepFinish?: (step: { text?: string; toolCalls?: unknown[] }) => void;
+  }): Promise<LLMResponse>;
+
+  /**
+   * 调用 LLM（使用 streamText 实现流式输出）
+   */
+  streamChat(params: {
+    messages: Array<{ role: string; content: unknown; timestamp?: string }>;
+    tools: ToolSet;
+    model: string;
+    temperature?: number;
+    maxTokens?: number;
+    executeTool?: (name: string, args: Record<string, unknown>) => Promise<string>;
+    maxSteps?: number;
+    onStepFinish?: (step: { text?: string; toolCalls?: unknown[] }) => void;
+    onTextChunk?: (chunk: string) => void;
+  }): Promise<LLMResponse>;
+}

@@ -28,6 +28,9 @@ export const AgentDefaultsSchema = z.object({
 
   /** 内存窗口 (保留的历史消息数) */
   memoryWindow: z.number().int().positive().default(100),
+
+  /** 是否启用流式返回 */
+  streaming: z.boolean().default(true),
 });
 
 /**

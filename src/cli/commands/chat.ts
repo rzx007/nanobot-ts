@@ -25,6 +25,19 @@ async function runChat(promptArg: string | undefined, interactive?: boolean): Pr
     info('Interactive chat. Type /exit to quit.');
     const readline = await import('readline');
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
+    // 订阅流式文本和工具提示事件
+    runtime.bus.on('stream-text', event => {
+      if (event.channel === 'cli') {
+        process.stdout.write(event.chunk);
+      }
+    });
+    runtime.bus.on('tool-hint', event => {
+      if (event.channel === 'cli') {
+        process.stdout.write(`\n  [tools: ${event.content}]\n`);
+      }
+    });
+
     const ask = (): void => {
       rl.question('You> ', async line => {
         const content = line?.trim();
@@ -36,6 +49,7 @@ async function runChat(promptArg: string | undefined, interactive?: boolean): Pr
           rl.close();
           process.exit(0);
         }
+
         const msg = {
           channel: 'cli' as const,
           senderId: 'user',
@@ -43,10 +57,15 @@ async function runChat(promptArg: string | undefined, interactive?: boolean): Pr
           content,
           timestamp: new Date(),
         };
-        const out = await agent.process(msg, async (text, opts) => {
-          if (opts?.toolHint) process.stdout.write(`  [tools: ${text}]\n`);
-        });
-        if (out) console.log('Bot>', out.content);
+
+        // 流式输出
+        process.stdout.write('\nBot> ');
+        const out = await agent.process(msg);
+
+        // 完成后换行（out未使用，仅用于触发agent.process）
+        void out;
+        process.stdout.write('\n');
+
         ask();
       });
     };
@@ -66,6 +85,19 @@ async function runChat(promptArg: string | undefined, interactive?: boolean): Pr
     content: promptArg.trim(),
     timestamp: new Date(),
   };
+
+  // 订阅流式文本事件
+  runtime.bus.on('stream-text', event => {
+    if (event.channel === 'cli') {
+      process.stdout.write(event.chunk);
+    }
+  });
+
+  // 流式输出
+  process.stdout.write('\nBot> ');
   const out = await agent.process(msg);
-  if (out) console.log(out.content);
+
+  // 完成后换行
+  void out;
+  process.stdout.write('\n');
 }

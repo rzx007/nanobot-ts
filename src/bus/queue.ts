@@ -1,15 +1,12 @@
 /**
  * 消息总线
- * 
+ *
  * 异步消息队列系统，解耦渠道和 Agent 处理
  * 使用 EventEmitter 实现发布-订阅模式
  */
 
 import { EventEmitter } from 'eventemitter3';
-import type {
-  InboundMessage,
-  OutboundMessage,
-} from './types';
+import type { InboundMessage, OutboundMessage, StreamTextEvent, ToolHintEvent } from './types';
 import { createLogger } from '../utils/logger';
 /**
  * 消息总线事件
@@ -20,11 +17,17 @@ interface MessageBusEvents {
 
   /** 出站消息事件 */
   outbound: (msg: OutboundMessage) => void;
+
+  /** 流式文本事件 */
+  'stream-text': (event: StreamTextEvent) => void;
+
+  /** 工具提示事件 */
+  'tool-hint': (event: ToolHintEvent) => void;
 }
 
 /**
  * 消息总线
- * 
+ *
  * 负责消息的发布和消费，实现异步队列机制
  */
 export class MessageBus extends EventEmitter<MessageBusEvents> {
@@ -76,13 +79,16 @@ export class MessageBus extends EventEmitter<MessageBusEvents> {
       consumer(nextMsg);
     }
     if (typeof process !== 'undefined' && process.env.LOG_LEVEL === 'debug') {
-      createLogger('bus').debug({ hadConsumer, queueLen: this.inboundQueue.length }, 'publishInbound');
+      createLogger('bus').debug(
+        { hadConsumer, queueLen: this.inboundQueue.length },
+        'publishInbound',
+      );
     }
   }
 
   /**
    * 消费入站消息 (阻塞直到有消息)
-   * 
+   *
    * @returns 入站消息
    */
   async consumeInbound(): Promise<InboundMessage> {
@@ -92,14 +98,14 @@ export class MessageBus extends EventEmitter<MessageBusEvents> {
     }
 
     // 等待新消息
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       this.inboundConsumers.push(resolve);
     });
   }
 
   /**
    * 发布出站消息
-   * 
+   *
    * @param msg - 出站消息
    */
   async publishOutbound(msg: OutboundMessage): Promise<void> {
@@ -119,7 +125,7 @@ export class MessageBus extends EventEmitter<MessageBusEvents> {
 
   /**
    * 消费出站消息
-   * 
+   *
    * @returns 出站消息
    */
   async consumeOutbound(): Promise<OutboundMessage> {
@@ -129,14 +135,14 @@ export class MessageBus extends EventEmitter<MessageBusEvents> {
     }
 
     // 等待新消息
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       this.outboundConsumers.push(resolve);
     });
   }
 
   /**
-   * 获取队列状态 (用于调试)
-   * 
+   * 获取队列状态 (用于调试）
+   *
    * @returns 队列状态信息
    */
   getStatus(): {
@@ -151,5 +157,23 @@ export class MessageBus extends EventEmitter<MessageBusEvents> {
       inboundConsumersLength: this.inboundConsumers.length,
       outboundConsumersLength: this.outboundConsumers.length,
     };
+  }
+
+  /**
+   * 发布流式文本事件
+   *
+   * @param event - 流式文本事件
+   */
+  publishStreamText(event: StreamTextEvent): void {
+    this.emit('stream-text', event);
+  }
+
+  /**
+   * 发布工具提示事件
+   *
+   * @param event - 工具提示事件
+   */
+  publishToolHint(event: ToolHintEvent): void {
+    this.emit('tool-hint', event);
   }
 }

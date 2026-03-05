@@ -20,7 +20,7 @@ import { MessageApprovalHandler } from './approval-handlers/message';
  */
 export class ApprovalManager {
   name = 'approval';
-  
+
   /** 确认处理器映射表 */
   private handlers: Map<string, ApprovalHandler>;
 
@@ -73,13 +73,13 @@ export class ApprovalManager {
     if (!tui) {
       // 非 TUI 模式下，注册 CLI 处理器
       this.registerHandler('cli', new CLIApprovalHandler());
-    } 
+    }
 
     // 根据 appConfig 为已启用的消息渠道逐个注册 MessageApprovalHandler（与 ChannelManager 判定一致）
     if (bus) {
       const { whatsapp, feishu, email } = this.appConfig.channels;
       const messageHandler = new MessageApprovalHandler(bus);
-      if(tui) {
+      if (tui) {
         // TUI 模式下，使用 MessageApprovalHandler 处理 CLI 消息
         this.registerHandler('cli', messageHandler);
       }
@@ -200,7 +200,7 @@ export class ApprovalManager {
   }
 
   /**
-   * 请求用户确认 (给渠道(whatsapp、feishu、email 等)发送确认消息, 等待用户回复)
+   * 工具执行前，请求用户确认 (给渠道(whatsapp、feishu、email 等)发送确认消息, 等待用户回复)
    *
    * @param toolName - 工具名称
    * @param params - 工具参数
@@ -250,21 +250,9 @@ export class ApprovalManager {
     }
   }
 
-  /**
-   * 取消待处理的确认
-   *
-   * @param channel - 渠道
-   * @param chatId - 聊天ID
-   */
-  cancelPending(channel: string, chatId: string): void {
-    const handler = this.getHandler(channel);
-    if (handler?.cancelPending) {
-      handler.cancelPending(chatId);
-    }
-  }
 
   /**
-   * 处理用户消息（用于消息渠道的确认回复）
+   * 处理用户消息（用于消息渠道的确认回复，确认回复后，处理工具执行或拒绝），此过程会释放requestApproval等待中的 Promise
    *
    * @param channel - 渠道
    * @param chatId - 聊天ID
@@ -279,6 +267,19 @@ export class ApprovalManager {
     return false;
   }
 
+
+  /**
+   * 取消待处理的确认
+   *
+   * @param channel - 渠道
+   * @param chatId - 聊天ID
+   */
+  cancelPending(channel: string, chatId: string): void {
+    const handler = this.getHandler(channel);
+    if (handler?.cancelPending) {
+      handler.cancelPending(chatId);
+    }
+  }
   /**
    * 获取会话记忆管理器
    *
