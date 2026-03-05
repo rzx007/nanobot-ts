@@ -147,11 +147,14 @@ export async function buildAgentRuntime(config: Config, tui?: boolean): Promise<
     onJob: async job => {
       const ch = job.payload.channel ?? 'cli';
       const to = job.payload.to ?? 'direct';
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      const content = job.payload.message.replace(/\{\{time\}\}/g, timeStr);
       await bus.publishInbound({
         channel: ch,
         senderId: 'cron',
         chatId: to,
-        content: job.payload.message,
+        content: `📢 ${content}`,
         timestamp: new Date(),
       });
       return null;

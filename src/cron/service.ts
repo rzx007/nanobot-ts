@@ -302,9 +302,9 @@ export class CronService {
 //     ↓
 // 保存到 cron.json
 //     ↓
-// armTimer() 设置 setTimeout(delay)
+// armTimer() 找到所有任务中最早的 nextRunAtMs 设置 一个全局setTimeout(delay)
 //     ↓
-// 到期 → onTimer() → executeJob()
+// 到期 → onTimer() → 执行所有到期的任务 executeJob()
 //     ↓
 // 执行 onJob 回调 (publishInbound)
 //     ↓

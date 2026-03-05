@@ -15,7 +15,8 @@ export interface CronToolContext {
 export class CronTool extends Tool {
   name = 'cron';
 
-  description = 'Schedule reminders and recurring tasks. Actions: add, list, remove.';
+  description =
+    'Manage scheduled cron jobs (add/list/remove). Only call this tool when user explicitly asks to create, delete, or view scheduled tasks. Do NOT call this tool for system notifications or reminders that are already being displayed.';
 
   riskLevel = RiskLevel.LOW;
 
@@ -33,9 +34,11 @@ export class CronTool extends Tool {
 
   /**
    *
-   * every_seconds → 	间隔执行，每 N 秒触发一次（周期任务）
-   * cron_expr → Cron 表达式执行（可搭配 tz 设置时区）
-   * at → 一次性执行时间，ISO 格式如 2026-02-12T10:30:00
+   * kind → 任务类型：'at'=一次性任务, 'every'=固定间隔周期任务, 'cron'=Cron表达式周期任务
+   * at_time → 一次性任务的执行时间：支持相对时间（"30s", "1m", "1h", "1d", "1w", "1M", "1y", "1y3m2d"）或绝对时间（ISO格式： "2026-03-05T10:30:00"）
+   * every_seconds → 周期任务（kind='every'）：每 N 秒重复执行
+   * cron_expr → 周期任务（kind='cron'）：Cron 表达式
+   * tz → 周期任务（kind='cron'）：时区，如 'Asia/Shanghai'
    * job_id → 任务 ID（用于删除）
    */
   parameters = {
@@ -44,27 +47,36 @@ export class CronTool extends Tool {
       action: {
         type: 'string',
         enum: ['add', 'list', 'remove'],
-        description: 'Action to perform',
+        description:
+          'Action to perform: add=new job, list=view all jobs, remove=delete job. Only call when user explicitly requests to manage cron jobs.',
       },
       message: {
         type: 'string',
         description: 'Reminder message (for add)',
       },
+      kind: {
+        type: 'string',
+        enum: ['at', 'every', 'cron'],
+        description: 'Task type: "at"=one-time, "every"=repeat interval, "cron"=cron expression',
+      },
+      at_time: {
+        type: 'string',
+        description:
+          'Execution time for "at" tasks. Supports relative time ("30s", "1m", "1h", "1d", "1w", "1M", "1y", "1y3m2d") or absolute datetime (ISO format: "2026-03-05T10:30:00")',
+      },
       every_seconds: {
         type: 'integer',
-        description: 'Interval in seconds (for recurring tasks)',
+        description:
+          'Interval for "every" tasks. Repeat every N seconds indefinitely (recurring task)',
       },
       cron_expr: {
         type: 'string',
-        description: "Cron expression e.g. '0 9 * * *' (requires croner dependency)",
+        description:
+          "Cron expression for 'cron' tasks. e.g. '0 9 * * *' (requires croner dependency)",
       },
       tz: {
         type: 'string',
-        description: "IANA timezone for cron expressions e.g. 'Asia/Shanghai'",
-      },
-      at: {
-        type: 'string',
-        description: "ISO datetime for one-time execution e.g. '2026-02-12T10:30:00'",
+        description: "IANA timezone for 'cron' tasks. e.g. 'Asia/Shanghai'",
       },
       job_id: {
         type: 'string',
@@ -77,10 +89,11 @@ export class CronTool extends Tool {
   async execute(params: {
     action: string;
     message?: string;
+    kind?: string;
+    at_time?: string;
     every_seconds?: number;
     cron_expr?: string;
     tz?: string;
-    at?: string;
     job_id?: string;
   }): Promise<string> {
     const { action } = params;
@@ -90,40 +103,108 @@ export class CronTool extends Tool {
     return `Unknown action: ${action}`;
   }
 
+  private parseRelativeTime(time: string): number | null {
+    const timeStr = time;
+    const regex = /(\d+)([smhdwMy])/g;
+    let match: RegExpExecArray | null;
+    const date = new Date();
+
+    while ((match = regex.exec(timeStr)) !== null) {
+      const value = parseInt(match[1] ?? '0', 10);
+      const unit = match[2];
+
+      switch (unit) {
+        case 's':
+          date.setSeconds(date.getSeconds() + value);
+          break;
+        case 'm':
+          date.setMinutes(date.getMinutes() + value);
+          break;
+        case 'h':
+          date.setHours(date.getHours() + value);
+          break;
+        case 'd':
+          date.setDate(date.getDate() + value);
+          break;
+        case 'w':
+          date.setDate(date.getDate() + value * 7);
+          break;
+        case 'M':
+          date.setMonth(date.getMonth() + value);
+          break;
+        case 'y':
+          date.setFullYear(date.getFullYear() + value);
+          break;
+      }
+    }
+
+    const timeMs = date.getTime();
+    if (timeMs <= Date.now()) {
+      return null;
+    }
+    return timeMs;
+  }
+
+  private parseAtTime(atTime: string): number | null {
+    const relativeTimeMs = this.parseRelativeTime(atTime);
+    if (relativeTimeMs !== null) {
+      return relativeTimeMs;
+    }
+
+    const absoluteTimeMs = new Date(atTime).getTime();
+    if (Number.isNaN(absoluteTimeMs)) {
+      return null;
+    }
+    return absoluteTimeMs;
+  }
+
   private async addJob(params: {
     message?: string;
+    kind?: string;
+    at_time?: string;
     every_seconds?: number;
     cron_expr?: string;
     tz?: string;
-    at?: string;
   }): Promise<string> {
-    const { message, every_seconds, cron_expr, tz, at } = params;
+    const { message, kind, at_time, every_seconds, cron_expr, tz } = params;
     if (!message?.trim()) {
       return 'Error: message is required for add';
     }
     if (!this.channel || !this.chatId) {
       return 'Error: no session context (channel/chat_id)';
     }
-    if (tz && !cron_expr) {
-      return 'Error: tz can only be used with cron_expr';
+    if (!kind) {
+      return 'Error: kind is required for add (must be "at", "every", or "cron")';
+    }
+    if (tz && kind !== 'cron') {
+      return 'Error: tz can only be used with kind="cron"';
     }
 
     let schedule: CronSchedule;
     let deleteAfterRun = false;
 
-    if (every_seconds != null && every_seconds > 0) {
-      schedule = { kind: 'every', everyMs: every_seconds * 1000 };
-    } else if (cron_expr) {
-      schedule = { kind: 'cron', expr: cron_expr, tz: tz ?? null };
-    } else if (at) {
-      const atMs = new Date(at).getTime();
-      if (Number.isNaN(atMs)) {
-        return `Error: invalid at datetime '${at}'`;
+    if (kind === 'at') {
+      if (!at_time) {
+        return 'Error: at_time is required for kind="at"';
+      }
+      const atMs = this.parseAtTime(at_time);
+      if (atMs === null) {
+        return `Error: invalid at_time '${at_time}'. Use relative time ("30s", "1m", "1h", "1d", "1w", "1M", "1y", "1y3m2d") or absolute datetime (ISO format: "2026-03-05T10:30:00")`;
       }
       schedule = { kind: 'at', atMs };
       deleteAfterRun = true;
+    } else if (kind === 'every') {
+      if (every_seconds == null || every_seconds <= 0) {
+        return 'Error: every_seconds is required for kind="every" and must be > 0';
+      }
+      schedule = { kind: 'every', everyMs: every_seconds * 1000 };
+    } else if (kind === 'cron') {
+      if (!cron_expr) {
+        return 'Error: cron_expr is required for kind="cron"';
+      }
+      schedule = { kind: 'cron', expr: cron_expr, tz: tz ?? null };
     } else {
-      return 'Error: one of every_seconds, cron_expr, or at is required';
+      return `Error: invalid kind '${kind}'. Must be "at", "every", or "cron"`;
     }
 
     const job = await this.cronService.addJob({
