@@ -6,7 +6,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { MessageItem } from '../components/MessageList';
-import { getSessionKey } from '@/bus/types';
+import { getSessionKey, type OutboundMessage } from '@/bus/types';
 import { SlashCommandExecutor, createAllHandlers } from '../commands';
 import { buildSlashCommandContext } from './slashCommandContext';
 import { sessionToMessageItems } from './sessionUtils';
@@ -78,37 +78,12 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
     void loadHistory();
   }, [runtime, historyLoaded]);
 
-  // 非流式：订阅 outbound，追加助手消息并恢复 idle
+  // 统一订阅：stream-text 仅流式时累积；outbound 时按模式区分：流式更新最后一条，非流式直接追加
   useEffect(() => {
-    if (!runtime || streaming) return;
-
-    const handler = (msg: { channel: string; chatId: string; content: string }) => {
-      if (msg.channel !== 'cli') return;
-      setMessages(m => [
-        ...m,
-        {
-          role: 'assistant',
-          content: msg.content,
-          model: defaultModel,
-          timestamp: new Date().toISOString(),
-        },
-      ]);
-      setInputDisabled(false);
-      setStatus('idle');
-    };
-
-    runtime.bus.on('outbound', handler);
-    return () => {
-      runtime.bus.off('outbound', handler);
-    };
-  }, [runtime, streaming, defaultModel]);
-
-  // 流式：订阅 stream-text、tool-hint、outbound（流结束）
-  useEffect(() => {
-    if (!runtime || !streaming) return;
+    if (!runtime) return;
 
     const streamTextHandler = (event: { channel: string; chatId: string; chunk: string }) => {
-      if (event.channel !== 'cli') return;
+      if (event.channel !== 'cli' || !streaming) return;
 
       setMessages(m => {
         const last = m[m.length - 1];
@@ -144,18 +119,47 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
       // 预留：在对应消息下方显示工具提示
     };
 
-    const outboundHandler = (msg: { channel: string; chatId: string; content: string }) => {
+    const outboundHandler = (msg: OutboundMessage) => {
       if (msg.channel !== 'cli') return;
+
+      const isApproval = msg.metadata?.approvalId != null;
+
+      if (isApproval) {
+        // 审核确认消息：仅追加展示，不恢复 idle，继续等待用户确认
+        setMessages(m => [
+          ...m,
+          {
+            role: 'assistant',
+            content: msg.content,
+            model: defaultModel,
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+        return;
+      }
+
+      // Agent 回复：恢复可输入并结束本轮
       setStatus('idle');
       setInputDisabled(false);
       setMessages(m => {
-        const last = m[m.length - 1];
-        if (last?.role === 'assistant' && last.isStreaming) {
-          const next = [...m];
-          next[next.length - 1] = { ...last, isStreaming: false };
-          return next;
+        if (streaming) {
+          const last = m[m.length - 1];
+          if (last?.role === 'assistant' && last.isStreaming) {
+            const next = [...m];
+            next[next.length - 1] = { ...last, isStreaming: false };
+            return next;
+          }
+          return m;
         }
-        return m;
+        return [
+          ...m,
+          {
+            role: 'assistant',
+            content: msg.content,
+            model: defaultModel,
+            timestamp: new Date().toISOString(),
+          },
+        ];
       });
     };
 

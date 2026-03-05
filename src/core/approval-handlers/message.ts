@@ -70,7 +70,12 @@ export class MessageApprovalHandler implements ApprovalHandler {
 
     // 发送确认消息给whatsapp、feishu、email 等渠道
     try {
-      await this.publisher.publishOutbound({ channel, chatId, content: message });
+      await this.publisher.publishOutbound({
+        channel,
+        chatId,
+        content: message,
+        metadata: { approvalId },
+      });
 
       logger.info({ approvalId, toolName, chatId }, 'Confirmation message sent');
     } catch (error) {

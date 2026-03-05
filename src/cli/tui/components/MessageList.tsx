@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { theme } from '../theme';
 import { MessageContent } from './MessageContent';
 import { EmptyBorder } from './Border';
@@ -21,14 +21,17 @@ type ScrollboxRefLike = { scrollToBottom?: () => void; scrollBy?: (delta: number
 export function MessageList({ messages }: MessageListProps) {
   const scrollboxRef = useRef<ScrollboxRefLike>(null);
 
-  useEffect(() => {
+  // 依赖最后一条消息的 content 长度：新消息或流式输出时都会触发滚动到底部
+  const lastContentLength = messages[messages.length - 1]?.content?.length ?? 0;
+
+  useLayoutEffect(() => {
     const scroll = scrollboxRef.current;
     if (scroll?.scrollToBottom) {
       scroll.scrollToBottom();
     } else if (typeof scroll?.scrollBy === 'function') {
       scroll.scrollBy(1e9);
     }
-  }, [messages.length]);
+  }, [messages.length, lastContentLength]);
 
   return (
     <scrollbox
