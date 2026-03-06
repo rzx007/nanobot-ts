@@ -15,7 +15,7 @@ import os from 'os';
 
 export function SetupWizard() {
   const renderer = useRenderer();
-  const { config: appConfig, setConfig, reloadConfig, navigateTo } = useAppContext();
+  const { config: appConfig, reloadConfig, navigateTo } = useAppContext();
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,8 +30,8 @@ export function SetupWizard() {
   });
 
   const [approvalEnabled, setApprovalEnabled] = useState(true);
-  const [channelsConfig, setChannelsConfig] = useState<ChannelConfig>(
-    () => getChannelsFromConfig(appConfig),
+  const [channelsConfig, setChannelsConfig] = useState<ChannelConfig>(() =>
+    getChannelsFromConfig(appConfig),
   );
 
   const handleNext = async () => {
@@ -64,59 +64,65 @@ export function SetupWizard() {
 
       const config = providerSkipped
         ? {
-          ...defaultConfig,
-          tools: {
-            ...defaultConfig.tools,
-            approval: {
-              ...defaultConfig.tools.approval,
-              enabled: approvalEnabled,
+            ...defaultConfig,
+            tools: {
+              ...defaultConfig.tools,
+              approval: {
+                ...defaultConfig.tools.approval,
+                enabled: approvalEnabled,
+              },
             },
-          },
-          channels: Object.fromEntries(
-            Object.entries(defaultConfig.channels).map(([k, ch]) => [
-              k,
-              { ...ch, enabled: channelsConfig[k]?.enabled ?? (ch as { enabled?: boolean }).enabled },
-            ]),
-          ) as Config['channels'],
-        }
+            channels: Object.fromEntries(
+              Object.entries(defaultConfig.channels).map(([k, ch]) => [
+                k,
+                {
+                  ...ch,
+                  enabled: channelsConfig[k]?.enabled ?? (ch as { enabled?: boolean }).enabled,
+                },
+              ]),
+            ) as Config['channels'],
+          }
         : {
-          ...defaultConfig,
-          providers: {
-            ...defaultConfig.providers,
-            [providerConfig.type]: {
-              apiKey: providerConfig.apiKey,
-              apiBase:
-                providerConfig.apiBase ||
-                defaultConfig.providers[providerConfig.type as keyof typeof defaultConfig.providers]
-                  ?.apiBase,
+            ...defaultConfig,
+            providers: {
+              ...defaultConfig.providers,
+              [providerConfig.type]: {
+                apiKey: providerConfig.apiKey,
+                apiBase:
+                  providerConfig.apiBase ||
+                  defaultConfig.providers[
+                    providerConfig.type as keyof typeof defaultConfig.providers
+                  ]?.apiBase,
+              },
             },
-          },
-          agents: {
-            defaults: {
-              ...defaultConfig.agents.defaults,
-              model: `${providerConfig.type}:${providerConfig.model || defaultConfig.agents.defaults.model}`,
+            agents: {
+              defaults: {
+                ...defaultConfig.agents.defaults,
+                model: `${providerConfig.type}:${providerConfig.model || defaultConfig.agents.defaults.model}`,
+              },
             },
-          },
-          tools: {
-            ...defaultConfig.tools,
-            approval: {
-              ...defaultConfig.tools.approval,
-              enabled: approvalEnabled,
+            tools: {
+              ...defaultConfig.tools,
+              approval: {
+                ...defaultConfig.tools.approval,
+                enabled: approvalEnabled,
+              },
             },
-          },
-          channels: Object.fromEntries(
-            Object.entries(defaultConfig.channels).map(([k, ch]) => [
-              k,
-              { ...ch, enabled: channelsConfig[k]?.enabled ?? (ch as { enabled?: boolean }).enabled },
-            ]),
-          ) as Config['channels'],
-        };
+            channels: Object.fromEntries(
+              Object.entries(defaultConfig.channels).map(([k, ch]) => [
+                k,
+                {
+                  ...ch,
+                  enabled: channelsConfig[k]?.enabled ?? (ch as { enabled?: boolean }).enabled,
+                },
+              ]),
+            ) as Config['channels'],
+          };
 
       const configPath = path.join(os.homedir(), '.nanobot', 'config.json');
 
       await saveConfig(config, configPath);
 
-      setConfig(config);
       await reloadConfig();
       navigateTo('home');
     } catch (err) {
@@ -154,10 +160,7 @@ export function SetupWizard() {
   });
 
   return (
-    <Layout
-      title="配置向导"
-      footer={error ? <text fg={theme.error}>{error}</text> : undefined}
-    >
+    <Layout title="配置向导" footer={error ? <text fg={theme.error}>{error}</text> : undefined}>
       {loading ? (
         <box flexGrow={1} justifyContent="center" alignItems="center">
           <text fg={theme.textMuted}>保存配置中...</text>

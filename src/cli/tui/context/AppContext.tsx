@@ -4,6 +4,7 @@ import { loadConfig } from '@/config/loader';
 import { ChannelManager, CLIChannel } from '@/channels';
 import { buildAgentRuntime, type AgentRuntime } from '@/cli/setup';
 import { logger } from '@/utils';
+import { initializeWorkspace } from '@/cli/lib/init';
 import { useSelfCheck } from '../hooks';
 import type { SelfCheckResult } from '../setup/types';
 import type { CliRenderer } from '@opentui/core';
@@ -102,6 +103,14 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
         const loaded = await loadConfig();
         if (cancelled) return;
         if (!loaded) {
+          // 配置不存在，先执行文件系统初始化
+          const tuiLogger = {
+            info: (msg: string) => logger.info(msg),
+            success: (msg: string) => logger.info(msg),
+            error: (msg: string) => logger.error(msg),
+          };
+          await initializeWorkspace({ logger: tuiLogger });
+
           setConfig(null);
           setConfigLoaded(true);
           navigateTo('setup');

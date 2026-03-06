@@ -10,7 +10,7 @@
   "scripts": {
     "build": "bun run bun.config.ts",
     "build:binary": "bun build ./src/cli/run.ts --compile --outfile nanobot",
-    "dev": "bun --watch src/cli/run.ts",
+    "dev": "NODE_ENV=development bun --watch src/cli/run.ts",
     "start": "bun dist/cli/run.js",
     "test": "vitest run",
     "test:watch": "vitest --watch",
