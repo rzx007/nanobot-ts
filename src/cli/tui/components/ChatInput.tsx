@@ -1,17 +1,17 @@
 import { useState, useImperativeHandle, forwardRef, useRef, useMemo, useEffect } from 'react';
 import { useKeyboard } from '@opentui/react';
-import "opentui-spinner/react"
+import type { TextareaRenderable } from '@opentui/core';
+import 'opentui-spinner/react';
 import { theme } from '../theme';
 import { EmptyBorder } from './Border';
 import { loadConfig } from '@/config/loader';
 import { SlashCommandPopover, type SlashCommandOption } from './SlashCommandPopover';
 import { createColors, createFrames } from './spinner';
 
-/** opentui textarea 实例：与 opencode 一致用 ref + onContentChange 非受控 */
-type TextareaRef = { plainText: string; clear(): void };
+/** 使用 opentui 的 TextareaRenderable 类型 */
+type TextareaRef = TextareaRenderable;
 
-
-/** 与 opencode textarea-keybindings 一致：Enter 提交，Shift+Enter / Meta+Enter 换行 */
+/**Enter 提交，Shift+Enter / Meta+Enter 换行 */
 const CHAT_TEXTAREA_KEYBINDINGS = [
   { name: 'return', action: 'submit' as const },
   { name: 'return', shift: true, action: 'newline' as const },
@@ -20,7 +20,9 @@ const CHAT_TEXTAREA_KEYBINDINGS = [
 
 export interface ChatInputHandle {
   getValue: () => string;
+  insertText: (text: string) => void;
   submit: () => void;
+  clear: () => void;
 }
 
 interface ChatInputProps {
@@ -33,14 +35,21 @@ interface ChatInputProps {
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-  { onSubmit, disabled = false, placeholder = 'Ask anything...', onSlashCommand, status = 'idle', slashCommands },
+  {
+    onSubmit,
+    disabled = false,
+    placeholder = 'Ask anything...',
+    onSlashCommand,
+    status = 'idle',
+    slashCommands,
+  },
   ref,
 ) {
   const [currentModel, setCurrentModel] = useState<string>('');
   const [value, setValue] = useState('');
   const textareaRef = useRef<TextareaRef | null>(null);
 
-  const slashOpen = value === '/' || value.startsWith('/');
+  const slashOpen = (value === '/' || value.startsWith('/')) && !value.includes(' ');
   const searchQuery = slashOpen && value.length > 1 ? value.slice(1) : '';
   const filtered = useMemo(() => {
     if (!slashOpen) return [];
@@ -76,6 +85,10 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     ref,
     () => ({
       getValue: () => textareaRef.current?.plainText ?? value,
+      insertText: (text: string) => {
+        textareaRef.current?.insertText(text);
+        setValue(text);
+      },
       submit: handleSubmit,
       clear: () => {
         textareaRef.current?.clear();
@@ -104,25 +117,24 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     return theme.primary;
   }, []);
 
-
   const spinnerDef = useMemo(() => {
     const color = theme.primary;
     return {
       frames: createFrames({
         color,
-        style: "blocks",
+        style: 'blocks',
         inactiveFactor: 0.6,
         // enableFading: false,
         minAlpha: 0.3,
       }),
       color: createColors({
         color,
-        style: "blocks",
+        style: 'blocks',
         inactiveFactor: 0.6,
         // enableFading: false,
         minAlpha: 0.3,
       }),
-    }
+    };
   }, []);
 
   return (
@@ -200,8 +212,15 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         </box>
       </box>
       <box flexDirection="row" justifyContent="space-between" paddingTop={1}>
-        <box flexDirection="row"><spinner color={spinnerDef.color} frames={spinnerDef.frames} interval={40} visible={status === 'responding'} /></box>
-        <box flexDirection="row" >
+        <box flexDirection="row">
+          <spinner
+            color={spinnerDef.color}
+            frames={spinnerDef.frames}
+            interval={40}
+            visible={status === 'responding'}
+          />
+        </box>
+        <box flexDirection="row">
           <text fg={theme.textMuted}>
             <span fg={theme.warn}>Ctrl+P</span> commands
           </text>

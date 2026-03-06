@@ -14,6 +14,7 @@ import type { AgentRuntime } from '@/cli/setup';
 import type { Config } from '@/config/schema';
 import type { ViewMode } from '../context';
 import type { DialogContextValue } from '../components/Dialog';
+import type { ChatInputHandle } from '../components/ChatInput';
 
 export interface UseGatewayChatParams {
   runtime: AgentRuntime | null;
@@ -23,6 +24,7 @@ export interface UseGatewayChatParams {
   clearPendingPrompt: () => void;
   navigateTo: (view: ViewMode) => void;
   dialog: DialogContextValue;
+  chatInputRef: React.RefObject<ChatInputHandle | null>;
 }
 
 export interface UseGatewayChatResult {
@@ -46,6 +48,7 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
     clearPendingPrompt,
     navigateTo,
     dialog,
+    chatInputRef,
   } = params;
 
   const [messages, setMessages] = useState<MessageItem[]>([]);
@@ -199,14 +202,31 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
 
   const handleSend = async (content: string) => {
     if (!runtime) return;
+
+    const skillRegex = /^\/([a-zA-Z0-9_-]+)\s+(.*)$/;
+    const match = content.match(skillRegex);
+
+    let processedContent = content;
+    if (match) {
+      const skillName = match[1];
+      const userMessage = match[2];
+      if (skillName) {
+        const skill = runtime.skills.getSkill(skillName);
+
+        if (skill) {
+          processedContent = `## Skill: ${skill.name}\n\n${skill.content}\n\n---\n\n${userMessage}`;
+        }
+      }
+    }
+
     setStatus('responding');
-    setMessages(m => [...m, { role: 'user', content }]);
+    setMessages(m => [...m, { role: 'user', content: processedContent }]);
     setInputDisabled(true);
     await runtime.bus.publishInbound({
       channel: 'cli',
       senderId: 'user',
       chatId: 'direct',
-      content,
+      content: processedContent,
       timestamp: new Date(),
     });
   };
@@ -219,6 +239,7 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
       setMessages,
       dialog,
       defaultModel,
+      chatInputRef,
     });
     const executed = await slashExecutor.execute(commandId, context);
     if (!executed) {
@@ -227,8 +248,7 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
   };
 
   const loading = !configLoaded;
-  const error =
-    configLoaded && !config ? 'No config found. Run "nanobot init" first.' : null;
+  const error = configLoaded && !config ? 'No config found. Run "nanobot init" first.' : null;
 
   return {
     messages,

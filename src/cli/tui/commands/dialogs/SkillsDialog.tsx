@@ -6,50 +6,32 @@ import { theme } from '../../theme';
 
 /**
  * 技能查看 Dialog
- * 显示已安装的技能及其状态
+ * 显示已安装的技能，支持选择
  */
-export function SkillsDialog({
-  skills,
-  onToggleSkill,
-  onViewDetails,
-  onUseSkill,
-  onRefresh,
-}: SkillsDialogProps) {
+export function SkillsDialog({ skills, onSelectSkill, onRefresh }: SkillsDialogProps) {
   const dialog = useDialog();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  // 切换技能启用状态
-  const toggleSkill = (index: number) => {
+  const selectSkill = (index: number) => {
+    if (!skills || skills.length === 0) return;
+
     const skill = skills[index];
     if (!skill) return;
-    const newState = !skill.enabled;
-    onToggleSkill(skill.id, newState);
-  };
 
-  // 查看技能详情
-  const viewDetails = () => {
-    const skill = skills[selectedIndex];
-    if (skill && onViewDetails) {
-      onViewDetails(skill.id);
+    try {
+      onSelectSkill(skill.id);
+      dialog.clear();
+    } catch (error) {
+      console.error('Error selecting skill:', error);
     }
   };
 
-  // 使用技能
-  const useSkill = () => {
-    const skill = skills[selectedIndex];
-    if (skill && onUseSkill) {
-      onUseSkill(skill.id);
-    }
-  };
-
-  // 刷新技能列表
   const refresh = () => {
     if (onRefresh) {
       onRefresh();
     }
   };
 
-  // 键盘导航
   useKeyboard(evt => {
     if (evt.name === 'up' || (evt.ctrl && evt.name === 'p')) {
       setSelectedIndex(i => Math.max(0, i - 1));
@@ -61,28 +43,20 @@ export function SkillsDialog({
       evt.preventDefault();
       return;
     }
-    if (evt.name === 'space') {
-      evt.preventDefault();
-      toggleSkill(selectedIndex);
-      return;
-    }
     if (evt.name === 'return') {
       evt.preventDefault();
-      if (evt.shift && onUseSkill) {
-        useSkill();
-      } else if (onViewDetails) {
-        viewDetails();
-      }
+      evt.stopPropagation();
+      selectSkill(selectedIndex);
       return;
     }
     if (evt.name === 'r' && onRefresh) {
       evt.preventDefault();
+      evt.stopPropagation();
       refresh();
       return;
     }
   });
 
-  const enabledCount = skills.filter(s => s.enabled).length;
   const totalCount = skills.length;
 
   return (
@@ -99,9 +73,7 @@ export function SkillsDialog({
 
       {/* Skills List */}
       <box paddingLeft={2} paddingRight={2}>
-        <text fg="#e94560">
-          Installed Skills ({enabledCount}/{totalCount})
-        </text>
+        <text fg="#e94560">Installed Skills ({totalCount})</text>
       </box>
 
       {skills.length === 0 ? (
@@ -117,12 +89,11 @@ export function SkillsDialog({
             <box
               key={skill.id}
               flexDirection="row"
-
               backgroundColor={index === selectedIndex ? theme.success : 'transparent'}
               onMouseDown={() => setSelectedIndex(index)}
               onMouseUp={evt => {
                 evt.stopPropagation();
-                toggleSkill(index);
+                selectSkill(index);
               }}
             >
               <text>
@@ -130,30 +101,15 @@ export function SkillsDialog({
                 {skill.id}
                 {skill.version ? ` (${skill.version})` : ''}
               </text>
-              <text fg={skill.enabled ? '#00ff00' : '#ff0000'}>
-                {' - '}
-                {skill.enabled ? 'Active' : 'Inactive'}
-              </text>
             </box>
           ))}
-          {/* {skills.map(skill => (
-            <box key={`desc-${skill.id}`} paddingLeft={6} paddingBottom={0.5}>
-              <text fg="#a0a0a0">{skill.description}</text>
-            </box>
-          ))} */}
         </box>
       )}
 
       {/* Footer */}
       {skills.length > 0 && (
         <box paddingLeft={2} paddingRight={2}>
-          <text fg="#a0a0a0">
-            ↑↓ Navigate {onViewDetails && '• Enter Details • '}
-            {onUseSkill && '• Shift+Enter Use • '}
-            Space Toggle
-            {onRefresh && ' • R Refresh'}
-            {' • Esc Close'}
-          </text>
+          <text fg="#a0a0a0">↑↓ Navigate • Enter Select • R Refresh • Esc Close</text>
         </box>
       )}
     </box>

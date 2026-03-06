@@ -19,7 +19,7 @@ export class ExecTool extends Tool {
 
   description = '执行 Shell 命令';
 
-  riskLevel = RiskLevel.HIGH;
+  riskLevel = RiskLevel.LOW;
 
   /** 配置 */
   private config: Config;

@@ -85,10 +85,10 @@ Your workspace is at: ${ws}
 - History log: ${ws}/memory/HISTORY.md (grep-searchable)
 - Custom skills: ${ws}/skills/{skill-name}/SKILL.md
 
-Reply directly with text for conversations. Only use the 'message' tool to send to a specific chat channel.
+Reply directly with text for conversations. Only use 'message' tool to send to a specific chat channel.
 
 ## Tool Call Guidelines
-- Before calling tools, you may briefly state your intent, but NEVER predict or describe the expected result before receiving it.
+- Before calling tools, you may briefly state your intent, but NEVER predict or describe expected result before receiving it.
 - Before modifying a file, read it first to confirm its current content.
 - Do not assume a file or directory exists — use list_dir or read_file to verify.
 - After writing or editing a file, re-read it if accuracy matters.
@@ -152,7 +152,7 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
 
     // 4. 常驻技能 (完整内容)
     if (options.alwaysSkills && options.alwaysSkills.length > 0) {
-      parts.push('# Active Skills');
+      parts.push('# Always Skills');
       for (const skill of options.alwaysSkills) {
         parts.push(`\n### Skill: ${skill.name}\n\n${skill.content}`);
       }
@@ -162,7 +162,7 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
     if (options.skillsSummary) {
       parts.push(`# Skills
 
-The following skills extend your capabilities. To use a skill, read its SKILL.md file using the read_file tool.
+The following skills extend your capabilities. To use a skill, read its SKILL.md file using read_file tool.
 
 ${options.skillsSummary}`);
     }

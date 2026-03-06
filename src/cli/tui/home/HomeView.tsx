@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { useAppContext } from '../context';
-import { ChatInput } from '../components/ChatInput';
+import { ChatInput, type ChatInputHandle } from '../components/ChatInput';
 import { Layout } from '../components/Layout';
 import { Logo } from '../components/Logo';
 import { useDialog } from '../components/Dialog';
@@ -26,7 +26,7 @@ export function HomeView() {
   const { navigateTo, config, runtime } = useAppContext();
   const [loading, setLoading] = useState(true);
   const [tip] = useState(() => getRandomTip());
-  const chatInputRef = useRef<{ submit: () => void; clear: () => void; getValue: () => string }>(null);
+  const chatInputRef = useRef<ChatInputHandle | null>(null);
   const dialog = useDialog();
 
   // 创建 Slash 命令执行器并获取命令列表
@@ -46,10 +46,30 @@ export function HomeView() {
     })();
   }, []);
 
-
   const handleSubmit = (text: string) => {
     if (!text.trim()) return;
-    navigateTo('gateway', text);
+
+    let contentToNavigate = text;
+
+    // 处理 /技能名称 语法
+    const skillRegex = /^\/([a-zA-Z0-9_-]+)\s+(.*)$/;
+    const match = text.match(skillRegex);
+
+    if (match && runtime?.skills) {
+      const skillName = match[1];
+      const userMessage = match[2];
+      if (skillName) {
+        const skill = runtime.skills.getSkill(skillName);
+
+        if (skill) {
+          // 构建包含技能内容的消息
+          contentToNavigate = `## Skill: ${skill.name}\n\n${skill.content}\n\n---\n\n${userMessage}`;
+        }
+      }
+    }
+
+    // 导航到 gateway
+    navigateTo('gateway', contentToNavigate as string);
     // 清空输入框
     setTimeout(() => {
       chatInputRef.current?.clear();
@@ -86,6 +106,7 @@ export function HomeView() {
       closeDialog: () => {
         dialog.clear();
       },
+      chatInputRef: chatInputRef,
     };
 
     // 执行命令

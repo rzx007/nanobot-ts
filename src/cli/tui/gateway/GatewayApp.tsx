@@ -2,14 +2,16 @@ import { useAppContext } from '../context';
 import { useDialog } from '../components/Dialog';
 import { Layout } from '../components/Layout';
 import { ChatMessages } from '../components/ChatMessages';
-import { ChatInput } from '../components/ChatInput';
+import { ChatInput, type ChatInputHandle } from '../components/ChatInput';
 import { theme } from '../theme';
 import { useGatewayChat } from './useGatewayChat';
+import { useRef } from 'react';
 
 export function GatewayApp() {
   const { configLoaded, config, runtime, pendingPrompt, clearPendingPrompt, navigateTo } =
     useAppContext();
   const dialog = useDialog();
+  const chatInputRef = useRef<ChatInputHandle | null>(null);
 
   const {
     messages,
@@ -28,6 +30,7 @@ export function GatewayApp() {
     clearPendingPrompt,
     navigateTo,
     dialog,
+    chatInputRef,
   });
 
   if (loading && messages.length === 0) {
@@ -54,6 +57,7 @@ export function GatewayApp() {
         </box>
         <box paddingTop={1} flexShrink={0} width="100%">
           <ChatInput
+            ref={chatInputRef}
             status={status}
             onSubmit={handleSend}
             disabled={inputDisabled}

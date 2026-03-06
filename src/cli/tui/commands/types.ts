@@ -3,6 +3,7 @@ import type { ViewMode } from '../context';
 import type { Config } from '@/config/schema';
 import type { AgentRuntime } from '@/cli/setup';
 import type { ReactNode } from 'react';
+import type { ChatInputHandle } from '../components/ChatInput';
 
 /**
  * Slash 命令分类
@@ -43,6 +44,9 @@ export interface SlashCommandContext {
 
   /** 关闭所有 Dialogs */
   closeDialog: () => void;
+
+  /** ChatInput 引用，用于插入文本 */
+  chatInputRef: React.RefObject<ChatInputHandle | null> | null;
 }
 
 /**

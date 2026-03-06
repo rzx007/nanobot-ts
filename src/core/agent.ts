@@ -248,6 +248,7 @@ export class AgentLoop {
       alwaysSkills: this.skills?.getAlwaysSkills() ?? [],
     };
     if (this.skills) {
+      // 构建技能摘要
       const summary = this.skills.buildSkillsSummary();
       if (summary) buildOpts.skillsSummary = summary;
     }
@@ -258,17 +259,17 @@ export class AgentLoop {
     const messages: Array<{
       role: string;
       content:
-      | string
-      | Array<{ type: 'tool-result'; toolCallId: string; toolName: string; output: string }>;
+        | string
+        | Array<{ type: 'tool-result'; toolCallId: string; toolName: string; output: string }>;
     }> = [
-        ...ContextBuilder.buildMessages({
-          systemPrompt,
-          history,
-          currentMessage: content,
-          channel,
-          chatId,
-        }),
-      ];
+      ...ContextBuilder.buildMessages({
+        systemPrompt,
+        history,
+        currentMessage: content,
+        channel,
+        chatId,
+      }),
+    ];
 
     // 获取工具定义，由 SDK 自动执行工具（executeTool + maxSteps）
     const tools = this.tools.getDefinitions();
@@ -315,7 +316,6 @@ export class AgentLoop {
 
     // 根据是否需要流式选择调用方式
     const isStreamResponse = this.config.agents.defaults.streaming ?? true;
-    console.log("🚀 ~ AgentLoop ~ _processMessage ~ isStreamResponse:", isStreamResponse)
     const llmResponse = isStreamResponse
       ? await this.provider.streamChat(commonParams as Parameters<LLMProvider['streamChat']>[0])
       : await this.provider.chat(commonParams);

@@ -36,7 +36,3 @@ export {
   createMcpDialog,
   createSkillsDialog,
 } from './creators';
-
-// 技能相关对话框
-export { createSkillSelectDialog } from './SkillSelectDialog';
-export { createSkillFindDialog } from './SkillFindDialog';

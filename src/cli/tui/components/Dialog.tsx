@@ -104,6 +104,7 @@ export function DialogProvider(props: DialogProviderProps) {
   const value = {
     stack,
     clear: () => {
+      // 清空 stack 并恢复焦点
       for (const item of stack) {
         if (item.onClose) item.onClose();
       }
@@ -114,6 +115,7 @@ export function DialogProvider(props: DialogProviderProps) {
       }
     },
     replace: (element: ReactNode, onClose?: () => void) => {
+      // 先按顺序调用所有已有项的 onClose，再把 stack 设成只包含新弹窗的数组。
       if (stack.length === 0) {
         focusRef.current = renderer.currentFocusedRenderable;
         focusRef.current?.blur();

@@ -101,7 +101,7 @@ abstract class BrowserTool extends Tool {
       }
 
       const result = await execa(args[0] ?? 'agent-browser', args.slice(1), execaOptions);
-
+      logger.info("🪼🪼🪼 BrowserTool ~ executeCommand ~ result:", JSON.stringify(result, null, 2))
       if (result.exitCode !== 0) {
         const stderr = result.stderr || 'Unknown error';
         return `Error: Browser command failed (exit code ${result.exitCode}): ${stderr}`;
@@ -287,6 +287,10 @@ export class BrowserOpenTool extends BrowserTool {
       ...args,
     ];
     const result = await this.executeCommand(commandArgs);
+
+    if (result.startsWith('Error:')) {
+      return `打开浏览器失败（${url}）：${result}\n可能原因：未安装 agent-browser、Chrome/Chromium 未安装或路径不可用、网络或目标地址不可达。请检查环境后重试。`;
+    }
 
     let finalResult = result;
     let waitResult = '';

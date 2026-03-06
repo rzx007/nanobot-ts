@@ -90,7 +90,6 @@ export function SlashCommandPopover({ options, onSelect, onClose, searchQuery = 
 
   if (options.length === 0) return null;
 
-
   return (
     <box
       width="100%"

@@ -10,6 +10,7 @@ import type { Config } from '@/config/schema';
 import type { AgentRuntime } from '@/cli/setup';
 import type { ViewMode } from '../context';
 import type { DialogContextValue } from '../components/Dialog';
+import type { ChatInputHandle } from '../components/ChatInput';
 
 export interface BuildSlashCommandContextParams {
   runtime: AgentRuntime | null;
@@ -18,12 +19,21 @@ export interface BuildSlashCommandContextParams {
   setMessages: React.Dispatch<React.SetStateAction<MessageItem[]>>;
   dialog: DialogContextValue;
   defaultModel?: string;
+  chatInputRef: React.RefObject<ChatInputHandle | null>;
 }
 
 export function buildSlashCommandContext(
   params: BuildSlashCommandContextParams,
 ): SlashCommandContext {
-  const { runtime, config, navigateTo, setMessages, dialog, defaultModel = '' } = params;
+  const {
+    runtime,
+    config,
+    navigateTo,
+    setMessages,
+    dialog,
+    defaultModel = '',
+    chatInputRef,
+  } = params;
 
   return {
     runtime,
@@ -60,5 +70,6 @@ export function buildSlashCommandContext(
     closeDialog: () => {
       dialog.clear();
     },
+    chatInputRef: chatInputRef ?? null,
   };
 }

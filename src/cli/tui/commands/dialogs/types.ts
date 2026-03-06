@@ -71,8 +71,6 @@ export interface SkillInfo {
   name: string;
   /** 技能描述 */
   description: string;
-  /** 是否启用 */
-  enabled: boolean;
   /** 技能版本（可选） */
   version?: string;
   /** 技能作者（可选） */
@@ -135,14 +133,10 @@ export interface McpDialogProps {
 export interface SkillsDialogProps {
   /** 技能列表 */
   skills: SkillInfo[];
-  /** 切换技能启用状态回调 */
-  onToggleSkill: (skillId: string, enabled: boolean) => void;
-  /** 查看技能详情回调（可选） */
-  onViewDetails?: (skillId: string) => void;
-  /** 使用技能回调（可选） */
-  onUseSkill?: (skillId: string) => void;
+  /** 选中技能回调 */
+  onSelectSkill: (skillId: string) => void;
   /** 刷新技能列表回调（可选） */
-  onRefresh?: () => void;
+  onRefresh?: (() => void) | (() => Promise<void>) | undefined;
   /** 关闭回调 */
   onClose?: () => void;
 }
@@ -189,9 +183,7 @@ export interface CreateMcpDialogParams {
  */
 export interface CreateSkillsDialogParams {
   skills: SkillInfo[];
-  onToggleSkill: (skillId: string, enabled: boolean) => void;
-  onViewDetails?: (skillId: string) => void;
-  onUseSkill?: (skillId: string) => void;
+  onSelectSkill: (skillId: string) => void;
   onRefresh?: () => void;
 }
 
