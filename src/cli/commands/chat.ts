@@ -5,6 +5,7 @@
 import { Command } from 'commander';
 import { error, info } from '../ui';
 import { requireConfig, buildAgentRuntime } from '../setup';
+import { logger } from '@/utils/logger';
 
 export function registerChatCommand(program: Command): void {
   program
@@ -19,20 +20,45 @@ export function registerChatCommand(program: Command): void {
 async function runChat(promptArg: string | undefined, interactive?: boolean): Promise<void> {
   const config = await requireConfig();
   const runtime = await buildAgentRuntime(config);
-  const { agent } = runtime;
+  const { agent, bus } = runtime;
 
   if (interactive) {
     info('Interactive chat. Type /exit to quit.');
     const readline = await import('readline');
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
+    // 注册进程退出钩子
+    const onExit = async (signal?: string): Promise<void> => {
+      logger.info({ signal }, 'Process exit hook triggered');
+      await runtime.subagentManager?.shutdown();
+      logger.info('Chat shutdown complete');
+    };
+
+    process.on('exit', (code: number) => {
+      void onExit(`exit(${code})`);
+    });
+
+    process.on('SIGINT', async () => {
+      logger.info('SIGINT received');
+      await onExit('SIGINT');
+      rl.close();
+      process.exit(0);
+    });
+
+    process.on('SIGTERM', async () => {
+      logger.info('SIGTERM received');
+      await onExit('SIGTERM');
+      rl.close();
+      process.exit(0);
+    });
+
     // 订阅流式文本和工具提示事件
-    runtime.bus.on('stream-text', event => {
+    bus.on('stream-text', event => {
       if (event.channel === 'cli') {
         process.stdout.write(event.chunk);
       }
     });
-    runtime.bus.on('tool-hint', event => {
+    bus.on('tool-hint', event => {
       if (event.channel === 'cli') {
         process.stdout.write(`\n  [tools: ${event.content}]\n`);
       }
@@ -46,6 +72,7 @@ async function runChat(promptArg: string | undefined, interactive?: boolean): Pr
           return;
         }
         if (content === '/exit' || content === '/quit') {
+          await onExit('/exit');
           rl.close();
           process.exit(0);
         }
@@ -87,7 +114,7 @@ async function runChat(promptArg: string | undefined, interactive?: boolean): Pr
   };
 
   // 订阅流式文本事件
-  runtime.bus.on('stream-text', event => {
+  bus.on('stream-text', event => {
     if (event.channel === 'cli') {
       process.stdout.write(event.chunk);
     }

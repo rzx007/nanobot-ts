@@ -21,7 +21,6 @@ export function registerGatewayCommand(program: Command): void {
 async function runGateway(): Promise<void> {
   const config = await requireConfig();
   const runtime = await buildAgentRuntime(config);
-
   const { bus, agent, config: cfg } = runtime;
   const channelManager = new ChannelManager(cfg, bus);
   channelManager.registerChannel('cli', new CLIChannel({}, bus));
@@ -32,6 +31,30 @@ async function runGateway(): Promise<void> {
 
   agent.run().catch(err => {
     logger.error({ err }, 'Agent loop error');
+  });
+
+  // 注册进程退出钩子
+  const onExit = async (signal?: string): Promise<void> => {
+    logger.info({ signal }, 'Process exit hook triggered');
+    await channelManager.stop();
+    await runtime.subagentManager?.shutdown();
+    logger.info('Gateway shutdown complete');
+  };
+
+  process.on('exit', (code: number) => {
+    void onExit(`exit(${code})`);
+  });
+
+  process.on('SIGINT', async () => {
+    logger.info('SIGINT received');
+    await onExit('SIGINT');
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', async () => {
+    logger.info('SIGTERM received');
+    await onExit('SIGTERM');
+    process.exit(0);
   });
 
   info('Gateway started (agent running). Type a message and press Enter. Ctrl+C to exit.');
@@ -48,7 +71,7 @@ async function runGateway(): Promise<void> {
         return;
       }
       if (content === '/exit' || content === '/quit') {
-        channelManager.stop();
+        await onExit('/exit');
         rl.close();
         process.exit(0);
       }

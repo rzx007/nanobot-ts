@@ -641,6 +641,24 @@ nanobot-ts/
 └── package.json
 ```
 
+```
+消息总线 (MessageBus)
+    ↓
+AgentLoop (自定义主循环)
+    ├── Provider (AI SDK 的 chat/streamChat)
+    ├── ToolRegistry (自定义工具管理)
+    ├── SessionManager (会话管理)
+    ├── MemoryConsolidator (长期记忆)
+    └── SkillLoader (技能加载)
+    ↓
+SubagentManager (子代理管理)
+    ├── BunQueue (任务队列)
+    ├── SubagentWorker (执行器)
+    └── 双模式 (embedded/isolated)
+
+```
+
+
 ## 📚 Documentation
 
 - [Gateway Flow Documentation](docs/GATEWAY_FLOW.md) - Detailed message flow diagrams

@@ -6,6 +6,7 @@
 
 import { Queue, Worker } from 'bunqueue/client';
 import type { SubagentTask, SubagentResult, SubagentManagerConfig, SubagentMode } from './types';
+import { TaskStatus } from './types';
 import { SubagentWorker } from './worker';
 import { logger } from '../../utils/logger';
 import { existsSync, mkdirSync } from 'fs';
@@ -21,11 +22,17 @@ export class SubagentManager {
   private taskWorker: Worker<SubagentTask, SubagentResult> | null = null;
   private resultWorker: Worker<SubagentResult, void> | null = null;
   private runningTasks: Map<string, Promise<void>> = new Map();
-  private workerProcesses: Array<{ pid: number; onExit: () => void }> = [];
+  private workerProcesses: Array<{ pid: number; onExit: () => void; restartCount: number }> = [];
+  private abortControllers: Map<string, AbortController> = new Map();
+  private maxRestarts: number;
+  private taskStatus: Map<string, TaskStatus> = new Map();
+  private taskMetrics: Map<string, { createdAt?: Date; startedAt?: Date; completedAt?: Date }> =
+    new Map();
 
   constructor(managerConfig: SubagentManagerConfig) {
     this.config = managerConfig;
     this.mode = managerConfig.config.subagent.mode;
+    this.maxRestarts = managerConfig.config.subagent.maxWorkerRestarts ?? 3;
   }
 
   /**
@@ -56,6 +63,9 @@ export class SubagentManager {
 
     process.env.DATA_PATH = dataPath;
 
+    // 检查队列状态，显示待处理的任务
+    await this.logQueueStatus();
+
     // 根据不同模式进行初始化
     if (this.mode === 'embedded') {
       await this.initializeEmbeddedMode();
@@ -66,6 +76,52 @@ export class SubagentManager {
     }
 
     logger.info('Subagent manager initialized successfully');
+  }
+
+  /**
+   * 检查并记录队列状态
+   */
+  private async logQueueStatus(): Promise<void> {
+    try {
+      const waiting = this.taskQueue!.getWaiting();
+      const delayed = this.taskQueue!.getDelayed();
+      const active = this.taskQueue!.getActive();
+      const completed = this.taskQueue!.getCompleted();
+      const failed = this.taskQueue!.getFailed();
+
+      const total = waiting.length + delayed.length + active.length;
+      if (total > 0) {
+        logger.info(
+          {
+            waiting: waiting.length,
+            delayed: delayed.length,
+            active: active.length,
+            completed: completed.length,
+            failed: failed.length,
+          },
+          '📋 Subagent queue status',
+        );
+
+        // 打印待处理的任务
+        const allPending = [...waiting, ...delayed, ...active];
+        for (const job of allPending) {
+          const data = job.data as SubagentTask;
+          logger.info(
+            {
+              jobId: job.id,
+              taskId: data.taskId,
+              task: data.task?.substring(0, 50),
+              state: job.data?.status || 'unknown',
+            },
+            `  → Task: ${data.task?.substring(0, 50)}...`,
+          );
+        }
+      } else {
+        logger.info('📋 Subagent queue is empty');
+      }
+    } catch (error) {
+      logger.warn({ error }, 'Failed to log queue status');
+    }
   }
 
   /**
@@ -176,13 +232,33 @@ export class SubagentManager {
       // 定义子进程退出时的处理逻辑
       const onExit = () => {
         logger.warn({ workerId, pid }, 'Worker process exited');
+
+        // 查找该 worker 的重启计数
+        const wp = this.workerProcesses.find(w => w.pid === pid);
+        if (!wp) return;
+
+        wp.restartCount++;
+
+        // 检查是否超过最大重启次数
+        if (wp.restartCount >= this.maxRestarts) {
+          logger.error(
+            { workerId, restartCount: wp.restartCount, maxRestarts: this.maxRestarts },
+            '🚨 Worker process exceeded max restarts, stopping auto-restart',
+          );
+          return;
+        }
+
+        // 延迟重启
         setTimeout(() => {
-          logger.info({ workerId }, 'Restarting worker process');
+          logger.info(
+            { workerId, restartCount: wp.restartCount, maxRestarts: this.maxRestarts },
+            '🔄 Restarting worker process',
+          );
           void this.startWorkerProcess(workerId);
         }, 5000);
       };
 
-      this.workerProcesses.push({ pid, onExit });
+      this.workerProcesses.push({ pid, onExit, restartCount: 0 });
 
       child.on('exit', onExit);
     } catch (error) {
@@ -230,6 +306,10 @@ export class SubagentManager {
     const taskId = generateTaskId();
     const label = options?.label ?? task.substring(0, 30) + (task.length > 30 ? '...' : '');
 
+    // 创建 AbortController 用于取消任务
+    const abortController = new AbortController();
+    this.abortControllers.set(taskId, abortController);
+
     // 创建任务数据对象
     const taskData: SubagentTask = {
       taskId,
@@ -240,7 +320,12 @@ export class SubagentManager {
       sessionKey: options?.sessionKey ?? 'cli:direct',
       status: 'pending',
       createdAt: new Date(),
+      abortSignal: abortController.signal,
     };
+
+    // 跟踪任务状态
+    this.taskStatus.set(taskId, TaskStatus.PENDING);
+    this.taskMetrics.set(taskId, { createdAt: new Date() });
 
     // 将任务添加到队列中
     await this.taskQueue!.add(taskId, taskData);
@@ -259,15 +344,23 @@ export class SubagentManager {
    * @returns Promise<string> - 返回操作结果的描述信息
    */
   async cancel(taskId: string): Promise<string> {
-    // 检查任务是否在运行中
-    const taskPromise = this.runningTasks.get(taskId);
+    // 查找 AbortController
+    const controller = this.abortControllers.get(taskId);
 
-    if (!taskPromise) {
-      return `No running task found with ID: ${taskId}`;
+    if (!controller) {
+      // 检查任务是否在运行中
+      const taskPromise = this.runningTasks.get(taskId);
+      if (!taskPromise) {
+        return `No running task found with ID: ${taskId}`;
+      }
+      // 没有 AbortController 的旧任务，只从队列中移除
+      this.runningTasks.delete(taskId);
+    } else {
+      // 发送取消信号
+      controller.abort();
+      this.abortControllers.delete(taskId);
+      logger.info({ taskId }, '🤖 Abort signal sent for task');
     }
-
-    // 从运行任务列表中删除该任务
-    this.runningTasks.delete(taskId);
 
     // 尝试从任务队列中找到并取消对应任务
     if (this.taskQueue) {
@@ -277,7 +370,7 @@ export class SubagentManager {
 
         if (job) {
           await job.discard();
-          logger.info({ taskId }, 'Subagent task cancelled');
+          logger.info({ taskId }, '🤖 Subagent task cancelled');
           return `Subagent task ${taskId} cancelled successfully.`;
         }
       } catch (error) {
@@ -298,6 +391,22 @@ export class SubagentManager {
    */
   private async handleResult(result: SubagentResult): Promise<void> {
     this.runningTasks.delete(result.taskId);
+    this.abortControllers.delete(result.taskId);
+
+    // 更新任务状态
+    if (result.status === 'completed') {
+      this.taskStatus.set(result.taskId, TaskStatus.COMPLETED);
+    } else if (result.status === 'cancelled') {
+      this.taskStatus.set(result.taskId, TaskStatus.CANCELLED);
+    } else {
+      this.taskStatus.set(result.taskId, TaskStatus.FAILED);
+    }
+
+    // 更新任务指标
+    const metrics = this.taskMetrics.get(result.taskId);
+    if (metrics) {
+      metrics.completedAt = result.completedAt;
+    }
 
     const jobs = await this.taskQueue!.getJobs();
     const job = jobs.find((j: any) => j.data?.taskId === result.taskId);
@@ -309,7 +418,15 @@ export class SubagentManager {
 
     const task = (job as any).data;
     const label = task.label ?? result.taskId;
-    const statusText = result.status === 'completed' ? 'completed successfully' : 'failed';
+    let statusText: string;
+
+    if (result.status === 'completed') {
+      statusText = 'completed successfully';
+    } else if (result.status === 'cancelled') {
+      statusText = 'was cancelled';
+    } else {
+      statusText = 'failed';
+    }
 
     const content = `[Subagent '${label}' ${statusText}]
 
@@ -340,25 +457,61 @@ Summarize this naturally for the user. Keep it brief (1-2 sentences). Do not men
   }
 
   /**
+   * 获取任务状态
+   * @param taskId - 任务ID
+   * @returns 任务状态，如果任务不存在则返回 undefined
+   */
+  getTaskStatus(taskId: string): TaskStatus | undefined {
+    return this.taskStatus.get(taskId);
+  }
+
+  /**
+   * 获取任务指标
+   * @param taskId - 任务ID
+   * @returns 任务指标，如果任务不存在则返回 undefined
+   */
+  getTaskMetrics(
+    taskId: string,
+  ): { createdAt?: Date; startedAt?: Date; completedAt?: Date } | undefined {
+    return this.taskMetrics.get(taskId);
+  }
+
+  /**
+   * 获取所有任务的状态
+   * @returns 任务ID到状态的映射
+   */
+  getAllTaskStatuses(): Map<string, TaskStatus> {
+    return new Map(this.taskStatus);
+  }
+
+  /**
    * 关闭子代理管理器，清理所有相关的工作者进程和任务
    * @returns Promise<void> 返回一个Promise，当关闭操作完成时解析
    */
   async shutdown(): Promise<void> {
     logger.info('Shutting down subagent manager');
 
-    // 关闭任务工作者
+    // ✅ 1. 先关闭任务工作者（释放所有锁）
     if (this.taskWorker) {
-      await this.taskWorker.close();
-      logger.info('Task worker closed');
+      try {
+        await this.taskWorker.close();
+        logger.info('Task worker closed');
+      } catch (error) {
+        logger.warn({ error }, 'Error closing task worker');
+      }
     }
 
-    // 关闭结果工作者
+    // ✅ 2. 关闭结果工作者
     if (this.resultWorker) {
-      await this.resultWorker.close();
-      logger.info('Result worker closed');
+      try {
+        await this.resultWorker.close();
+        logger.info('Result worker closed');
+      } catch (error) {
+        logger.warn({ error }, 'Error closing result worker');
+      }
     }
 
-    // 终止所有工作进程
+    // ✅ 3. 终止所有工作进程
     if (this.workerProcesses.length > 0) {
       for (const wp of this.workerProcesses) {
         if (wp.pid) {
@@ -373,7 +526,26 @@ Summarize this naturally for the user. Keep it brief (1-2 sentences). Do not men
       this.workerProcesses = [];
     }
 
+    // ✅ 4. 最后清空队列（此时没有锁冲突）
+    if (this.taskQueue) {
+      try {
+        this.taskQueue.obliterate();
+        logger.info('🧹 Cleared all tasks from queue');
+      } catch (error) {
+        // 忽略锁冲突错误，因为任务最终会被清理
+        if (error instanceof Error && error.message.includes('lock token')) {
+          logger.warn({ error }, 'Lock conflict during obliterate (ignored)');
+        } else {
+          logger.error({ error }, 'Failed to clear queue');
+        }
+      }
+    }
+
+    // 5. 清理内存状态
     this.runningTasks.clear();
+    this.abortControllers.clear();
+    this.taskStatus.clear();
+    this.taskMetrics.clear();
 
     logger.info('Subagent manager shut down');
   }

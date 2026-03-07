@@ -14,12 +14,16 @@ import { registerChannelsCommand } from './channels';
 import { registerLogsCommand } from './logs';
 import { registerWhatsAppAuthCommand } from '../whatsapp-auth';
 import { registerMCPCommands } from './mcp';
+import { createSubagentManageCommand } from './subagent/manage';
 import { runTui } from '../tui';
 
 export async function runCLI(argv: string[]): Promise<void> {
   const program = new Command();
 
-  program.name('nanobot-ts').description('Ultra-lightweight personal AI assistant').version('0.1.0');
+  program
+    .name('nanobot-ts')
+    .description('Ultra-lightweight personal AI assistant')
+    .version('0.1.0');
 
   registerInitCommand(program);
   registerGatewayCommand(program);
@@ -31,6 +35,9 @@ export async function runCLI(argv: string[]): Promise<void> {
   registerLogsCommand(program);
   registerWhatsAppAuthCommand(program);
   registerMCPCommands(program);
+
+  // 注册子代理管理命令
+  program.addCommand(createSubagentManageCommand());
 
   program.action(async () => {
     await runTui('home');

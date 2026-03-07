@@ -272,6 +272,9 @@ export const SubagentConfigSchema = z.object({
   /** 子代理超时时间（秒） */
   timeout: z.number().int().positive().default(300),
 
+  /** Worker 进程最大重启次数（防止无限重启） */
+  maxWorkerRestarts: z.number().int().min(0).default(3),
+
   /** bunqueue 数据路径 */
   dataPath: z.string().default('./data/bunqueue.db'),
 });

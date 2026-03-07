@@ -119,6 +119,21 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
 
         const rt = await buildAgentRuntime(loaded, true);
         if (cancelled) return;
+
+        // 注册退出钩子：清空子代理队列
+        const cleanupExit = async (): Promise<void> => {
+          if (rt.subagentManager) {
+            logger.info('TUI exit: clearing subagent queue');
+            await rt.subagentManager.shutdown();
+            logger.info('TUI exit: subagent queue cleared');
+          }
+        };
+
+        // 监听进程退出信号
+        process.on('exit', cleanupExit);
+        process.on('SIGINT', cleanupExit);
+        process.on('SIGTERM', cleanupExit);
+
         setRuntime(rt);
         const { bus, agent, config: cfg } = rt;
         const channelManager = new ChannelManager(cfg, bus);

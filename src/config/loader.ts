@@ -220,6 +220,7 @@ export function createDefaultConfig(): Config {
       concurrency: 3,
       maxIterations: 15,
       timeout: 300,
+      maxWorkerRestarts: 3,
       dataPath: './data/bunqueue.db',
     },
   };

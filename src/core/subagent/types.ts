@@ -3,6 +3,18 @@
  */
 
 /**
+ * 任务状态枚举
+ */
+export enum TaskStatus {
+  PENDING = 'pending',
+  RUNNING = 'running',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled',
+  TIMEOUT = 'timeout',
+}
+
+/**
  * 子代理任务接口
  */
 export interface SubagentTask {
@@ -38,6 +50,9 @@ export interface SubagentTask {
 
   /** 错误信息（如果失败） */
   error?: string;
+
+  /** 取消信号（用于中止执行） */
+  abortSignal?: AbortSignal;
 }
 
 /**
@@ -51,7 +66,7 @@ export interface SubagentResult {
   result: string;
 
   /** 状态 */
-  status: 'completed' | 'failed';
+  status: 'completed' | 'failed' | 'cancelled';
 
   /** 错误信息（可选） */
   error?: string;

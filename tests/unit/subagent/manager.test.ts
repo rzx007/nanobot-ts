@@ -174,6 +174,83 @@ describe('SubagentManager', () => {
     });
   });
 
+  describe('getTaskStatus', () => {
+    it('should return task status for existing task', async () => {
+      await manager.initialize();
+
+      const spawnResult = await manager.spawn('Test task for status');
+      const taskIdMatch = spawnResult.match(/id: ([a-z0-9]+)/i);
+      const taskId = taskIdMatch?.[1];
+
+      if (!taskId) {
+        throw new Error('Failed to extract task ID');
+      }
+
+      const status = manager.getTaskStatus(taskId);
+
+      expect(status).toBeDefined();
+    });
+
+    it('should return undefined for non-existent task', async () => {
+      await manager.initialize();
+
+      const status = manager.getTaskStatus('non-existent-task-id');
+
+      expect(status).toBeUndefined();
+    });
+  });
+
+  describe('getTaskMetrics', () => {
+    it('should return task metrics for existing task', async () => {
+      await manager.initialize();
+
+      const spawnResult = await manager.spawn('Test task for metrics');
+      const taskIdMatch = spawnResult.match(/id: ([a-z0-9]+)/i);
+      const taskId = taskIdMatch?.[1];
+
+      if (!taskId) {
+        throw new Error('Failed to extract task ID');
+      }
+
+      const metrics = manager.getTaskMetrics(taskId);
+
+      expect(metrics).toBeDefined();
+      expect(metrics?.createdAt).toBeInstanceOf(Date);
+    });
+
+    it('should return undefined for non-existent task', async () => {
+      await manager.initialize();
+
+      const metrics = manager.getTaskMetrics('non-existent-task-id');
+
+      expect(metrics).toBeUndefined();
+    });
+  });
+
+  describe('getAllTaskStatuses', () => {
+    it('should return all task statuses', async () => {
+      await manager.initialize();
+
+      // Spawn a few tasks
+      await manager.spawn('Task 1');
+      await manager.spawn('Task 2');
+
+      const statuses = manager.getAllTaskStatuses();
+
+      expect(statuses).toBeInstanceOf(Map);
+      expect(statuses.size).toBeGreaterThanOrEqual(2);
+    });
+
+    it('should return empty map when no tasks', async () => {
+      await manager.initialize();
+
+      const statuses = manager.getAllTaskStatuses();
+
+      expect(statuses).toBeInstanceOf(Map);
+      expect(statuses.size).toBe(0);
+    });
+  });
+
   describe('shutdown', () => {
     it('should shutdown gracefully', async () => {
       await manager.initialize();

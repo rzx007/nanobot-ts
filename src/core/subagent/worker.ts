@@ -8,20 +8,24 @@ import type { SubagentTask, SubagentResult, SubagentWorkerConfig } from './types
 import type { ToolSet } from '@/bus/types';
 import { LLMProvider } from '@/providers';
 import type { ToolRegistry } from '@/tools';
+import type { Config } from '@/config/schema';
 import { logger } from '@/utils/logger';
+import { withTimeout } from '@/utils/helpers';
 
 export class SubagentWorker {
   private provider: LLMProvider;
   private tools: ToolRegistry;
   private workspace: string;
   private maxIterations: number;
-  private config: import('../../config/schema').Config;
+  private timeout: number;
+  private config: Config;
 
   constructor(workerConfig: SubagentWorkerConfig) {
     this.provider = workerConfig.provider;
     this.tools = workerConfig.tools;
     this.workspace = workerConfig.workspace;
     this.maxIterations = workerConfig.maxIterations;
+    this.timeout = workerConfig.timeout;
     this.config = workerConfig.config;
   }
 
@@ -32,12 +36,19 @@ export class SubagentWorker {
    * @returns Promise<SubagentResult> - 返回任务执行结果的Promise
    */
   async execute(jobData: SubagentTask): Promise<SubagentResult> {
-    const { taskId, task } = jobData;
+    const { taskId, task, abortSignal } = jobData;
 
-    logger.info({ taskId, task }, 'Subagent worker executing task');
+    logger.info({ taskId, task }, '🤖 Subagent worker executing task');
 
     try {
-      const result = await this.runAgentLoop(task);
+      const result = await withTimeout(
+        this.runAgentLoop(task, abortSignal),
+        this.timeout * 1000,
+        `Subagent task timeout after ${this.timeout}s`,
+      );
+
+      logger.info({ taskId }, '🤖 Subagent task completed successfully');
+
       return {
         taskId,
         result,
@@ -46,7 +57,21 @@ export class SubagentWorker {
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      logger.error({ taskId, error: errorMsg }, 'Subagent task failed');
+
+      // 检查是否是取消错误
+      if (error instanceof Error && (error.name === 'AbortError' || errorMsg.includes('abort'))) {
+        logger.info({ taskId }, '🤖 Subagent task was cancelled');
+        return {
+          taskId,
+          result: '',
+          status: 'cancelled',
+          error: 'Task was cancelled',
+          completedAt: new Date(),
+        };
+      }
+
+      logger.error({ taskId, error: errorMsg }, '🤖 Subagent task failed');
+
       return {
         taskId,
         result: '',
@@ -57,7 +82,7 @@ export class SubagentWorker {
     }
   }
 
-  private async runAgentLoop(task: string): Promise<string> {
+  private async runAgentLoop(task: string, abortSignal?: AbortSignal): Promise<string> {
     const toolDefinitions = this.buildFilteredToolSet();
 
     const messages: Array<{ role: string; content: string }> = [
@@ -80,6 +105,11 @@ export class SubagentWorker {
         maxTokens: this.config.agents.defaults.maxTokens,
         maxSteps: this.maxIterations,
         executeTool: async (name, args) => {
+          // 检查取消信号
+          if (abortSignal?.aborted) {
+            throw new DOMException('Task was cancelled', 'AbortError');
+          }
+
           const result = await this.tools.execute(name, args, {
             channel: 'subagent',
             chatId: 'internal',
@@ -89,8 +119,6 @@ export class SubagentWorker {
       });
 
       const finalResult = response.content ?? '';
-
-      console.log('🚀 ~ SubagentWorker ~ runAgentLoop ~ finalResult:', finalResult);
 
       return finalResult;
     } catch (error) {
@@ -161,10 +189,10 @@ ${commandHint}
 ${this.workspace}
 
 ## Tools
-You have access to the following tools (excluding spawn and message to prevent infinite recursion):
+You have access to the following tools (excluding spawn, message and subagent to prevent infinite recursion):
 ${this.tools
   .getToolNames()
-  .filter((n: string) => n !== 'spawn' && n !== 'message')
+  .filter((n: string) => n !== 'spawn' && n !== 'message' && n !== 'subagent')
   .join(', ')}
 
 ## Instructions
