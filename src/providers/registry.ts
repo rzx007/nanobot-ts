@@ -116,7 +116,7 @@ export class LLMProvider {
         temperature,
         maxTokens,
         executeTool,
-        maxSteps = 1,
+        maxSteps = 5,
         onStepFinish,
       } = params;
       const { provider, modelName } = parseModelString(modelStr);

@@ -1,6 +1,6 @@
 # nanobot-ts
 
- [中文](README_CN.md)
+[中文](README_CN.md)
 
 Ultra-lightweight personal AI assistant - TypeScript implementation
 
@@ -22,6 +22,7 @@ nanobot-ts is the TypeScript version of [nanobot](https://github.com/HKUDS/nanob
 - 💾 **Memory**: Automatic session consolidation and long-term memory
 - ⏰ **Cron**: Built-in scheduled task execution system
 - 🖥️ **TUI**: Modern terminal interface with slash commands and search
+- 🤖 **Subagent**: High-performance background task processing with embedded/isolated modes
 
 ### Comparison with Python Version
 
@@ -92,12 +93,21 @@ Edit `~/.nanobot/config.json`:
       "allowFrom": ["+1234567890"]
     }
   },
-  "tools": {
-    "approval": {
-      "enabled": true,
-      "memoryWindow": 300,
-      "timeout": 60
-    }
+   "tools": {
+     "approval": {
+       "enabled": true,
+       "memoryWindow": 300,
+       "timeout": 60,
+     },
+     "subagent": {
+       "enabled": true,
+       "mode": "embedded",
+       "concurrency": 3,
+       "maxIterations": 15,
+       "timeout": 300,
+       "dataPath": "./data/bunqueue.db"
+     },
+  }
   }
 }
 ```
@@ -155,18 +165,18 @@ The `nanobot-ts gateway` command now includes a modern Terminal User Interface (
 
 **Slash Commands**:
 
-| Command | Description |
-|---------|-------------|
-| `/new` | Start a new session (archives current history) |
-| `/help` | Show help information |
-| `/status` | View system status and sessions |
-| `/models` | Configure AI models |
-| `/themes` | Change UI themes |
-| `/sessions` | Manage chat sessions |
-| `/init` | Initialize configuration |
-| `/mcps` | Manage MCP servers |
-| `/review` | Review conversation history |
-| `/skills` | Manage skills |
+| Command     | Description                                    |
+| ----------- | ---------------------------------------------- |
+| `/new`      | Start a new session (archives current history) |
+| `/help`     | Show help information                          |
+| `/status`   | View system status and sessions                |
+| `/models`   | Configure AI models                            |
+| `/themes`   | Change UI themes                               |
+| `/sessions` | Manage chat sessions                           |
+| `/init`     | Initialize configuration                       |
+| `/mcps`     | Manage MCP servers                             |
+| `/review`   | Review conversation history                    |
+| `/skills`   | Manage skills                                  |
 
 **Usage**:
 
@@ -177,20 +187,20 @@ The `nanobot-ts gateway` command now includes a modern Terminal User Interface (
 
 ## 💻 CLI Commands
 
-| Command                                              | Description                                                                  |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `nanobot-ts init`                                       | Initialize config & workspace in `~/.nanobot`, use `-f/--force` to overwrite |
-| `nanobot-ts chat [prompt]`                              | Send a prompt and get reply; add `-i/--interactive` for interactive mode     |
-| `nanobot-ts gateway`                                    | Start message bus and Agent (default port: `--port 18790`)                   |
-| `nanobot-ts status`                                     | View configuration and runtime status                                        |
-| `nanobot-ts session`                                    | List all sessions                                                            |
-| `nanobot-ts config [key] [value]`                       | View or set config (e.g., `agents.defaults.model`)                           |
-| `nanobot-ts channels status`                            | Check channel status                                                         |
-| `nanobot-ts logs`                                       | View logs, use `-t/--tail <n>` (default 50)                                  |
-| `nanobot-ts whatsapp:auth`                              | WhatsApp QR code / pairing code login                                        |
-| `nanobot-ts whatsapp:status`                            | Check WhatsApp login status                                                  |
-| `nanobot-ts whatsapp:logout`                            | Clear WhatsApp credentials                                                   |
-| `nanobot-ts mcp:list`                                   | List connected MCP servers and tools                                         |
+| Command                           | Description                                                                  |
+| --------------------------------- | ---------------------------------------------------------------------------- |
+| `nanobot-ts init`                 | Initialize config & workspace in `~/.nanobot`, use `-f/--force` to overwrite |
+| `nanobot-ts chat [prompt]`        | Send a prompt and get reply; add `-i/--interactive` for interactive mode     |
+| `nanobot-ts gateway`              | Start message bus and Agent (default port: `--port 18790`)                   |
+| `nanobot-ts status`               | View configuration and runtime status                                        |
+| `nanobot-ts session`              | List all sessions                                                            |
+| `nanobot-ts config [key] [value]` | View or set config (e.g., `agents.defaults.model`)                           |
+| `nanobot-ts channels status`      | Check channel status                                                         |
+| `nanobot-ts logs`                 | View logs, use `-t/--tail <n>` (default 50)                                  |
+| `nanobot-ts whatsapp:auth`        | WhatsApp QR code / pairing code login                                        |
+| `nanobot-ts whatsapp:status`      | Check WhatsApp login status                                                  |
+| `nanobot-ts whatsapp:logout`      | Clear WhatsApp credentials                                                   |
+| `nanobot-ts mcp:list`             | List connected MCP servers and tools                                         |
 
 ### Examples
 
@@ -461,18 +471,19 @@ Supported providers (powered by Vercel AI SDK):
 
 ### Built-in Tools
 
-| Tool          | Description                       |
-| ------------- | --------------------------------- |
-| `read_file`   | Read file contents                |
-| `write_file`  | Write to file                     |
-| `edit_file`   | Edit specific lines in file       |
-| `delete_file` | Delete file                       |
-| `list_dir`    | List directory contents           |
-| `exec`        | Execute shell commands            |
-| `web_search`  | Search the web (Brave Search API) |
-| `web_fetch`   | Fetch web page content            |
-| `message`     | Send message to specific channel  |
-| `spawn`       | Spawn background sub-agent        |
+| Tool          | Description                                            |
+| ------------- | ------------------------------------------------------ |
+| `read_file`   | Read file contents                                     |
+| `write_file`  | Write to file                                          |
+| `edit_file`   | Edit specific lines in file                            |
+| `delete_file` | Delete file                                            |
+| `list_dir`    | List directory contents                                |
+| `exec`        | Execute shell commands                                 |
+| `web_search`  | Search the web (Brave Search API)                      |
+| `web_fetch`   | Fetch web page content                                 |
+| `message`     | Send message to specific channel                       |
+| `spawn`       | **[Deprecated]** Use `subagent` tool instead           |
+| `subagent`    | Execute background tasks with dual-mode architecture   |
 | `cron`        | Schedule and manage cron tasks with persistent storage |
 
 ### MCP Tools
@@ -512,6 +523,73 @@ Configuration example:
   }
 }
 ```
+
+### Subagent Tool
+
+The `subagent` tool provides high-performance background task processing with dual execution modes:
+
+**Architecture**:
+
+- 🏗️ **Built on bunqueue**: High-performance task queuing (286K ops/sec embedded, 149K ops/sec isolated)
+- 🔀 **Dual Execution Modes**:
+  - **Embedded** (default): Same-process execution for maximum performance
+  - **Isolated**: Process-isolated execution with auto-restart for safety
+- 🎯 **Tool Filtering**: Automatically excludes `spawn` and `message` tools to prevent infinite recursion
+- 📊 **Result Notification**: Subagent results published via MessageBus as system messages from 'subagent' sender
+- 💾 **Task Persistence**: Uses bunqueue's SQLite WAL mode for reliable task queuing
+- ⚙️ **Configurable Settings**: Concurrency, max iterations, timeout, data path
+
+**Configuration**:
+
+```json
+{
+  "tools": {
+    "subagent": {
+      "enabled": true,
+      "mode": "embedded",
+      "concurrency": 3,
+      "maxIterations": 15,
+      "timeout": 300,
+      "dataPath": "./data/bunqueue.db"
+    }
+  }
+}
+```
+
+**Usage Example**:
+
+```bash
+# Enable subagent via config
+nanobot-ts config set tools.subagent.enabled true
+nanobot-ts config set tools.subagent.mode isolated
+
+# Use subagent in conversation
+$ nanobot-ts gateway
+User: Analyze this project for security issues
+Bot: I'll use the subagent tool to analyze the code in the background...
+
+[Background execution with subagent]
+
+User: Check task status
+Bot: Task "security analysis" completed successfully
+```
+
+**Configuration Priority**: `CLI args > config file > defaults`
+
+**Key Features**:
+
+- **Embedded Mode**: Fastest performance (286K ops/sec), same-process execution
+- **Isolated Mode**: Process-isolated execution (149K ops/sec), auto-restart on failure
+- **Automatic Tool Filtering**: Prevents infinite recursion by excluding dangerous tools
+- **Memory Integration**: Automatic context sharing with main agent session
+- **Flexible Configuration**: Runtime settings without code changes
+
+**Documentation**:
+
+- [Subagent Implementation Plan](docs/subagent-implementation.md)
+- [Subagent Usage Guide](docs/subagent-usage.md)
+- [Subagent Feature Checklist](docs/subagent-feature-checklist.md)
+- [Subagent Final Verification](docs/subagent-full-final-verification.md)
 
 ## 🎨 Development
 
@@ -571,6 +649,8 @@ nanobot-ts/
 - [MCP Configuration](MCP.md) - Model Context Protocol setup
 - [Cron Service](src/cron/README.md) - Scheduled task execution system
 - [TUI Slash Commands](src/cli/tui/commands/README.md) - Terminal user interface command system
+- [Subagent System](docs/subagent-implementation.md) - Background task processing architecture
+- [Subagent Usage Guide](docs/subagent-usage.md) - Configuration and usage examples
 
 ## 📄 License
 

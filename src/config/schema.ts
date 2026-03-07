@@ -254,6 +254,29 @@ export const ToolsConfigSchema = z.object({
 });
 
 /**
+ * Subagent 配置
+ */
+export const SubagentConfigSchema = z.object({
+  /** 是否启用 subagent */
+  enabled: z.boolean().default(true),
+
+  /** 执行模式 */
+  mode: z.enum(['embedded', 'isolated']).default('embedded'),
+
+  /** 最大并发数 */
+  concurrency: z.number().int().positive().default(3),
+
+  /** 子代理最大迭代次数 */
+  maxIterations: z.number().int().positive().default(15),
+
+  /** 子代理超时时间（秒） */
+  timeout: z.number().int().positive().default(300),
+
+  /** bunqueue 数据路径 */
+  dataPath: z.string().default('./data/bunqueue.db'),
+});
+
+/**
  * MCP 服务器类型
  */
 export const MCPServerTypeEnum = z.enum(['stdio', 'http']);
@@ -351,6 +374,9 @@ export const ConfigSchema = z.object({
 
   /** 工具配置 */
   tools: ToolsConfigSchema,
+
+  /** Subagent 配置 */
+  subagent: SubagentConfigSchema,
 });
 
 // 导出类型
@@ -372,4 +398,5 @@ export type STDIO_MCPServerConfig = z.infer<typeof STDIO_MCPServerSchema>;
 export type HTTP_MCPServerConfig = z.infer<typeof HTTP_MCPServerSchema>;
 export type MCPServerConfig = z.infer<typeof MCPServerSchema>;
 export type MCPConfig = z.infer<typeof MCPConfigSchema>;
+export type SubagentConfig = z.infer<typeof SubagentConfigSchema>;
 export type Config = z.infer<typeof ConfigSchema>;

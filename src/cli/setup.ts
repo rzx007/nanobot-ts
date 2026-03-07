@@ -13,7 +13,7 @@ import { LLMProvider } from '@/providers';
 import { AgentLoop } from '@/core/agent';
 import { MemoryConsolidator } from '@/core/memory';
 import { SkillLoader } from '@/skills';
-import { ApprovalManager } from '@/core/approval';
+import { ApprovalManager, SubagentManager } from '@/core';
 import {
   ToolRegistry,
   ReadFileTool,
@@ -45,6 +45,7 @@ import {
   BrowserPdfTool,
   MessageTool,
   SpawnTool,
+  SubagentTool,
   CronTool,
 } from '@/tools';
 import { CronService } from '@/cron';
@@ -80,6 +81,7 @@ export interface AgentRuntime {
   approvalManager: ApprovalManager;
   agent: AgentLoop;
   cronService: CronService;
+  subagentManager: import('@/core/subagent').SubagentManager | null;
 }
 
 /**
@@ -105,6 +107,19 @@ export async function buildAgentRuntime(config: Config, tui?: boolean): Promise<
   // 设置消息过滤器（更通用的方式）
   bus.addInboundFilter(m => approvalManager.handleUserMessage(m.channel, m.chatId, m.content));
 
+  // 初始化 SubagentManager（如果启用）
+  let subagentManager: SubagentManager | null = null;
+  if (config.subagent?.enabled) {
+    subagentManager = new SubagentManager({
+      config,
+      bus,
+      provider,
+      tools,
+      workspace,
+    });
+    await subagentManager.initialize();
+  }
+
   tools.register(new ReadFileTool(config));
   tools.register(new WriteFileTool(config));
   tools.register(new EditFileTool(config));
@@ -114,6 +129,13 @@ export async function buildAgentRuntime(config: Config, tui?: boolean): Promise<
   tools.register(new WebSearchTool(config));
   tools.register(new WebFetchTool());
   tools.register(new MessageTool(config, bus));
+
+  // 注册 Subagent 工具（如果启用）
+  if (subagentManager) {
+    const subagentTool = new SubagentTool();
+    subagentTool.setManager(subagentManager);
+    tools.register(subagentTool);
+  }
 
   // 注册浏览器工具
   if (config.tools.browser?.enabled) {
@@ -166,6 +188,23 @@ export async function buildAgentRuntime(config: Config, tui?: boolean): Promise<
 
   const memory = new MemoryConsolidator(config);
 
+  // 添加消息过滤器处理 subagent 结果
+  if (subagentManager) {
+    // bus.addInboundFilter(m => {
+    //   const isSubagentResult = m.channel === 'system' && m.senderId === 'subagent';
+    //   if (!isSubagentResult) {
+    //     return false;
+    //   }
+
+    //   const isSystemMessage = m.channel === 'system' && m.content.includes('[Subagent');
+    //   if (isSystemMessage) {
+    //     return true;
+    //   }
+
+    //   return false;
+    // });
+  }
+
   const skills = new SkillLoader(config);
   await skills.init();
 
@@ -199,5 +238,6 @@ export async function buildAgentRuntime(config: Config, tui?: boolean): Promise<
     approvalManager,
     agent,
     cronService,
+    subagentManager: subagentManager ?? null,
   };
 }

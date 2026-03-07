@@ -111,13 +111,14 @@ export class AgentLoop {
     try {
       // 持续处理入站消息
       while (this.running) {
+        logger.info('🐞 Agent main loop running');
         try {
           // 消费入站消息 (超时 1 秒以允许检查 running 状态)
           const msg = await this.bus.consumeInbound();
 
           logger.info(
             { channel: (msg as InboundMessage).channel, chatId: (msg as InboundMessage).chatId },
-            'Processing inbound message',
+            '🐞 Processing inbound message',
           );
 
           const response = await this._processMessage(msg);
@@ -164,6 +165,11 @@ export class AgentLoop {
     const wasRunning = this.running;
     this.running = true;
     try {
+      // 处理 subagent 结果消息
+      if (msg.channel === 'system' && msg.senderId === 'subagent') {
+        return await this.handleSubagentResult(msg);
+      }
+
       // 执行消息处理流程
       const response = await this._processMessage(msg);
 
@@ -179,6 +185,57 @@ export class AgentLoop {
     } finally {
       this.running = wasRunning;
     }
+  }
+
+  /**
+   * 处理 subagent 结果消息
+   */
+  private async handleSubagentResult(msg: InboundMessage): Promise<OutboundMessage> {
+    const { channel, chatId, content } = msg;
+
+    logger.info(`Processing subagent result: ${content}`);
+
+    // 提取任务结果并生成用户友好的总结
+    const summary = await this.summarizeSubagentResult(content);
+
+    return {
+      channel,
+      chatId,
+      content: summary,
+    };
+  }
+
+  /**
+   * 总结 subagent 结果
+   */
+  private async summarizeSubagentResult(content: string): Promise<string> {
+    // 简单的总结逻辑：提取关键信息并用自然语言表达
+    // TODO: 可以使用 LLM 来生成更智能的总结
+
+    // 提取任务标签和状态
+    const statusMatch = content.match(/\[Subagent '([^\]]+)' (completed successfully|failed)/);
+    const taskLabel = statusMatch?.[1] ?? '任务';
+    const status = statusMatch?.[2] ?? 'completed';
+
+    // 提取结果（在 "Result:" 之后）
+    const resultMatch = content.match(/Result:\n([\s\S]*?)\n/);
+    const result = resultMatch?.[1] ?? '';
+
+    // 生成用户友好的总结
+    let summary: string;
+    if (status === 'completed successfully') {
+      summary = `${taskLabel} 已完成。`;
+      if (result) {
+        summary += ` ${result}`;
+      }
+    } else {
+      summary = `${taskLabel} 失败。`;
+      if (result) {
+        summary += ` ${result}`;
+      }
+    }
+
+    return summary;
   }
 
   /**
@@ -199,6 +256,11 @@ export class AgentLoop {
   private async _processMessage(msg: InboundMessage): Promise<OutboundMessage> {
     const { channel, chatId, content } = msg;
     const sessionKey = getSessionKey(msg);
+
+    // 处理 subagent 结果消息
+    if (msg.senderId === 'subagent') {
+      return await this.handleSubagentResult(msg);
+    }
 
     // 会话命令: /new 归档后清空, /help 显示帮助
     const trimmed = content.trim();

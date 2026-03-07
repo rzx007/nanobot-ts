@@ -1,6 +1,7 @@
 /**
  * Spawn 工具：后台启动子进程，使用 execa 执行
- * PRD F3：后台子代理 / 启动子进程并返回结果或句柄
+ *
+ * ⚠️ @deprecated 请使用 SubagentTool 替代，功能更强大且支持任务跟踪
  */
 
 import { execaCommand } from 'execa';
@@ -15,12 +16,14 @@ export interface SpawnToolContext {
 /**
  * Spawn 工具
  * 在后台启动子进程（如 shell 命令或 nanobot chat），返回进程句柄（pid）
+ *
+ * ⚠️ @deprecated 此工具已废弃，请使用 subagent 工具替代
  */
 export class SpawnTool extends Tool {
   name = 'spawn';
 
   description =
-    '生成一个后台进程来独立运行任务。适用于耗时任务或独立任务场景。返回进程标识符（PID）。';
+    '⚠️ [DEPRECATED] 请使用 subagent 工具替代。生成一个后台进程来独立运行任务。适用于耗时任务或独立任务场景。返回进程标识符（PID）。';
 
   riskLevel = RiskLevel.HIGH;
 

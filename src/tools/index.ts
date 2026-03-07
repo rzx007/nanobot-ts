@@ -10,5 +10,6 @@ export * from './web';
 export * from './browser';
 export * from './message';
 export * from './spawn';
+export * from './subagent';
 export * from './cron';
 export * from './skill';

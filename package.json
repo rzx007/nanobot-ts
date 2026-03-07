@@ -53,6 +53,7 @@
     "agent-browser": "^0.16.3",
     "ai": "^6.0.99",
     "baileys": "7.0.0-rc.9",
+    "bunqueue": "^2.6.5",
     "chalk": "^5.6.2",
     "cheerio": "^1.2.0",
     "commander": "^14.0.3",

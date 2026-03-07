@@ -25,20 +25,25 @@ function expandTilde(p: string): string {
  * 加载配置文件
  *
  * 搜索路径 (按顺序):
- * 1. NANOBOT_HOME/config.json 或 ~/.nanobot/config.json
- * 2. cosmiconfig 从 cwd 向上搜索
+ * 1. 如果提供了 configPath，直接从指定路径加载
+ * 2. NANOBOT_HOME/config.json 或 ~/.nanobot/config.json
+ * 3. cosmiconfig 从 cwd 向上搜索
  *
+ * @param configPath - 可选的配置文件路径
  * @returns 配置对象，如果未找到则返回 null
  */
-export async function loadConfig(): Promise<Config | null> {
+export async function loadConfig(configPath?: string): Promise<Config | null> {
   try {
-    const defaultPath = expandTilde(DEFAULT_CONFIG_PATH);
+    const pathToUse = configPath ? expandTilde(configPath) : expandTilde(DEFAULT_CONFIG_PATH);
+
     try {
-      const raw = await fs.readFile(defaultPath, 'utf-8');
+      const raw = await fs.readFile(pathToUse, 'utf-8');
       const config = JSON.parse(raw) as Config;
       return config;
     } catch {
-      // 继续尝试 cosmiconfig
+      if (configPath) {
+        return null;
+      }
     }
 
     const result = await cosmiconfig('nanobot', {
@@ -91,14 +96,15 @@ export type ChannelsEnabledMap = Record<string, { enabled: boolean }>;
 export function getChannelsFromConfig(config: Config | null): ChannelsEnabledMap {
   const defaultChannels = createDefaultConfig().channels;
   const defaultKeys = Object.keys(defaultChannels);
-  const keys =
-    config?.channels ?
-      [...defaultKeys, ...Object.keys(config.channels).filter(k => !defaultKeys.includes(k))]
-      : defaultKeys;
+  const keys = config?.channels
+    ? [...defaultKeys, ...Object.keys(config.channels).filter(k => !defaultKeys.includes(k))]
+    : defaultKeys;
   return Object.fromEntries(
     keys.map(k => [
       k,
-      { enabled: (config?.channels as Record<string, { enabled?: boolean }>)?.[k]?.enabled ?? false },
+      {
+        enabled: (config?.channels as Record<string, { enabled?: boolean }>)?.[k]?.enabled ?? false,
+      },
     ]),
   );
 }
@@ -113,7 +119,7 @@ export function createDefaultConfig(): Config {
     agents: {
       defaults: {
         workspace: '~/.nanobot/workspace',
-        model: 'openai:gpt-4o',
+        model: 'deepseek:deepseek-chat',
         temperature: 0.1,
         maxTokens: 8192,
         maxIterations: 40,
@@ -207,6 +213,14 @@ export function createDefaultConfig(): Config {
         strictMode: false,
         enableLogging: true,
       },
+    },
+    subagent: {
+      enabled: true,
+      mode: 'embedded',
+      concurrency: 3,
+      maxIterations: 15,
+      timeout: 300,
+      dataPath: './data/bunqueue.db',
     },
   };
 }
