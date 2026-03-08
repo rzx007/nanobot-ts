@@ -54,3 +54,6 @@ export { registerConfigCommand } from './config';
 export { registerSessionCommand } from './session';
 export { registerChannelsCommand } from './channels';
 export { registerLogsCommand } from './logs';
+export { registerWhatsAppAuthCommand } from '../whatsapp-auth';
+export { registerMCPCommands } from './mcp';
+export { createSubagentManageCommand } from './subagent/manage';

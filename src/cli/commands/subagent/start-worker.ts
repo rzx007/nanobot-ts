@@ -10,6 +10,7 @@ import { logger } from '@/utils/logger';
 import { loadConfig } from '@/config/loader';
 import { LLMProvider } from '@/providers';
 import { ToolRegistry } from '@/tools';
+import { expandHome } from '@/utils/helpers';
 import {
   ReadFileTool,
   WriteFileTool,
@@ -23,17 +24,13 @@ import {
 
 async function main() {
   const workerId = process.argv[2];
-  const dataPath = process.env.DATA_PATH ?? './data/bunqueue.db';
+  const dataPath = process.env.DATA_PATH ?? expandHome('~/.nanobot/data/bunqueue.db');
 
   logger.info({ workerId, dataPath }, 'Starting subagent worker process');
 
-  if (!dataPath) {
-    logger.error('DATA_PATH environment variable not set');
-    process.exit(1);
-  }
 
   try {
-    const configPath = process.env.NANOBOT_CONFIG_PATH ?? '~/.nanobot/config.json';
+    const configPath = process.env.NANOBOT_CONFIG_PATH ?? expandHome('~/.nanobot/config.json');
     logger.info({ configPath }, 'Loading configuration for subagent worker');
 
     const config = await loadConfig(configPath);
@@ -44,10 +41,7 @@ async function main() {
 
     const provider = new LLMProvider(config);
     const tools = new ToolRegistry();
-    const workspace = config.agents.defaults.workspace.replace(
-      /^~/,
-      process.env.HOME ?? process.env.USERPROFILE ?? '',
-    );
+    const workspace = expandHome(config.agents.defaults.workspace);
 
     tools.register(new ReadFileTool(config));
     tools.register(new WriteFileTool(config));

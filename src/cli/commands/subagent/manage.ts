@@ -153,36 +153,75 @@ export function createSubagentManageCommand(): Command {
       }
     });
 
-  // 清理已完成的任务
+  // 清理子代理数据目录
   cmd
-    .command('cleanup')
-    .description('清理已完成的任务（仅从内存中移除，不影响数据库）')
-    .action(async () => {
+    .command('clear-data')
+    .description('清理子代理数据目录 (~/.nanobot/data/)')
+    .option('--force', '强制删除，无需确认')
+    .action(async (opts: { force?: boolean }) => {
       try {
-        const config = await loadConfig();
-        if (!config) {
-          console.error('❌ Failed to load configuration');
-          process.exit(1);
+        const { existsSync, rmSync, readdirSync, statSync } = await import('fs');
+        const { join } = await import('node:path');
+        const { homedir } = await import('os');
+        const dataDir = join(homedir(), '.nanobot', 'data');
+
+        if (!existsSync(dataDir)) {
+          console.log('✅ 数据目录不存在');
+          return;
         }
 
-        const manager = new SubagentManager({
-          config,
-          bus: null as any,
-          provider: null as any,
-          tools: null as any,
-          workspace: config.agents.defaults.workspace,
-        });
+        const files = readdirSync(dataDir);
 
-        await manager.initialize();
+        if (files.length === 0) {
+          console.log('✅ 数据目录为空');
+          return;
+        }
 
-        // 注意：这里只是清理内存中的状态跟踪，不会影响队列中的任务
-        // 真正的清理需要操作 bunqueue 数据库，这里暂时跳过
-        console.log('ℹ️  内存中的任务状态已清理（不影响数据库中的任务记录）');
+        const fileSize = files.reduce((total, file) => {
+          const filePath = join(dataDir, file);
+          const stats = statSync(filePath);
+          return total + stats.size;
+        }, 0);
+        const sizeMB = (fileSize / 1024 / 1024).toFixed(2);
 
-        await manager.shutdown();
-        process.exit(0);
+        console.log(`\n📋 数据目录: ${dataDir}`);
+        console.log(`📁 文件数量: ${files.length}`);
+        console.log(`💾 总大小: ${sizeMB} MB`);
+        console.log(`\n📂 包含文件:`);
+
+        for (const file of files) {
+          const filePath = join(dataDir, file);
+          const stats = statSync(filePath);
+          const sizeKB = (stats.size / 1024).toFixed(2);
+          console.log(`  - ${file} (${sizeKB} KB)`);
+        }
+        console.log();
+
+        if (!opts.force) {
+          const readline = await import('readline');
+          const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout,
+          });
+
+          const answer = await new Promise<string>(resolve => {
+            rl.question(`⚠️  确定要删除以上 ${files.length} 个文件吗？(yes/no): `, input => {
+              rl.close();
+              resolve(input.trim().toLowerCase());
+            });
+          });
+
+          if (answer !== 'yes' && answer !== 'y') {
+            console.log('❌ 操作已取消');
+            return;
+          }
+        }
+
+        rmSync(dataDir, { recursive: true, force: true });
+        console.log(`🧹 已删除 ${files.length} 个文件 (${sizeMB} MB)`);
+        console.log('✅ 清理完成');
       } catch (error) {
-        console.error(`❌ Error: ${error instanceof Error ? error.message : String(error)}`);
+        console.error(`❌ 清理失败: ${error instanceof Error ? error.message : String(error)}`);
         process.exit(1);
       }
     });
@@ -229,7 +268,7 @@ export function createSubagentManageCommand(): Command {
         for (const [status, count] of statusCount.entries()) {
           console.log(`  - ${formatTaskStatus(status)}: ${count}`);
         }
-        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
         await manager.shutdown();
         process.exit(0);

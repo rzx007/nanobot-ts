@@ -47,6 +47,7 @@ import {
   SpawnTool,
   SubagentTool,
   CronTool,
+  HotNewsTool,
 } from '@/tools';
 import { CronService } from '@/cron';
 import { MCPToolLoader } from '@/mcp/loader';
@@ -128,6 +129,7 @@ export async function buildAgentRuntime(config: Config, tui?: boolean): Promise<
   tools.register(new ExecTool(config));
   tools.register(new WebSearchTool(config));
   tools.register(new WebFetchTool());
+  tools.register(new HotNewsTool());
   tools.register(new MessageTool(config, bus));
 
   // 注册 Subagent 工具（如果启用）

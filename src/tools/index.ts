@@ -13,3 +13,4 @@ export * from './spawn';
 export * from './subagent';
 export * from './cron';
 export * from './skill';
+export * from './hotnews';

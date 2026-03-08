@@ -221,7 +221,7 @@ export function createDefaultConfig(): Config {
       maxIterations: 15,
       timeout: 300,
       maxWorkerRestarts: 3,
-      dataPath: './data/bunqueue.db',
+      dataPath: '~/.nanobot/data/bunqueue.db',
     },
   };
 }

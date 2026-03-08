@@ -276,7 +276,7 @@ export const SubagentConfigSchema = z.object({
   maxWorkerRestarts: z.number().int().min(0).default(3),
 
   /** bunqueue 数据路径 */
-  dataPath: z.string().default('./data/bunqueue.db'),
+  dataPath: z.string().default('~/.nanobot/data/bunqueue.db'),
 });
 
 /**

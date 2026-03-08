@@ -10,6 +10,8 @@ import { TaskStatus } from './types';
 import { SubagentWorker } from './worker';
 import { logger } from '../../utils/logger';
 import { existsSync, mkdirSync } from 'fs';
+import path from 'node:path';
+import { expandHome } from '../../utils/helpers';
 
 function generateTaskId(): string {
   return Math.random().toString(36).substring(2, 10);
@@ -18,6 +20,7 @@ function generateTaskId(): string {
 export class SubagentManager {
   private config: SubagentManagerConfig;
   private mode: SubagentMode;
+  private dataPath: string;
   private taskQueue: Queue<SubagentTask> | null = null;
   private taskWorker: Worker<SubagentTask, SubagentResult> | null = null;
   private resultWorker: Worker<SubagentResult, void> | null = null;
@@ -33,6 +36,7 @@ export class SubagentManager {
     this.config = managerConfig;
     this.mode = managerConfig.config.subagent.mode;
     this.maxRestarts = managerConfig.config.subagent.maxWorkerRestarts ?? 3;
+    this.dataPath = expandHome(managerConfig.config.subagent.dataPath);
   }
 
   /**
@@ -48,10 +52,13 @@ export class SubagentManager {
 
     logger.info({ mode: this.mode }, 'Initializing subagent manager');
 
-    const dataPath = this.config.config.subagent.dataPath;
 
-    // 提取数据目录路径并创建目录
-    const dataDir = dataPath.substring(0, dataPath.lastIndexOf('/'));
+
+    // ✅ 使用扩展后的路径
+    process.env.DATA_PATH = this.dataPath;
+
+    // ✅ 确保数据目录存在
+    const dataDir = path.dirname(this.dataPath);
     if (!existsSync(dataDir)) {
       mkdirSync(dataDir, { recursive: true });
       logger.info(`Created data directory: ${dataDir}`);
@@ -60,8 +67,6 @@ export class SubagentManager {
     this.taskQueue = new Queue<SubagentTask>('subagent-tasks', {
       embedded: true,
     });
-
-    process.env.DATA_PATH = dataPath;
 
     // 检查队列状态，显示待处理的任务
     await this.logQueueStatus();
@@ -216,9 +221,9 @@ export class SubagentManager {
         stdio: ['ignore', 'inherit', 'inherit'],
         env: {
           ...process.env,
-          DATA_PATH: this.config.config.subagent.dataPath,
+          DATA_PATH: this.dataPath,
           SUBAGENT_MODE: 'isolated',
-          NANOBOT_CONFIG_PATH: '~/.nanobot/config.json',
+          NANOBOT_CONFIG_PATH: expandHome('~/.nanobot/config.json'),
         },
       });
 
