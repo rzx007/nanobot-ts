@@ -4,7 +4,7 @@
  * 管理对话会话的存储和检索
  */
 
-import fs from 'fs/promises';
+import fs from 'fs-extra';
 import path from 'path';
 import { expandHome, ensureDir, safeFilename } from '../utils/helpers';
 import { logger } from '../utils/logger';
@@ -211,7 +211,7 @@ export class SessionManager {
   async listSessions(): Promise<
     Array<{ key: string; messageCount: number; updatedAt: string }>
   > {
-    const files = await fs.readdir(this.sessionsDir);
+    const files = await fs.readdir(this.sessionsDir) as string[];
     const sessions: Array<{
       key: string;
       messageCount: number;
@@ -254,9 +254,7 @@ export class SessionManager {
    */
   private async save(session: Session): Promise<void> {
     const filepath = this.getSessionPath(session.key);
-    const data = JSON.stringify(session);
-
-    await fs.writeFile(filepath, data, 'utf-8');
+    await fs.writeJson(filepath, session);
   }
 
   /**
@@ -269,8 +267,7 @@ export class SessionManager {
     const filepath = this.getSessionPath(key);
 
     try {
-      const data = await fs.readFile(filepath, 'utf-8');
-      const session = JSON.parse(data) as Session;
+      const session = await fs.readJson(filepath) as Session;
       if (typeof session.lastConsolidated !== 'number') {
         session.lastConsolidated = 0;
       }

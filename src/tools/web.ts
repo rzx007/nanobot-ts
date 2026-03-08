@@ -169,10 +169,10 @@ export class WebFetchTool extends Tool {
           .trim();
 
         // 限制长度
-        const maxLength = 5000;
-        if (text.length > maxLength) {
-          return text.substring(0, maxLength) + '\n\n... (truncated)';
-        }
+        // const maxLength = 5000;
+        // if (text.length > maxLength) {
+        //   return text.substring(0, maxLength) + '\n\n... (truncated)';
+        // }
 
         return text;
       }

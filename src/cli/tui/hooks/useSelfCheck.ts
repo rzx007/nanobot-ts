@@ -12,14 +12,14 @@ export function useSelfCheck(config: Config | null) {
       return;
     }
 
-    (async () => {
+    void (async (): Promise<void> => {
       setLoading(true);
       const errors: string[] = [];
       const warnings: string[] = [];
       const results: CheckResult[] = [];
 
       try {
-        const fs = await import('fs/promises');
+        const fs = await import('fs-extra');
 
         // 检查配置文件
         results.push({ name: '配置文件', status: 'done', message: '已加载' });
@@ -30,7 +30,7 @@ export function useSelfCheck(config: Config | null) {
           process.env.HOME ?? process.env.USERPROFILE ?? '~',
         );
         try {
-          await fs.access(workspacePath);
+          await fs.pathExists(workspacePath);
           results.push({ name: '工作区目录', status: 'done' });
         } catch {
           results.push({ name: '工作区目录', status: 'error', message: '目录不存在' });

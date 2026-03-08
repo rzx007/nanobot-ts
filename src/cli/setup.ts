@@ -18,6 +18,7 @@ import {
   ToolRegistry,
   ReadFileTool,
   WriteFileTool,
+  CreateFileTool,
   EditFileTool,
   DeleteFileTool,
   ListDirTool,
@@ -123,6 +124,7 @@ export async function buildAgentRuntime(config: Config, tui?: boolean): Promise<
 
   tools.register(new ReadFileTool(config));
   tools.register(new WriteFileTool(config));
+  tools.register(new CreateFileTool(config));
   tools.register(new EditFileTool(config));
   tools.register(new DeleteFileTool(config));
   tools.register(new ListDirTool(config));
@@ -197,12 +199,10 @@ export async function buildAgentRuntime(config: Config, tui?: boolean): Promise<
     //   if (!isSubagentResult) {
     //     return false;
     //   }
-
     //   const isSystemMessage = m.channel === 'system' && m.content.includes('[Subagent');
     //   if (isSystemMessage) {
     //     return true;
     //   }
-
     //   return false;
     // });
   }

@@ -1,12 +1,12 @@
 /**
  * 浏览器自动化工具
- *
+ * 访问https://mp.weixin.qq.com/s/s4zCjnhZ-qBB_hSI3hfxhg 获取文档内容，存放到openclaw-setup.md, 现在浏览器可以用了
  * 通过 agent-browser CLI 实现浏览器自动化能力
  */
 
 import { Tool } from './base';
 import { execa } from 'execa';
-import fs from 'fs/promises';
+import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
 import type { Config } from '../config/schema';
@@ -183,7 +183,7 @@ abstract class BrowserTool extends Tool {
    * 确保目录存在
    */
   protected async ensureDir(dirPath: string): Promise<void> {
-    await fs.mkdir(dirPath, { recursive: true });
+    await fs.ensureDir(dirPath);
   }
 
   /**

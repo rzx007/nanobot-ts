@@ -3,7 +3,7 @@
  */
 
 import path from 'path';
-import fs from 'fs/promises';
+import fs from 'fs-extra';
 import { ToolRegistry } from '../tools';
 import { MCPManager } from './manager';
 import { MCPToolWrapper } from './wrapper';
@@ -26,10 +26,8 @@ export async function loadMCPConfig(workspace: string): Promise<MCPConfig | null
   const mcpConfigPath = getMCPConfigPath(workspace);
 
   try {
-    const content = await fs.readFile(mcpConfigPath, 'utf-8');
-    const parsed = JSON.parse(content);
-    const result = MCPConfigSchema.parse(parsed);
-    return result;
+    const content = await fs.readJson(mcpConfigPath) as MCPConfig;
+    return MCPConfigSchema.parse(content);
   } catch (error) {
     if ((error as { code?: string }).code === 'ENOENT') {
       logger.debug(`MCP config not found at ${mcpConfigPath}`);
@@ -45,8 +43,7 @@ export async function loadMCPConfig(workspace: string): Promise<MCPConfig | null
  */
 export async function saveMCPConfig(config: MCPConfig, workspace: string): Promise<void> {
   const mcpConfigPath = getMCPConfigPath(workspace);
-  const content = JSON.stringify(config, null, 2);
-  await fs.writeFile(mcpConfigPath, content, 'utf-8');
+  await fs.writeJson(mcpConfigPath, config);
   logger.info(`MCP config saved to ${mcpConfigPath}`);
 }
 

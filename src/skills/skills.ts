@@ -5,7 +5,7 @@
  */
 
 import path from 'path';
-import fs from 'fs/promises';
+import fs from 'fs-extra';
 import { execSync } from 'child_process';
 import matter from 'gray-matter';
 import type { Config } from '../config/schema';
@@ -86,7 +86,7 @@ export class SkillLoader {
   async init(): Promise<void> {
     try {
       await ensureDir(this.skillsDir);
-      const entries = await fs.readdir(this.skillsDir);
+      const entries = await fs.readdir(this.skillsDir) as string[];
 
       // 遍历技能目录中的所有条目
       for (const entry of entries) {
@@ -99,7 +99,7 @@ export class SkillLoader {
         // 检查是否存在 SKILL.md 文件
         if (
           await fs
-            .access(skillFile)
+            .pathExists(skillFile)
             .then(() => true)
             .catch(() => false)
         ) {

@@ -65,9 +65,13 @@ export class ExecTool extends Tool {
         return `Error: Command "${commandName}" not in allowlist`;
       }
 
+      // Windows 下先切到 UTF-8 代码页，避免 echo/重定向 等场景中文乱码
+      const finalCommand =
+        process.platform === 'win32' ? `chcp 65001 >nul && ${command}` : command;
+
       // 执行命令 (带超时)。使用 shell: true 以兼容 Windows（cmd）与 Unix（sh）
       const result = await withTimeout(
-        execaCommand(command, { shell: true }),
+        execaCommand(finalCommand, { shell: true }),
         timeoutMs,
         `Command execution timeout (${this.config.tools.exec.timeout}s)`,
       );

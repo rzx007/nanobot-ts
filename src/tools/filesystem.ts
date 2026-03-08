@@ -5,7 +5,8 @@
  */
 
 import path from 'path';
-import fs from 'fs/promises';
+import type { Dirent } from 'fs';
+import fs from 'fs-extra';
 import { Tool } from './base';
 import type { Config } from '../config/schema';
 import { RiskLevel } from './safety';
@@ -103,7 +104,7 @@ export class WriteFileTool extends FileTool {
 
   description = '写入内容到文件';
 
-  riskLevel = RiskLevel.MEDIUM;
+  riskLevel = RiskLevel.LOW;
 
   parameters = {
     type: 'object',
@@ -132,16 +133,79 @@ export class WriteFileTool extends FileTool {
 
       logger.info(`Writing file: ${fullPath}`);
 
-      // 确保目录存在
+      // 确保目录存在（跳过当前目录 "." 或空目录）
       const dirPath = path.dirname(fullPath);
-      await ensureDir(dirPath);
+      if (dirPath && dirPath !== '.') {
+        await ensureDir(dirPath);
+      }
 
       // 写入文件
       await fs.writeFile(fullPath, params.content, 'utf-8');
 
       return `File "${params.path}" written successfully`;
     } catch (error) {
-      const errorMsg = `Write file "${params.path}" failed: ${error instanceof Error ? error.message : String(error)}`;
+      const errorMsg = `🚧 Write file "${params.path}" failed: ${error instanceof Error ? error.message : String(error)}`;
+      logger.error(errorMsg);
+      return `🚧 Error: ${errorMsg}`;
+    }
+  }
+}
+
+/**
+ * 创建文件工具 - 仅创建新文件，文件存在则保留原文件
+ */
+export class CreateFileTool extends FileTool {
+  name = 'create_file';
+
+  description = '创建新文件，如果文件已存在则不覆盖';
+
+  riskLevel = RiskLevel.LOW;
+
+  parameters = {
+    type: 'object',
+    properties: {
+      path: {
+        type: 'string',
+        description: '要创建的文件路径',
+      },
+      content: {
+        type: 'string',
+        description: '要写入的内容',
+      },
+    },
+    required: ['path', 'content'],
+  };
+
+  async execute(params: { path: string; content: string }): Promise<string> {
+    try {
+      // 展开路径
+      const fullPath = expandHome(params.path);
+
+      // 检查权限
+      if (!this.isPathAllowed(fullPath)) {
+        return `Error: Path "${params.path}" is outside workspace`;
+      }
+
+      logger.info(`Creating file: ${fullPath}`);
+
+      // 检查文件是否已存在
+      const exists = await fs.pathExists(fullPath);
+      if (exists) {
+        return `File "${params.path}" already exists, skipping`;
+      }
+
+      // 确保目录存在（跳过当前目录 "." 或空目录）
+      const dirPath = path.dirname(fullPath);
+      if (dirPath && dirPath !== '.') {
+        await ensureDir(dirPath);
+      }
+
+      // 创建文件
+      await fs.writeFile(fullPath, params.content, 'utf-8');
+
+      return `File "${params.path}" created successfully`;
+    } catch (error) {
+      const errorMsg = `Create file "${params.path}" failed: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(errorMsg);
       return `Error: ${errorMsg}`;
     }
@@ -156,7 +220,7 @@ export class EditFileTool extends FileTool {
 
   description = '编辑文件中指定的字符串';
 
-  riskLevel = RiskLevel.MEDIUM;
+  riskLevel = RiskLevel.LOW;
 
   parameters = {
     type: 'object',
@@ -215,7 +279,7 @@ export class DeleteFileTool extends FileTool {
 
   description = '删除文件';
 
-  riskLevel = RiskLevel.MEDIUM;
+  riskLevel = RiskLevel.LOW;
 
   parameters = {
     type: 'object',
@@ -294,8 +358,8 @@ export class ListDirTool extends FileTool {
       const entries = await fs.readdir(fullPath, { withFileTypes: true });
 
       // 格式化输出
-      const output = entries
-        .map(entry => {
+      const output = (entries as Dirent[])
+        .map((entry: Dirent) => {
           const prefix = entry.isDirectory() ? '[DIR] ' : '      ';
           return `${prefix}${entry.name}`;
         })

@@ -32,6 +32,7 @@
         "iconv-lite": "^0.7.2",
         "imapflow": "^1.2.10",
         "inquirer": "^13.3.0",
+        "jsdom": "^24.0.0",
         "markdown-it": "^14.1.1",
         "nodemailer": "^8.0.1",
         "opentui-spinner": "^0.0.6",
@@ -44,6 +45,7 @@
       "devDependencies": {
         "@eslint/js": "^9.39.3",
         "@types/execa": "^2.0.2",
+        "@types/fs-extra": "^11.0.4",
         "@types/inquirer": "^9.0.9",
         "@types/nodemailer": "^7.0.11",
         "@types/qrcode-terminal": "^0.12.2",
@@ -523,9 +525,13 @@
 
     "@types/execa": ["@types/execa@2.0.2", "https://registry.npmmirror.com/@types/execa/-/execa-2.0.2.tgz", { "dependencies": { "execa": "*" } }, "sha512-8QSXFMO4F5rq03O94b/xRPBfseKGJYaBRv4zT/VE/OUU0PAuc21j4Ewvq7S18TT8GUoxGa+Y7sOtecCK9n0gkA=="],
 
+    "@types/fs-extra": ["@types/fs-extra@11.0.4", "https://registry.npmmirror.com/@types/fs-extra/-/fs-extra-11.0.4.tgz", { "dependencies": { "@types/jsonfile": "*", "@types/node": "*" } }, "sha512-yTbItCNreRooED33qjunPthRcSjERP1r4MqCZc7wv0u2sUkzTFp45tgUfS5+r7FrZPdmCCNflLhVSP/o+SemsQ=="],
+
     "@types/inquirer": ["@types/inquirer@9.0.9", "https://registry.npmmirror.com/@types/inquirer/-/inquirer-9.0.9.tgz", { "dependencies": { "@types/through": "*", "rxjs": "^7.2.0" } }, "sha512-/mWx5136gts2Z2e5izdoRCo46lPp5TMs9R15GTSsgg/XnZyxDWVqoVU3R9lWnccKpqwsJLvRoxbCjoJtZB7DSw=="],
 
     "@types/json-schema": ["@types/json-schema@7.0.15", "https://registry.npmmirror.com/@types/json-schema/-/json-schema-7.0.15.tgz", {}, "sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA=="],
+
+    "@types/jsonfile": ["@types/jsonfile@6.1.4", "https://registry.npmmirror.com/@types/jsonfile/-/jsonfile-6.1.4.tgz", { "dependencies": { "@types/node": "*" } }, "sha512-D5qGUYwjvnNNextdU59/+fI+spnwtTFmyQP0h+PfIOSkNfpU6AOICUOkm4i0OnSk+NyjdPJrxCDro0sJsWlRpQ=="],
 
     "@types/long": ["@types/long@4.0.2", "https://registry.npmmirror.com/@types/long/-/long-4.0.2.tgz", {}, "sha512-MqTGEo5bj5t157U6fA/BiDynNkn0YknVdh48CMPkTSpFTVmvao5UQmm7uEF6xBEo7qIMAlY/JSleYaE6VOdpaA=="],
 

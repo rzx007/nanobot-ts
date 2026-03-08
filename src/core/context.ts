@@ -118,7 +118,7 @@ Reply directly with text for conversations. Only use 'message' tool to send to a
    * 构建系统提示词 (Identity + Bootstrap + Memory + Skills)
    */
   static async buildSystemPrompt(options: BuildSystemPromptOptions): Promise<string> {
-    const fs = await import('fs/promises');
+    const fs = await import('fs-extra');
     const workspace = expandHome(options.workspace);
     const parts: string[] = [];
 
@@ -132,7 +132,7 @@ Reply directly with text for conversations. Only use 'message' tool to send to a
       try {
         if (
           await fs
-            .access(filePath)
+            .pathExists(filePath)
             .then(() => true)
             .catch(() => false)
         ) {

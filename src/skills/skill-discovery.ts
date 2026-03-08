@@ -6,7 +6,7 @@
 
 import path from 'path';
 import os from 'os';
-import fs from 'fs/promises';
+import fs from 'fs-extra';
 import type { Config } from '../config/schema';
 import { expandHome, ensureDir } from '../utils/helpers';
 import { logger } from '../utils/logger';
@@ -152,7 +152,7 @@ export class SkillDiscoverer {
     // 验证安装
     const skillFile = path.join(installPath, 'SKILL.md');
     const exists = await fs
-      .access(skillFile)
+      .pathExists(skillFile)
       .then(() => true)
       .catch(() => false);
 
@@ -173,7 +173,7 @@ export class SkillDiscoverer {
     const skillPath = path.join(this.skillsDir, skillName);
     const skillFile = path.join(skillPath, 'SKILL.md');
     return fs
-      .access(skillFile)
+      .pathExists(skillFile)
       .then(() => true)
       .catch(() => false);
   }
@@ -188,7 +188,7 @@ export class SkillDiscoverer {
     const skillPath = path.join(this.skillsDir, skillName);
 
     try {
-      await fs.rm(skillPath, { recursive: true, force: true });
+      await fs.remove(skillPath);
       logger.info(`Skill "${skillName}" uninstalled successfully`);
     } catch (error) {
       logger.error({ err: error, skillName }, 'Failed to uninstall skill');
@@ -205,7 +205,7 @@ export class SkillDiscoverer {
    */
   async clearCache(): Promise<void> {
     try {
-      await fs.rm(this.cacheDir, { recursive: true, force: true });
+      await fs.remove(this.cacheDir);
       logger.info('Skill cache cleared');
     } catch (error) {
       logger.error({ err: error }, 'Failed to clear skill cache');

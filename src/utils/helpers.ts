@@ -6,7 +6,7 @@
 
 import path from 'path';
 import os from 'os';
-import fs from 'fs/promises';
+import fs from 'fs-extra';
 
 /**
  * 展开波浪号路径 (~) 为完整路径
@@ -29,7 +29,7 @@ export function expandHome(filepath: string): string {
  */
 export async function ensureDir(dirPath: string): Promise<string> {
   const expandedPath = expandHome(dirPath);
-  await fs.mkdir(expandedPath, { recursive: true });
+  await fs.ensureDir(expandedPath);
   return expandedPath;
 }
 

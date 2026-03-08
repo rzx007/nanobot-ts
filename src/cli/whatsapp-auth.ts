@@ -4,7 +4,7 @@
  */
 
 import { Command } from 'commander';
-import fs from 'fs/promises';
+import fs from 'fs-extra';
 import readline from 'readline';
 import makeWASocket, { DisconnectReason, useMultiFileAuthState, Browsers } from 'baileys';
 import qrcode from 'qrcode-terminal';
@@ -74,7 +74,7 @@ async function clearWhatsAppAuth(): Promise<void> {
   }
 
   try {
-    await fs.rm(authDir, { recursive: true, force: true });
+    await fs.remove(authDir);
     success('WhatsApp authentication cleared successfully!');
     info(`Removed directory: ${authDir}`);
   } catch (err) {
@@ -109,7 +109,7 @@ async function authWhatsApp(
   }
 
   const authDir = expandHome('~/.nanobot/whatsapp_auth');
-  await fs.mkdir(authDir, { recursive: true });
+  await fs.ensureDir(authDir);
 
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
 
@@ -123,8 +123,8 @@ async function authWhatsApp(
   if (state.creds.registered && force) {
     info('Forcing re-authentication...');
     try {
-      await fs.rm(authDir, { recursive: true, force: true });
-      await fs.mkdir(authDir, { recursive: true });
+      await fs.remove(authDir);
+      await fs.ensureDir(authDir);
       const newState = await useMultiFileAuthState(authDir);
       state.creds = newState.state.creds;
       state.keys = newState.state.keys;

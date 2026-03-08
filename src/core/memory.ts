@@ -5,7 +5,7 @@
  */
 
 import path from 'path';
-import fs from 'fs/promises';
+import fs from 'fs-extra';
 import type { Config } from '../config/schema';
 import type { SessionMessage, Session } from '../storage';
 import { expandHome } from '../utils/helpers';
@@ -64,7 +64,7 @@ export class MemoryConsolidator {
 
       if (
         await fs
-          .access(memoryPath)
+          .pathExists(memoryPath)
           .then(() => true)
           .catch(() => false)
       ) {
@@ -73,7 +73,7 @@ export class MemoryConsolidator {
 
       if (
         await fs
-          .access(historyPath)
+          .pathExists(historyPath)
           .then(() => true)
           .catch(() => false)
       ) {

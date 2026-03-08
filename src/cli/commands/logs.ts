@@ -3,7 +3,7 @@
  */
 
 import path from 'path';
-import fs from 'fs/promises';
+import fs from 'fs-extra';
 import { Command } from 'commander';
 import { expandHome } from '../../utils/helpers';
 import { error, info } from '../ui';
@@ -23,7 +23,7 @@ async function runLogs(tailLines: number): Promise<void> {
   const logPath = path.join(workspace, 'logs', 'nanobot.log');
 
   try {
-    await fs.access(logPath);
+    await fs.pathExists(logPath);
   } catch {
     info(`No log file found at ${logPath}`);
     info('Logs are currently output to console only.');

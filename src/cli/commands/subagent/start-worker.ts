@@ -14,6 +14,7 @@ import { expandHome } from '@/utils/helpers';
 import {
   ReadFileTool,
   WriteFileTool,
+  CreateFileTool,
   EditFileTool,
   DeleteFileTool,
   ListDirTool,
@@ -27,7 +28,6 @@ async function main() {
   const dataPath = process.env.DATA_PATH ?? expandHome('~/.nanobot/data/bunqueue.db');
 
   logger.info({ workerId, dataPath }, 'Starting subagent worker process');
-
 
   try {
     const configPath = process.env.NANOBOT_CONFIG_PATH ?? expandHome('~/.nanobot/config.json');
@@ -45,6 +45,7 @@ async function main() {
 
     tools.register(new ReadFileTool(config));
     tools.register(new WriteFileTool(config));
+    tools.register(new CreateFileTool(config));
     tools.register(new EditFileTool(config));
     tools.register(new DeleteFileTool(config));
     tools.register(new ListDirTool(config));

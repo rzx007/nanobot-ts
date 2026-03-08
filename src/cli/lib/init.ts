@@ -4,7 +4,7 @@
  */
 
 import path from 'path';
-import fs from 'fs/promises';
+import fs from 'fs-extra';
 import { saveConfig, createDefaultConfig } from '@/config/loader';
 import { saveMCPConfig, createDefaultMCPConfig, getMCPConfigPath } from '@/mcp/loader';
 import { expandHome, ensureDir } from '@/utils/helpers';
@@ -81,7 +81,7 @@ async function setupMCPConfig(workspacePath: string, options: InitOptions): Prom
   }
 
   try {
-    await fs.access(mcpConfigPath);
+    await fs.pathExists(mcpConfigPath);
     if (progress) {
       progress.setStep('MCP config', 'done', 'already exists');
     }
@@ -112,7 +112,7 @@ async function setupConfig(force: boolean, options: InitOptions): Promise<boolea
 
   if (!force) {
     try {
-      await fs.access(configPath);
+      await fs.pathExists(configPath);
       if (progress) {
         progress.setStep('Config', 'done', 'already exists (use --force to overwrite)');
         progress.setDone();

@@ -5,7 +5,7 @@
  */
 
 import path from 'path';
-import fs from 'fs/promises';
+import fs from 'fs-extra';
 import { cosmiconfig } from 'cosmiconfig';
 import type { Config } from './schema';
 
@@ -37,8 +37,8 @@ export async function loadConfig(configPath?: string): Promise<Config | null> {
     const pathToUse = configPath ? expandTilde(configPath) : expandTilde(DEFAULT_CONFIG_PATH);
 
     try {
-      const raw = await fs.readFile(pathToUse, 'utf-8');
-      const config = JSON.parse(raw) as Config;
+      const raw = await fs.readJson(pathToUse);
+      const config = raw as Config;
       return config;
     } catch {
       if (configPath) {
@@ -69,15 +69,15 @@ export async function loadConfig(configPath?: string): Promise<Config | null> {
  */
 export async function saveConfig(config: Config, filepath: string): Promise<void> {
   try {
-    const fs = await import('fs/promises');
+    const fs = await import('fs-extra');
     const path = await import('path');
 
     // 确保目录存在
     const dir = path.dirname(filepath);
-    await fs.mkdir(dir, { recursive: true });
+    await fs.ensureDir(dir);
 
     // 写入配置文件 (格式化 JSON)
-    await fs.writeFile(filepath, JSON.stringify(config, null, 2), 'utf-8');
+    await fs.writeJson(filepath, config, { spaces: 2 });
 
     console.log(`Config saved: ${filepath}`);
   } catch (error) {

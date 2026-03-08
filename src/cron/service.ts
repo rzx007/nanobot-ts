@@ -2,7 +2,7 @@
  * Cron 服务：持久化定时任务，到期触发 on_job 回调（与 Bus/Agent 联动）
  */
 
-import fs from 'fs/promises';
+import fs from 'fs-extra';
 import path from 'path';
 import { logger } from '../utils/logger';
 import type { CronJob, CronSchedule, CronStore } from './types';
@@ -70,8 +70,7 @@ export class CronService {
   private async loadStore(): Promise<CronStore> {
     if (this.store) return this.store;
     try {
-      const raw = await fs.readFile(this.storePath, 'utf-8');
-      const data = JSON.parse(raw) as { version?: number; jobs?: unknown[] };
+      const data = await fs.readJson(this.storePath);
       const jobs: CronJob[] = (data.jobs ?? []).map((j: any) => ({
         id: j.id,
         name: j.name,
