@@ -1,26 +1,21 @@
 /**
  * 渠道管理器
- * 按 config 加载渠道，消费 outbound 并分发到各渠道的 send()
+ * 按 config 加载渠道，startAll 时传入 onInbound 回调；出站由上层循环调用 dispatchOutbound
  */
 
-import type { BaseChannel } from './base';
+import type { BaseChannel, ChannelStartOptions } from './base';
 import type { Config } from '../config/schema';
-import type { IMessageBus } from '@/bus/types';
+import type { OutboundMessage } from '@/bus/types';
 import { logger } from '../utils/logger';
 
 /**
  * 渠道管理器
- * 负责渠道的注册、启停，以及出站消息的消费与分发
+ * 负责渠道的注册、启停；入站通过 startAll({ onInbound }) 注入，出站由上层循环调用 dispatchOutbound
  */
 export class ChannelManager {
   private readonly channels = new Map<string, BaseChannel>();
-  private running = false;
-  private outboundLoopPromise: Promise<void> | null = null;
 
-  constructor(
-    private readonly config: Config,
-    private readonly bus: IMessageBus,
-  ) {}
+  constructor(private readonly config: Config) {}
 
   /** 获取配置（供按 config.channels 加载渠道时使用） */
   getConfig(): Config {
@@ -47,16 +42,15 @@ export class ChannelManager {
 
   /**
    * 按 config.channels 加载并注册已启用的渠道（WhatsApp、Feishu、Email）
-   * 需传入带 publishInbound 的 bus，供渠道上报入站消息。
    * 单个渠道依赖缺失时只打 log 不抛错。
    */
-  async loadChannelsFromConfig(bus: IMessageBus): Promise<void> {
+  async loadChannelsFromConfig(): Promise<void> {
     const { whatsapp, feishu, email } = this.config.channels;
 
     if (whatsapp.enabled) {
       try {
         const { WhatsAppChannel } = await import('./whatsapp');
-        this.registerChannel('whatsapp', new WhatsAppChannel(whatsapp, bus));
+        this.registerChannel('whatsapp', new WhatsAppChannel(whatsapp));
       } catch (err) {
         logger.warn({ err, name: 'whatsapp' }, 'Channel not available (missing dependency?)');
       }
@@ -64,7 +58,7 @@ export class ChannelManager {
     if (feishu.enabled && feishu.appId && feishu.appSecret) {
       try {
         const { FeishuChannel } = await import('./feishu');
-        this.registerChannel('feishu', new FeishuChannel(feishu, bus));
+        this.registerChannel('feishu', new FeishuChannel(feishu));
       } catch (err) {
         logger.warn({ err, name: 'feishu' }, 'Channel not available (missing dependency?)');
       }
@@ -80,7 +74,7 @@ export class ChannelManager {
     ) {
       try {
         const { EmailChannel } = await import('./email');
-        this.registerChannel('email', new EmailChannel(email, bus));
+        this.registerChannel('email', new EmailChannel(email));
       } catch (err) {
         logger.warn({ err, name: 'email' }, 'Channel not available (missing dependency?)');
       }
@@ -88,12 +82,12 @@ export class ChannelManager {
   }
 
   /**
-   * 启动所有渠道
+   * 启动所有渠道，传入 onInbound 回调（由上层如 gateway 接 bus.publishInbound）
    */
-  async startAll(): Promise<void> {
+  async startAll(options: ChannelStartOptions): Promise<void> {
     for (const [name, channel] of this.channels) {
       try {
-        await channel.start();
+        await channel.start(options);
         logger.info({ name }, 'Channel started');
       } catch (err) {
         logger.error({ err, name }, 'Channel start failed');
@@ -102,10 +96,21 @@ export class ChannelManager {
   }
 
   /**
+   * 分发一条出站消息到对应渠道（由上层出站循环调用）
+   */
+  async dispatchOutbound(msg: OutboundMessage): Promise<void> {
+    const channel = this.channels.get(msg.channel);
+    if (channel) {
+      await channel.send(msg);
+    } else {
+      logger.warn({ channel: msg.channel }, 'No channel registered for outbound message');
+    }
+  }
+
+  /**
    * 停止所有渠道
    */
   async stopAll(): Promise<void> {
-    this.running = false;
     for (const [name, channel] of this.channels) {
       try {
         await channel.stop();
@@ -117,49 +122,10 @@ export class ChannelManager {
   }
 
   /**
-   * 运行出站消费循环：从 bus 取 outbound，按 channel 分发给对应渠道的 send()
+   * 停止（停止所有渠道），供 gateway 等 onExit 调用
    */
-  runOutboundLoop(): void {
-    if (this.outboundLoopPromise) {
-      logger.warn('Outbound loop already running');
-      return;
-    }
-    this.running = true;
-    this.outboundLoopPromise = this._outboundLoop();
-  }
-
-  private async _outboundLoop(): Promise<void> {
-    while (this.running) {
-      try {
-        const msg = await this.bus.consumeOutbound();
-        const channel = this.channels.get(msg.channel);
-        if (channel) {
-          await channel.send(msg);
-        } else {
-          logger.warn({ channel: msg.channel }, 'No channel registered for outbound message');
-        }
-      } catch (err) {
-        if (this.running) {
-          logger.error({ err }, 'Outbound dispatch error');
-        }
-      }
-    }
-  }
-
-  /**
-   * 等待出站循环结束（用于 graceful shutdown）
-   */
-  async waitOutboundLoop(): Promise<void> {
-    if (this.outboundLoopPromise) {
-      await this.outboundLoopPromise;
-    }
-  }
-
-  /**
-   * 停止运行（停止出站循环）
-   */
-  stop(): void {
-    this.running = false;
+  async stop(): Promise<void> {
+    await this.stopAll();
   }
 
   /**

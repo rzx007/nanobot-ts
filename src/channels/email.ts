@@ -5,8 +5,8 @@
 
 import { ImapFlow } from 'imapflow';
 import nodemailer from 'nodemailer';
-import type { InboundMessage, OutboundMessage, IMessageBus } from '@/bus/types';
-import type { BaseChannel } from './base';
+import type { InboundMessage, OutboundMessage } from '@/bus/types';
+import type { BaseChannel, ChannelStartOptions } from './base';
 import type { EmailConfig } from '../config/schema';
 import { logger } from '../utils/logger';
 
@@ -20,12 +20,13 @@ export class EmailChannel implements BaseChannel {
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private lastCount = 0;
 
-  constructor(
-    private readonly config: EmailChannelConfig,
-    private readonly bus: IMessageBus
-  ) { }
+  /** 入站回调（由 start(options) 注入） */
+  private onInbound: ((msg: InboundMessage) => void | Promise<void>) | null = null;
 
-  async start(): Promise<void> {
+  constructor(private readonly config: EmailChannelConfig) {}
+
+  async start(options?: ChannelStartOptions): Promise<void> {
+    this.onInbound = options?.onInbound ?? null;
     const {
       imapHost,
       imapPort,
@@ -114,7 +115,9 @@ export class EmailChannel implements BaseChannel {
         timestamp: new Date(env?.date ?? Date.now()),
         metadata: { subject: env?.subject },
       };
-      await this.bus.publishInbound(inbound);
+      if (this.onInbound) {
+        await this.onInbound(inbound);
+      }
     }
   }
 

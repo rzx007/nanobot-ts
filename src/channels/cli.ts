@@ -5,9 +5,8 @@
  */
 
 import type { InboundMessage, OutboundMessage } from '@/bus/types';
-import type { BaseChannelConfig, BaseChannel } from './base';
+import type { BaseChannelConfig, BaseChannel, ChannelStartOptions } from './base';
 import { logger } from '../utils/logger';
-import type { IMessageBus } from '@/bus/types';
 
 /**
  * CLI 渠道配置
@@ -18,33 +17,26 @@ export interface CLIConfig extends BaseChannelConfig {
 
 /**
  * CLI 渠道
- * 
+ *
  * 用于直接命令行交互的渠道
  */
 export class CLIChannel implements BaseChannel {
   /** 配置 */
   readonly config: CLIConfig;
 
-  /** 消息总线 */
-  private bus: IMessageBus;
+  /** 入站回调（由 start(options) 注入） */
+  private onInbound: ((msg: InboundMessage) => void | Promise<void>) | null = null;
 
   /** 消息回调 (供子类或扩展使用) */
   protected messageCallback: ((msg: InboundMessage) => void) | null = null;
 
-  /**
-   * 构造函数
-   * 
-   * @param config - 配置对象
-   * @param bus - 消息总线
-   */
-  constructor(config: CLIConfig, bus: IMessageBus) {
+  constructor(config: CLIConfig) {
     this.config = config;
-    this.bus = bus;
   }
 
   /**
    * 设置消息回调
-   * 
+   *
    * @param callback - 消息回调函数
    */
   setMessageCallback(callback: (msg: InboundMessage) => void): void {
@@ -54,7 +46,8 @@ export class CLIChannel implements BaseChannel {
   /**
    * 启动 CLI 渠道
    */
-  async start(): Promise<void> {
+  async start(options?: ChannelStartOptions): Promise<void> {
+    this.onInbound = options?.onInbound ?? null;
     logger.info('CLI channel started');
   }
 
@@ -100,8 +93,9 @@ export class CLIChannel implements BaseChannel {
       // 暂时不实现
     }
 
-    // 发布到消息总线
-    await this.bus.publishInbound(msg);
+    if (this.onInbound) {
+      await this.onInbound(msg);
+    }
 
     logger.info(`[user]: ${content}`);
   }

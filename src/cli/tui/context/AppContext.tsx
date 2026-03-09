@@ -8,6 +8,7 @@ import { initializeWorkspace } from '@/cli/lib/init';
 import { useSelfCheck } from '../hooks';
 import type { SelfCheckResult } from '../setup/types';
 import type { CliRenderer } from '@opentui/core';
+import { InboundMessage } from '@/bus/types';
 
 export type ViewMode = 'home' | 'gateway' | 'status' | 'config' | 'setup' | 'check-error';
 
@@ -81,11 +82,27 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
       const rt = await buildAgentRuntime(loaded);
       setRuntime(rt);
       const { bus, agent, config: cfg } = rt;
-      const channelManager = new ChannelManager(cfg, bus);
-      channelManager.registerChannel('cli', new CLIChannel({}, bus));
-      await channelManager.loadChannelsFromConfig(bus);
-      await channelManager.startAll();
-      channelManager.runOutboundLoop();
+
+      /** 启动channel管理器 */
+      const channelManager = new ChannelManager(cfg);
+      channelManager.registerChannel('cli', new CLIChannel({}));
+      await channelManager.loadChannelsFromConfig();
+      await channelManager.startAll({
+        onInbound: (msg: InboundMessage) => void bus.publishInbound(msg),
+      });
+      const outboundRunning = true;
+      void (async () => {
+        while (outboundRunning) {
+          try {
+            const msg = await bus.consumeOutbound();
+            await channelManager.dispatchOutbound(msg);
+          } catch (err) {
+            logger.error({ err }, 'Outbound dispatch error');
+          }
+        }
+      })();
+
+      /** 启动Agent */
       agent.run().catch(err => {
         logger.error({ err }, 'Agent loop error');
       });
@@ -136,15 +153,23 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
 
         setRuntime(rt);
         const { bus, agent, config: cfg } = rt;
-        const channelManager = new ChannelManager(cfg, bus);
-        // 注册 CLIChannel 用于本地交互
-        channelManager.registerChannel('cli', new CLIChannel({}, bus));
-        // 从配置加载其他渠道
-        await channelManager.loadChannelsFromConfig(bus);
-        // 启动所有渠道
-        await channelManager.startAll();
-        // 启动出站循环
-        channelManager.runOutboundLoop();
+        const channelManager = new ChannelManager(cfg);
+        channelManager.registerChannel('cli', new CLIChannel({}));
+        await channelManager.loadChannelsFromConfig();
+        await channelManager.startAll({
+          onInbound: (msg) => void bus.publishInbound(msg),
+        });
+        const outboundRunning = true;
+        void (async () => {
+          while (outboundRunning) {
+            try {
+              const msg = await bus.consumeOutbound();
+              await channelManager.dispatchOutbound(msg);
+            } catch (err) {
+              logger.error({ err }, 'Outbound dispatch error');
+            }
+          }
+        })();
 
         agent.run().catch(err => {
           logger.error({ err }, 'Agent loop error');

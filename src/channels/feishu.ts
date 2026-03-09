@@ -5,10 +5,9 @@
 
 import * as lark from '@larksuiteoapi/node-sdk';
 import type { InboundMessage, OutboundMessage } from '@/bus/types';
-import type { BaseChannel } from './base';
+import type { BaseChannel, ChannelStartOptions } from './base';
 import type { FeishuConfig } from '../config/schema';
 import { logger } from '../utils/logger';
-import type { IMessageBus } from '@/bus/types';
 
 /** 仅当消息 @ 了以下名称之一的机器人时才回复（与飞书 mentions[].name 匹配，不区分大小写） */
 const REPLY_AT_BOT_NAMES = ['cicibot', 'nanobot'];
@@ -25,12 +24,13 @@ export class FeishuChannel implements BaseChannel {
   private client: lark.Client | null = null;
   private wsClient: lark.WSClient | null = null;
 
-  constructor(
-    private readonly config: FeishuChannelConfig,
-    private readonly bus: IMessageBus
-  ) { }
+  /** 入站回调（由 start(options) 注入） */
+  private onInbound: ((msg: InboundMessage) => void | Promise<void>) | null = null;
 
-  async start(): Promise<void> {
+  constructor(private readonly config: FeishuChannelConfig) {}
+
+  async start(options?: ChannelStartOptions): Promise<void> {
+    this.onInbound = options?.onInbound ?? null;
     const { appId, appSecret, encryptKey, verificationToken, allowFrom } = this.config;
 
     this.client = new lark.Client({
@@ -88,7 +88,9 @@ export class FeishuChannel implements BaseChannel {
           content: contentText,
           timestamp: new Date(Number(msg.create_time) || Date.now()),
         };
-        await this.bus.publishInbound(inbound);
+        if (this.onInbound) {
+          await this.onInbound(inbound);
+        }
       },
     });
 

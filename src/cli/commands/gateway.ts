@@ -25,14 +25,30 @@ async function runGateway(port: number, http: boolean, staticDir?: string): Prom
 
   const runtime = await buildAgentRuntime(config);
   const { bus, agent, config: cfg } = runtime;
-  const channelManager = new ChannelManager(cfg, bus);
-  channelManager.registerChannel('cli', new CLIChannel({}, bus));
-  await channelManager.loadChannelsFromConfig(bus);
-  await channelManager.startAll();
-  channelManager.runOutboundLoop();
 
+  /** 启动channel管理器 */
+  const channelManager = new ChannelManager(cfg);
+  channelManager.registerChannel('cli', new CLIChannel({}));
+  await channelManager.loadChannelsFromConfig();
+  await channelManager.startAll({
+    onInbound: (msg) => void bus.publishInbound(msg),
+  });
 
+  let outboundRunning = true;
+  void (async () => {
+    while (outboundRunning) {
+      try {
+        const msg = await bus.consumeOutbound();
+        await channelManager.dispatchOutbound(msg);
+      } catch (err) {
+        if (outboundRunning) {
+          logger.error({ err }, 'Outbound dispatch error');
+        }
+      }
+    }
+  })();
 
+  /** 启动Agent */
   agent.run().catch(err => {
     logger.error({ err }, 'Agent loop error');
   });
@@ -65,6 +81,7 @@ async function runGateway(port: number, http: boolean, staticDir?: string): Prom
   }
   const onExit = async (signal?: string): Promise<void> => {
     logger.info({ signal }, 'Process exit hook triggered');
+    outboundRunning = false;
     if (httpServer) {
       await httpServer.close();
     }

@@ -13,8 +13,8 @@ import makeWASocket, {
 } from 'baileys';
 import path from 'path';
 import qrcode from 'qrcode-terminal';
-import type { InboundMessage, OutboundMessage, IMessageBus } from '@/bus/types';
-import type { BaseChannel } from './base';
+import type { InboundMessage, OutboundMessage } from '@/bus/types';
+import type { BaseChannel, ChannelStartOptions } from './base';
 import type { WhatsAppConfig } from '../config/schema';
 import { createLogger, logger } from '../utils/logger';
 
@@ -44,10 +44,10 @@ export class WhatsAppChannel implements BaseChannel {
   private readonly maxRetries = 5;
   private readonly retryDelay = 3000;
 
-  constructor(
-    private readonly config: WhatsAppChannelConfig,
-    private readonly bus: IMessageBus,
-  ) {
+  /** 入站回调（由 start(options) 注入，重连时保留） */
+  private onInbound: ((msg: InboundMessage) => void | Promise<void>) | null = null;
+
+  constructor(private readonly config: WhatsAppChannelConfig) {
     this.authDir =
       config.authDir ??
       path.join(process.env.HOME ?? process.env.USERPROFILE ?? '', '.nanobot', 'whatsapp_auth');
@@ -68,7 +68,10 @@ export class WhatsAppChannel implements BaseChannel {
     return true;
   }
 
-  async start(): Promise<void> {
+  async start(options?: ChannelStartOptions): Promise<void> {
+    if (options?.onInbound != null) {
+      this.onInbound = options.onInbound;
+    }
     /**
      * 使用多文件认证状态
      */
@@ -200,7 +203,9 @@ export class WhatsAppChannel implements BaseChannel {
           content: text,
           timestamp: new Date(Number(m.messageTimestamp) * 1000),
         };
-        await this.bus.publishInbound(inbound);
+        if (this.onInbound) {
+          await this.onInbound(inbound);
+        }
       }
     });
   }

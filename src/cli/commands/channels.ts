@@ -3,7 +3,6 @@
  */
 
 import { Command } from 'commander';
-import { MessageBus } from '../../bus/queue';
 import { ChannelManager } from '../../channels';
 import { error, info } from '../ui';
 import { requireConfig } from '../setup';
@@ -25,12 +24,10 @@ async function runChannels(action?: string): Promise<void> {
   }
 
   const config = await requireConfig();
-  const bus = new MessageBus();
-  const channelManager = new ChannelManager(config, bus);
+  const channelManager = new ChannelManager(config);
   const statuses = channelManager.getStatus();
 
   info('Channel Status:');
-  console.log('');
   statuses.forEach(status => {
     const registered = status.registered ? '✓' : '✗';
     const enabled = status.enabled ? 'enabled' : 'disabled';
