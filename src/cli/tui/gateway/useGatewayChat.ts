@@ -6,7 +6,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { MessageItem } from '../components/MessageList';
-import { getSessionKey, type OutboundMessage } from '@/bus/types';
+import { getSessionKey, type OutboundMessage } from '@/config/bus-schema';
 import { SlashCommandExecutor, createAllHandlers } from '../commands';
 import { buildSlashCommandContext } from './slashCommandContext';
 import { sessionToMessageItems } from './sessionUtils';

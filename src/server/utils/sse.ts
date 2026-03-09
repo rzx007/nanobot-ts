@@ -3,8 +3,8 @@
  */
 
 import type { Context } from 'hono';
-import type { StreamTextEvent } from '@/bus/types';
-import type { OutboundMessage } from '@/bus/types';
+import type { StreamTextEvent } from '@/config/bus-schema';
+import type { OutboundMessage } from '@/config/bus-schema';
 import type { SSEEvent } from '../types';
 import type { MessageBus } from '@/bus/queue';
 

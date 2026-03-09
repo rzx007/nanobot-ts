@@ -2,5 +2,5 @@
  * 消息总线模块导出
  */
 
-export * from './types';
+export * from '../config/bus-schema';
 export { MessageBus } from './queue';

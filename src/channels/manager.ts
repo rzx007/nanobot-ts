@@ -5,7 +5,7 @@
 
 import type { BaseChannel, ChannelStartOptions } from './base';
 import type { Config } from '../config/schema';
-import type { OutboundMessage } from '@/bus/types';
+import type { OutboundMessage } from '@/config/bus-schema';
 import { logger } from '../utils/logger';
 
 /**

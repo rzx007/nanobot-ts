@@ -4,7 +4,7 @@
  */
 
 import * as lark from '@larksuiteoapi/node-sdk';
-import type { InboundMessage, OutboundMessage } from '@/bus/types';
+import type { InboundMessage, OutboundMessage } from '@/config/bus-schema';
 import type { BaseChannel, ChannelStartOptions } from './base';
 import type { FeishuConfig } from '../config/schema';
 import { logger } from '../utils/logger';
@@ -18,7 +18,7 @@ interface FeishuMention {
   name?: string;
 }
 
-export interface FeishuChannelConfig extends FeishuConfig { }
+export interface FeishuChannelConfig extends FeishuConfig {}
 
 export class FeishuChannel implements BaseChannel {
   private client: lark.Client | null = null;
@@ -46,7 +46,7 @@ export class FeishuChannel implements BaseChannel {
       'im.message.receive_v1': async (data: {
         message?: {
           chat_id?: string;
-          chat_type?: string
+          chat_type?: string;
           content?: string;
           create_time?: string;
           sender?: { sender_id?: { user_id?: string } };
@@ -67,7 +67,7 @@ export class FeishuChannel implements BaseChannel {
         // 仅当消息 @ 了配置的机器人时处理（按飞书 mentions[].name 判断）
         const mentions = msg.mentions ?? [];
         const isAtBot = mentions.some(
-          (m) => m.name && REPLY_AT_BOT_NAMES.includes(m.name.toLowerCase())
+          m => m.name && REPLY_AT_BOT_NAMES.includes(m.name.toLowerCase()),
         );
         // 群聊中只有@了机器人才处理
         if (!isAtBot && isGroupChat) return;

@@ -1,5 +1,5 @@
 import type { SlashCommandHandler, SlashCommandContext } from '../types';
-import { getSessionKey } from '@/bus/types';
+import { getSessionKey } from '@/config/bus-schema';
 
 /**
  * /new 命令处理器

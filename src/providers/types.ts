@@ -5,7 +5,7 @@
  */
 
 import type { LanguageModel } from 'ai';
-import type { ToolSet, LLMResponse } from '../bus/types';
+import type { ToolSet, LLMResponse } from '@/config/bus-schema';
 
 /**
  * 模型工厂：根据模型名返回 AI SDK 的 LanguageModel

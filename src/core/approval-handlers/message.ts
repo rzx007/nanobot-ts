@@ -4,7 +4,7 @@
  * 用于 WhatsApp、Feishu、Email 等消息渠道的确认机制
  */
 
-import type { IMessageBus } from '@/bus/types';
+import type { IMessageBus } from '@/config/bus-schema';
 import type { ApprovalHandler, ConfirmationRequest } from './types';
 import { logger } from '@/utils/logger';
 
@@ -162,7 +162,7 @@ export class MessageApprovalHandler implements ApprovalHandler {
       pending.resolver.resolve(false);
     }
 
-    return true;  // ← 返回 true 表示已处理确认回复
+    return true; // ← 返回 true 表示已处理确认回复
   }
 
   /**

@@ -10,7 +10,7 @@ import { ApprovalConfigSchema, type ApprovalConfig } from '../config/approval-sc
 import type { Config } from '../config/schema';
 import { RiskLevel, DEFAULT_RISK_LEVELS } from '../tools/safety';
 import { logger } from '../utils/logger';
-import type { IMessageBus } from '../bus/types';
+import type { IMessageBus } from '@/config/bus-schema';
 import { MessageApprovalHandler } from './approval-handlers/message';
 /**
  * 确认管理器
@@ -240,7 +240,6 @@ export class ApprovalManager {
     }
   }
 
-
   /**
    * 处理用户消息（用于消息渠道的确认回复，确认回复后，处理工具执行或拒绝），此过程会释放requestApproval等待中的 Promise
    *
@@ -251,12 +250,15 @@ export class ApprovalManager {
    */
   handleUserMessage(channel: string, chatId: string, content: string): boolean {
     const handler = this.getHandler(channel);
-    if (handler && 'handleUserMessage' in handler && typeof handler.handleUserMessage === 'function') {
+    if (
+      handler &&
+      'handleUserMessage' in handler &&
+      typeof handler.handleUserMessage === 'function'
+    ) {
       return handler.handleUserMessage(channel, chatId, content);
     }
     return false;
   }
-
 
   /**
    * 取消待处理的确认

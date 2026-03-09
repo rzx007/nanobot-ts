@@ -5,7 +5,7 @@
  */
 
 import { Tool } from './base';
-import type { IMessageBus } from '../bus/types';
+import type { IMessageBus } from '@/config/bus-schema';
 import type { Config } from '../config/schema';
 import { RiskLevel } from './safety';
 import { logger } from '../utils/logger';

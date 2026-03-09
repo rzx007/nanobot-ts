@@ -4,8 +4,13 @@
  * AI 对话的核心处理引擎
  */
 
-import type { InboundMessage, OutboundMessage, StreamTextEvent, ToolHintEvent } from '../bus/types';
-import { getSessionKey } from '../bus/types';
+import type {
+  InboundMessage,
+  OutboundMessage,
+  StreamTextEvent,
+  ToolHintEvent,
+} from '@/config/bus-schema';
+import { getSessionKey } from '@/config/bus-schema';
 import type { ToolRegistry } from '../tools';
 import type { LLMProvider } from '../providers';
 import type { Config } from '../config/schema';

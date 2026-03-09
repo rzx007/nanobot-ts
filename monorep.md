@@ -1,0 +1,74 @@
+packages/
+├── main/          # 核心框架（Agent、Memory、Approval 等）
+├── cli/           # 命令行工具（启动其他服务）
+├── tui/           # 终端交互界面
+├── server/        # HTTP 服务器
+├── frontend/      # Web Dashboard
+├── tools/         # AI 工具集合
+├── channels/      # 消息渠道集合
+├── shared/        # 共享类型和配置（新增）
+└── logger/        # 日志工具（新增）
+
+
+🔗 依赖关系图
+
+cli ──┬──> main
+      ├──> tui
+      └──> server
+
+tui ──> main
+
+server ──> main
+         ├──> channels (可选)
+         └──> tools (可选)
+
+frontend ──> 无依赖，通过 HTTP API 调用 server
+
+main ──┬──> shared (共享类型)
+      ├──> logger (日志)
+      ├──> channels (可选)
+      └──> tools (可选)
+
+tools ──┬──> main
+         └──> logger
+
+channels ──┬──> main
+           └──> logger
+
+shared ──> 无依赖
+
+logger ──> 无依赖
+
+📦 各包职责
+
+packages/shared/
+
+src/
+├── types/
+│   ├── agent.ts      # Agent 相关类型
+│   ├── channel.ts    # Channel 相关类型
+│   ├── message.ts    # Message 相关类型
+│   ├── tool.ts       # Tool 相关类型
+│   ├── bus.ts       # Bus 相关类型
+│   └── index.ts
+├── config/
+│   ├── defaults.ts   # 默认配置
+│   ├── schemas.ts    # Zod 验证 schemas
+│   ├── constants.ts  # 常量定义
+│   └── index.ts
+└── index.ts          # 导出所有类型和配置
+
+
+
+packages/logger/
+
+```
+
+src/
+├── index.ts           # 导出 logger
+├── logger.ts          # logger 配置和初始化
+├── transports.ts      # 日志传输（console、file）
+├── formatters.ts      # 日志格式化
+└── types.ts           # logger 相关类型
+
+```

@@ -8,7 +8,7 @@ import { initializeWorkspace } from '@/cli/lib/init';
 import { useSelfCheck } from '../hooks';
 import type { SelfCheckResult } from '../setup/types';
 import type { CliRenderer } from '@opentui/core';
-import { InboundMessage } from '@/bus/types';
+import { InboundMessage } from '@/config/bus-schema';
 
 export type ViewMode = 'home' | 'gateway' | 'status' | 'config' | 'setup' | 'check-error';
 
@@ -157,7 +157,7 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
         channelManager.registerChannel('cli', new CLIChannel({}));
         await channelManager.loadChannelsFromConfig();
         await channelManager.startAll({
-          onInbound: (msg) => void bus.publishInbound(msg),
+          onInbound: msg => void bus.publishInbound(msg),
         });
         const outboundRunning = true;
         void (async () => {

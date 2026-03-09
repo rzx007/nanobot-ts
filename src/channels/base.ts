@@ -4,7 +4,7 @@
  * 所有聊天渠道的抽象基类
  */
 
-import type { InboundMessage, OutboundMessage } from '../bus/types';
+import type { InboundMessage, OutboundMessage } from '@/config/bus-schema';
 
 /**
  * 基础渠道配置

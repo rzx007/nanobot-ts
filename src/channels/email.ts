@@ -5,12 +5,12 @@
 
 import { ImapFlow } from 'imapflow';
 import nodemailer from 'nodemailer';
-import type { InboundMessage, OutboundMessage } from '@/bus/types';
+import type { InboundMessage, OutboundMessage } from '@/config/bus-schema';
 import type { BaseChannel, ChannelStartOptions } from './base';
 import type { EmailConfig } from '../config/schema';
 import { logger } from '../utils/logger';
 
-export interface EmailChannelConfig extends EmailConfig { }
+export interface EmailChannelConfig extends EmailConfig {}
 
 const EMAIL_POLL_INTERVAL_MS = 60_000;
 
@@ -62,7 +62,7 @@ export class EmailChannel implements BaseChannel {
     });
 
     this.pollTimer = setInterval(() => {
-      this.pollNewMessages(imapMailbox, allowFrom).catch((err) => {
+      this.pollNewMessages(imapMailbox, allowFrom).catch(err => {
         logger.error({ err }, 'Email poll error');
       });
     }, EMAIL_POLL_INTERVAL_MS);
@@ -87,18 +87,22 @@ export class EmailChannel implements BaseChannel {
   private async handleNewMessages(
     fromSeq: number,
     toCount: number,
-    allowFrom: string[]
+    allowFrom: string[],
   ): Promise<void> {
     if (!this.imap) return;
     const range = `${fromSeq}:${toCount}`;
     for await (const msg of this.imap.fetch(
       range,
       { envelope: true, source: true },
-      { uid: false }
+      { uid: false },
     )) {
       const env = msg.envelope;
       const fromAddr = env?.from?.[0]?.address ?? '';
-      if (allowFrom.length > 0 && !allowFrom.some((a) => fromAddr.includes(a) || a.includes(fromAddr))) continue;
+      if (
+        allowFrom.length > 0 &&
+        !allowFrom.some(a => fromAddr.includes(a) || a.includes(fromAddr))
+      )
+        continue;
 
       let text = '';
       if (msg.source) {

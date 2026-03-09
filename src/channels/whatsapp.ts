@@ -13,7 +13,7 @@ import makeWASocket, {
 } from 'baileys';
 import path from 'path';
 import qrcode from 'qrcode-terminal';
-import type { InboundMessage, OutboundMessage } from '@/bus/types';
+import type { InboundMessage, OutboundMessage } from '@/config/bus-schema';
 import type { BaseChannel, ChannelStartOptions } from './base';
 import type { WhatsAppConfig } from '../config/schema';
 import { createLogger, logger } from '../utils/logger';

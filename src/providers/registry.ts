@@ -6,7 +6,7 @@
  */
 
 import { generateText, streamText, stepCountIs, type LanguageModel, type ModelMessage } from 'ai';
-import type { LLMResponse, ToolSet } from '../bus/types';
+import type { LLMResponse, ToolSet } from '@/config/bus-schema';
 import type { Config } from '../config/schema';
 import { parseModelString } from '../utils/helpers';
 import { logger } from '../utils/logger';
@@ -148,12 +148,12 @@ export class LLMProvider {
 
       const usage = result.usage
         ? {
-          promptTokens: result.usage.inputTokens ?? 0,
-          completionTokens: result.usage.outputTokens ?? 0,
-          totalTokens:
-            result.usage.totalTokens ??
-            (result.usage.inputTokens ?? 0) + (result.usage.outputTokens ?? 0),
-        }
+            promptTokens: result.usage.inputTokens ?? 0,
+            completionTokens: result.usage.outputTokens ?? 0,
+            totalTokens:
+              result.usage.totalTokens ??
+              (result.usage.inputTokens ?? 0) + (result.usage.outputTokens ?? 0),
+          }
         : undefined;
 
       return {
@@ -233,10 +233,10 @@ export class LLMProvider {
       const contentStr = typeof content === 'string' ? content : '';
       const usageInfo = usage
         ? {
-          promptTokens: usage.inputTokens ?? 0,
-          completionTokens: usage.outputTokens ?? 0,
-          totalTokens: usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
-        }
+            promptTokens: usage.inputTokens ?? 0,
+            completionTokens: usage.outputTokens ?? 0,
+            totalTokens: usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+          }
         : undefined;
 
       return {

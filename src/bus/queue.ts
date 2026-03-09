@@ -6,7 +6,12 @@
  */
 
 import { EventEmitter } from 'eventemitter3';
-import type { InboundMessage, OutboundMessage, StreamTextEvent, ToolHintEvent } from './types';
+import type {
+  InboundMessage,
+  OutboundMessage,
+  StreamTextEvent,
+  ToolHintEvent,
+} from '@/config/bus-schema';
 import { createLogger } from '../utils/logger';
 /**
  * 消息总线事件

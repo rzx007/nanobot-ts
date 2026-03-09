@@ -5,7 +5,7 @@
  */
 
 import type { SubagentTask, SubagentResult, SubagentWorkerConfig } from './types';
-import type { ToolSet } from '@/bus/types';
+import type { ToolSet } from '@/config/bus-schema';
 import { LLMProvider } from '@/providers';
 import type { ToolRegistry } from '@/tools';
 import type { Config } from '@/config/schema';

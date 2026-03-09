@@ -1,10 +1,10 @@
 /**
  * CLI 渠道
- * 
+ *
  * 直接命令行交互的渠道实现
  */
 
-import type { InboundMessage, OutboundMessage } from '@/bus/types';
+import type { InboundMessage, OutboundMessage } from '@/config/bus-schema';
 import type { BaseChannelConfig, BaseChannel, ChannelStartOptions } from './base';
 import { logger } from '../utils/logger';
 
@@ -60,7 +60,7 @@ export class CLIChannel implements BaseChannel {
 
   /**
    * 发送消息 (在 CLI 中直接打印)
-   * 
+   *
    * @param msg - 出站消息
    */
   async send(msg: OutboundMessage): Promise<void> {
@@ -71,14 +71,11 @@ export class CLIChannel implements BaseChannel {
 
   /**
    * 发送用户消息到总线
-   * 
+   *
    * @param content - 用户消息内容
    * @param callback - 响应回调
    */
-  async sendUserMessage(
-    content: string,
-    callback?: (response: string) => void
-  ): Promise<void> {
+  async sendUserMessage(content: string, callback?: (response: string) => void): Promise<void> {
     const msg: InboundMessage = {
       channel: 'cli',
       senderId: 'cli',

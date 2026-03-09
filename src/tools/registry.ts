@@ -6,7 +6,7 @@
 
 import { logger } from '../utils/logger';
 import type { Tool } from './base';
-import type { ToolSet } from '../bus/types';
+import type { ToolSet } from '@/config/bus-schema';
 
 /**
  * 审批检查接口
