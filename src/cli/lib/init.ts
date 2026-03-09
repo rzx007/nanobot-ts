@@ -189,7 +189,7 @@ async function copyWorkspaceTemplates(
     } catch {
       const stat = await fs.stat(src);
       if (stat.isDirectory()) {
-        await fs.cp(src, dest, { recursive: true });
+        await fs.copy(src, dest);
       } else {
         await fs.copyFile(src, dest);
       }
