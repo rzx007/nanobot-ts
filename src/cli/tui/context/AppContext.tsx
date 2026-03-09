@@ -78,7 +78,7 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
       const loaded = await loadConfig();
       setConfig(loaded);
       if (!loaded) return;
-      const rt = await buildAgentRuntime(loaded, true);
+      const rt = await buildAgentRuntime(loaded);
       setRuntime(rt);
       const { bus, agent, config: cfg } = rt;
       const channelManager = new ChannelManager(cfg, bus);
@@ -117,7 +117,7 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
           return;
         }
 
-        const rt = await buildAgentRuntime(loaded, true);
+        const rt = await buildAgentRuntime(loaded);
         if (cancelled) return;
 
         // 注册退出钩子：清空子代理队列

@@ -64,6 +64,7 @@
     "execa": "^9.6.1",
     "fs-extra": "^11.3.3",
     "gray-matter": "^4.0.3",
+    "hono": "^4.12.5",
     "iconv-lite": "^0.7.2",
     "imapflow": "^1.2.10",
     "inquirer": "^13.3.0",

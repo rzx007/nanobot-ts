@@ -89,7 +89,7 @@ export interface AgentRuntime {
 /**
  * 根据配置构建完整 Agent 运行时（工具、MCP、Cron、Memory、Skills、AgentLoop）
  */
-export async function buildAgentRuntime(config: Config, tui?: boolean): Promise<AgentRuntime> {
+export async function buildAgentRuntime(config: Config): Promise<AgentRuntime> {
   const workspace = expandHome(config.agents.defaults.workspace);
   const bus = new MessageBus();
   const sessions = new SessionManager(workspace);
@@ -104,7 +104,7 @@ export async function buildAgentRuntime(config: Config, tui?: boolean): Promise<
   tools.setApprovalCheck(approvalManager);
 
   // 初始化默认处理器（按渠道名注册：cli + 已启用的 feishu/whatsapp/email）
-  approvalManager.initializeDefaultHandlers(bus, tui);
+  approvalManager.initializeDefaultHandlers(bus);
 
   // 设置消息过滤器（更通用的方式）
   bus.addInboundFilter(m => approvalManager.handleUserMessage(m.channel, m.chatId, m.content));

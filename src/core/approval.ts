@@ -11,7 +11,6 @@ import type { Config } from '../config/schema';
 import { RiskLevel, DEFAULT_RISK_LEVELS } from '../tools/safety';
 import { logger } from '../utils/logger';
 import type { IMessageBus } from '../bus/types';
-import { CLIApprovalHandler } from './approval-handlers/cli';
 import { MessageApprovalHandler } from './approval-handlers/message';
 /**
  * 确认管理器
@@ -68,21 +67,12 @@ export class ApprovalManager {
    * @param bus - 消息总线（可选，用于消息渠道）
    * @param tui - 是否是 TUI 模式
    */
-  initializeDefaultHandlers(bus?: IMessageBus, tui?: boolean): void {
-    // 注册 CLI 处理器
-    if (!tui) {
-      // 非 TUI 模式下，注册 CLI 处理器
-      this.registerHandler('cli', new CLIApprovalHandler());
-    }
-
+  initializeDefaultHandlers(bus?: IMessageBus): void {
     // 根据 appConfig 为已启用的消息渠道逐个注册 MessageApprovalHandler（与 ChannelManager 判定一致）
     if (bus) {
       const { whatsapp, feishu, email } = this.appConfig.channels;
       const messageHandler = new MessageApprovalHandler(bus);
-      if (tui) {
-        // TUI 模式下，使用 MessageApprovalHandler 处理 CLI 消息
-        this.registerHandler('cli', messageHandler);
-      }
+      this.registerHandler('cli', messageHandler);
       if (whatsapp.enabled) {
         this.registerHandler('whatsapp', messageHandler);
       }
