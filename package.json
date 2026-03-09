@@ -3,27 +3,32 @@
   "version": "0.1.1",
   "description": "Ultra-lightweight personal AI assistant - TypeScript implementation",
   "type": "module",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "main": "dist/index.js",
   "bin": {
-    "nanobot-ts": "dist/cli/run.js"
+    "nanobot-ts": "packages/cli/dist/run.js"
   },
   "scripts": {
     "build": "bun run bun.config.ts",
-    "build:binary": "bun build ./src/cli/run.ts --compile --outfile nanobot",
-    "dev": "NODE_ENV=development bun --watch src/cli/run.ts",
-    "start": "bun dist/cli/run.js",
+    "build:binary": "bun build ./packages/cli/src/run.ts --compile --outfile nanobot",
+    "dev": "NODE_ENV=development bun --watch packages/cli/src/run.ts",
+    "start": "bun packages/cli/dist/run.js",
     "test": "vitest run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
-    "format": "prettier --write \"src/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\" \"packages/**/*.ts\"",
     "typecheck": "bun tsc --noEmit",
-    "onboard": "bun dist/cli/run.js init",
-    "agent": "bun dist/cli/run.js chat --interactive",
-    "gateway": "bun dist/cli/run.js gateway",
-    "status": "bun dist/cli/run.js status"
+    "clean": "rm -rf packages/*/dist node_modules/.cache",
+    "onboard": "bun packages/cli/dist/run.js init",
+    "agent": "bun packages/cli/dist/run.js chat --interactive",
+    "gateway": "bun packages/cli/dist/run.js gateway",
+    "status": "bun packages/cli/dist/run.js status"
   },
   "keywords": [
     "ai",

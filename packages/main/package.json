@@ -1,0 +1,34 @@
+{
+  "name": "@nanobot/main",
+  "version": "0.1.1",
+  "description": "Core framework for nanobot-ts (Agent, Memory, Approval)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --format esm && tsc --emitDeclarationOnly --outDir ./dist",
+    "typecheck": "bun tsc --noEmit"
+  },
+  "keywords": [
+    "nanobot",
+    "core",
+    "agent"
+  ],
+  "author": "Nanobot TypeScript Team",
+  "license": "MIT",
+  "dependencies": {
+    "@nanobot/shared": "workspace:*",
+    "@nanobot/logger": "workspace:*",
+    "@nanobot/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "bun-types": "latest",
+    "typescript": "^5.9.3"
+  }
+}

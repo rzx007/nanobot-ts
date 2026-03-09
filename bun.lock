@@ -68,6 +68,204 @@
         "bun": ">=1.3.10",
       },
     },
+    "packages/channels": {
+      "name": "@nanobot/channels",
+      "version": "0.1.1",
+      "dependencies": {
+        "@larksuiteoapi/node-sdk": "^1.59.0",
+        "@nanobot/logger": "workspace:*",
+        "@nanobot/shared": "workspace:*",
+        "@nanobot/utils": "workspace:*",
+        "baileys": "7.0.0-rc.9",
+        "imapflow": "^1.2.10",
+        "nodemailer": "^8.0.1",
+        "qrcode-terminal": "^0.12.0",
+      },
+      "devDependencies": {
+        "@types/nodemailer": "^7.0.11",
+        "@types/qrcode-terminal": "^0.12.2",
+        "bun-types": "latest",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/cli": {
+      "name": "@nanobot/cli",
+      "version": "0.1.1",
+      "bin": {
+        "nanobot": "./dist/run.js",
+      },
+      "dependencies": {
+        "@nanobot/channels": "workspace:*",
+        "@nanobot/logger": "workspace:*",
+        "@nanobot/main": "workspace:*",
+        "@nanobot/mcp": "workspace:*",
+        "@nanobot/providers": "workspace:*",
+        "@nanobot/shared": "workspace:*",
+        "@nanobot/skills": "workspace:*",
+        "@nanobot/tools": "workspace:*",
+        "@nanobot/utils": "workspace:*",
+        "chalk": "^5.6.2",
+        "commander": "^14.0.3",
+        "inquirer": "^13.3.0",
+        "ora": "^9.3.0",
+      },
+      "devDependencies": {
+        "@types/inquirer": "^9.0.9",
+        "bun-types": "latest",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/logger": {
+      "name": "@nanobot/logger",
+      "version": "0.1.1",
+      "dependencies": {
+        "winston": "^3.19.0",
+      },
+      "devDependencies": {
+        "bun-types": "latest",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/main": {
+      "name": "@nanobot/main",
+      "version": "0.1.1",
+      "dependencies": {
+        "@nanobot/logger": "workspace:*",
+        "@nanobot/shared": "workspace:*",
+        "@nanobot/utils": "workspace:*",
+      },
+      "devDependencies": {
+        "bun-types": "latest",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/mcp": {
+      "name": "@nanobot/mcp",
+      "version": "0.1.1",
+      "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.27.1",
+        "@nanobot/logger": "workspace:*",
+        "@nanobot/shared": "workspace:*",
+        "@nanobot/tools": "workspace:*",
+        "@nanobot/utils": "workspace:*",
+      },
+      "devDependencies": {
+        "bun-types": "latest",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/providers": {
+      "name": "@nanobot/providers",
+      "version": "0.1.1",
+      "dependencies": {
+        "@ai-sdk/anthropic": "^2.0.67",
+        "@ai-sdk/deepseek": "^2.0.20",
+        "@ai-sdk/google": "^3.0.31",
+        "@ai-sdk/groq": "^3.0.24",
+        "@ai-sdk/openai": "^2.0.94",
+        "@nanobot/logger": "workspace:*",
+        "@nanobot/shared": "workspace:*",
+        "@nanobot/utils": "workspace:*",
+        "@openrouter/ai-sdk-provider": "^2.2.3",
+        "ai": "^6.0.99",
+      },
+      "devDependencies": {
+        "bun-types": "latest",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/server": {
+      "name": "@nanobot/server",
+      "version": "0.1.1",
+      "dependencies": {
+        "@nanobot/channels": "workspace:*",
+        "@nanobot/logger": "workspace:*",
+        "@nanobot/main": "workspace:*",
+        "@nanobot/tools": "workspace:*",
+        "@nanobot/utils": "workspace:*",
+        "hono": "^4.12.5",
+      },
+      "devDependencies": {
+        "bun-types": "latest",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/shared": {
+      "name": "@nanobot/shared",
+      "version": "0.1.1",
+      "dependencies": {
+        "zod": "^4.3.6",
+      },
+      "devDependencies": {
+        "bun-types": "latest",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/skills": {
+      "name": "@nanobot/skills",
+      "version": "0.1.1",
+      "dependencies": {
+        "@nanobot/logger": "workspace:*",
+        "@nanobot/shared": "workspace:*",
+        "@nanobot/utils": "workspace:*",
+        "cosmiconfig": "^9.0.0",
+        "jsdom": "^24.0.0",
+      },
+      "devDependencies": {
+        "bun-types": "latest",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/tools": {
+      "name": "@nanobot/tools",
+      "version": "0.1.1",
+      "dependencies": {
+        "@nanobot/logger": "workspace:*",
+        "@nanobot/shared": "workspace:*",
+        "@nanobot/utils": "workspace:*",
+        "agent-browser": "^0.16.3",
+        "ai": "^6.0.99",
+        "bunqueue": "^2.6.5",
+        "cheerio": "^1.2.0",
+        "croner": "^10.0.1",
+        "execa": "^9.6.1",
+        "gray-matter": "^4.0.3",
+        "markdown-it": "^14.1.1",
+        "opentui-spinner": "^0.0.6",
+      },
+      "devDependencies": {
+        "bun-types": "latest",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/tui": {
+      "name": "@nanobot/tui",
+      "version": "0.1.1",
+      "dependencies": {
+        "@nanobot/logger": "workspace:*",
+        "@nanobot/main": "workspace:*",
+        "@nanobot/utils": "workspace:*",
+        "@opentui/core": "latest",
+        "@opentui/react": "latest",
+        "react": "^19.0.0",
+      },
+      "devDependencies": {
+        "@types/react": "^19.0.0",
+        "bun-types": "latest",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/utils": {
+      "name": "@nanobot/utils",
+      "version": "0.1.1",
+      "dependencies": {
+        "fs-extra": "^11.3.3",
+      },
+      "devDependencies": {
+        "bun-types": "latest",
+        "typescript": "^5.9.3",
+      },
+    },
   },
   "packages": {
     "@ai-sdk/anthropic": ["@ai-sdk/anthropic@2.0.67", "https://registry.npmmirror.com/@ai-sdk/anthropic/-/anthropic-2.0.67.tgz", { "dependencies": { "@ai-sdk/provider": "2.0.1", "@ai-sdk/provider-utils": "3.0.21" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-hGtsfU1Dh1r9oBfctZy9+Wb8nSPiD8hBYIVYLGbFSPRrfliyBysJFaenHOGYR0Rd2R8O9ow2dxi05Qk5awerBw=="],
@@ -377,6 +575,30 @@
     "@msgpackr-extract/msgpackr-extract-linux-x64": ["@msgpackr-extract/msgpackr-extract-linux-x64@3.0.3", "https://registry.npmmirror.com/@msgpackr-extract/msgpackr-extract-linux-x64/-/msgpackr-extract-linux-x64-3.0.3.tgz", { "os": "linux", "cpu": "x64" }, "sha512-cvwNfbP07pKUfq1uH+S6KJ7dT9K8WOE4ZiAcsrSes+UY55E/0jLYc+vq+DO7jlmqRb5zAggExKm0H7O/CBaesg=="],
 
     "@msgpackr-extract/msgpackr-extract-win32-x64": ["@msgpackr-extract/msgpackr-extract-win32-x64@3.0.3", "https://registry.npmmirror.com/@msgpackr-extract/msgpackr-extract-win32-x64/-/msgpackr-extract-win32-x64-3.0.3.tgz", { "os": "win32", "cpu": "x64" }, "sha512-x0fWaQtYp4E6sktbsdAqnehxDgEc/VwM7uLsRCYWaiGu0ykYdZPiS8zCWdnjHwyiumousxfBm4SO31eXqwEZhQ=="],
+
+    "@nanobot/channels": ["@nanobot/channels@workspace:packages/channels"],
+
+    "@nanobot/cli": ["@nanobot/cli@workspace:packages/cli"],
+
+    "@nanobot/logger": ["@nanobot/logger@workspace:packages/logger"],
+
+    "@nanobot/main": ["@nanobot/main@workspace:packages/main"],
+
+    "@nanobot/mcp": ["@nanobot/mcp@workspace:packages/mcp"],
+
+    "@nanobot/providers": ["@nanobot/providers@workspace:packages/providers"],
+
+    "@nanobot/server": ["@nanobot/server@workspace:packages/server"],
+
+    "@nanobot/shared": ["@nanobot/shared@workspace:packages/shared"],
+
+    "@nanobot/skills": ["@nanobot/skills@workspace:packages/skills"],
+
+    "@nanobot/tools": ["@nanobot/tools@workspace:packages/tools"],
+
+    "@nanobot/tui": ["@nanobot/tui@workspace:packages/tui"],
+
+    "@nanobot/utils": ["@nanobot/utils@workspace:packages/utils"],
 
     "@openrouter/ai-sdk-provider": ["@openrouter/ai-sdk-provider@2.2.3", "https://registry.npmmirror.com/@openrouter/ai-sdk-provider/-/ai-sdk-provider-2.2.3.tgz", { "peerDependencies": { "ai": "^6.0.0", "zod": "^3.25.0 || ^4.0.0" } }, "sha512-NovC+BaCfEeJwhToDrs8JeDYXXlJdEyz7lcxkjtyePSE4eoAKik872SyDK0MzXKcz8MRkv7XlNhPI6zz4TQp0g=="],
 
@@ -1788,6 +2010,10 @@
 
     "@modelcontextprotocol/sdk/hono": ["hono@4.12.3", "https://registry.npmmirror.com/hono/-/hono-4.12.3.tgz", {}, "sha512-SFsVSjp8sj5UumXOOFlkZOG6XS9SJDKw0TbwFeV+AJ8xlST8kxK5Z/5EYa111UY8732lK2S/xB653ceuaoGwpg=="],
 
+    "@nanobot/tui/@opentui/core": ["@opentui/core@0.1.86", "https://registry.npmmirror.com/@opentui/core/-/core-0.1.86.tgz", { "dependencies": { "bun-ffi-structs": "0.1.2", "diff": "8.0.2", "jimp": "1.6.0", "marked": "17.0.1", "yoga-layout": "3.2.1" }, "optionalDependencies": { "@dimforge/rapier2d-simd-compat": "^0.17.3", "@opentui/core-darwin-arm64": "0.1.86", "@opentui/core-darwin-x64": "0.1.86", "@opentui/core-linux-arm64": "0.1.86", "@opentui/core-linux-x64": "0.1.86", "@opentui/core-win32-arm64": "0.1.86", "@opentui/core-win32-x64": "0.1.86", "bun-webgpu": "0.1.5", "planck": "^1.4.2", "three": "0.177.0" }, "peerDependencies": { "web-tree-sitter": "0.25.10" } }, "sha512-3tRLbI9ADrQE1jEEn4x2aJexEOQZkv9Emk2BixMZqxfVhz2zr2SxtpimDAX0vmZK3+GnWAwBWxuaCAsxZpY4+w=="],
+
+    "@nanobot/tui/@opentui/react": ["@opentui/react@0.1.86", "https://registry.npmmirror.com/@opentui/react/-/react-0.1.86.tgz", { "dependencies": { "@opentui/core": "0.1.86", "react-reconciler": "^0.32.0" }, "peerDependencies": { "react": ">=19.0.0", "react-devtools-core": "^7.0.1", "ws": "^8.18.0" } }, "sha512-TaGKS5Z8s2bWdafTzkm3Tfz0CXMmTZeAXPi03QOftQtQzzx9EgvVYxyC6GUSxe8o2DciO6nRtilvk5A7rDkmLA=="],
+
     "@wdio/repl/@types/node": ["@types/node@20.19.35", "https://registry.npmmirror.com/@types/node/-/node-20.19.35.tgz", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-Uarfe6J91b9HAUXxjvSOdiO2UPOKLm07Q1oh0JHxoZ1y8HoqxDAu3gVrsrOHeiio0kSsoVBt4wFrKOm0dKxVPQ=="],
 
     "@wdio/types/@types/node": ["@types/node@20.19.35", "https://registry.npmmirror.com/@types/node/-/node-20.19.35.tgz", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-Uarfe6J91b9HAUXxjvSOdiO2UPOKLm07Q1oh0JHxoZ1y8HoqxDAu3gVrsrOHeiio0kSsoVBt4wFrKOm0dKxVPQ=="],
@@ -1917,6 +2143,18 @@
     "@jimp/core/file-type/token-types": ["token-types@4.2.1", "https://registry.npmmirror.com/token-types/-/token-types-4.2.1.tgz", { "dependencies": { "@tokenizer/token": "^0.3.0", "ieee754": "^1.2.1" } }, "sha512-6udB24Q737UD/SDsKAHI9FCRP7Bqc9D/MQUV02ORQg5iskjtLJlZJNdN4kKtcdtwCeWIwIHDGaUsTsCCAa8sFQ=="],
 
     "@modelcontextprotocol/sdk/ajv/json-schema-traverse": ["json-schema-traverse@1.0.0", "https://registry.npmmirror.com/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz", {}, "sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug=="],
+
+    "@nanobot/tui/@opentui/core/@opentui/core-darwin-arm64": ["@opentui/core-darwin-arm64@0.1.86", "https://registry.npmmirror.com/@opentui/core-darwin-arm64/-/core-darwin-arm64-0.1.86.tgz", { "os": "darwin", "cpu": "arm64" }, "sha512-Zp7q64+d+Dcx6YrH3mRcnHq8EOBnrfc1RvjgSWLhpXr49hY6LzuhqpfZM57aGErPYlR+ff8QM6e5FUkFnDfyjw=="],
+
+    "@nanobot/tui/@opentui/core/@opentui/core-darwin-x64": ["@opentui/core-darwin-x64@0.1.86", "https://registry.npmmirror.com/@opentui/core-darwin-x64/-/core-darwin-x64-0.1.86.tgz", { "os": "darwin", "cpu": "x64" }, "sha512-NcxfjCJm1kLnTMVOpAPdRYNi8W8XdAXNa6N7i9khiVFrl2v5KRQfUjbrSOUYVxFJNc3jKFG6rsn3jEApvn92qA=="],
+
+    "@nanobot/tui/@opentui/core/@opentui/core-linux-arm64": ["@opentui/core-linux-arm64@0.1.86", "https://registry.npmmirror.com/@opentui/core-linux-arm64/-/core-linux-arm64-0.1.86.tgz", { "os": "linux", "cpu": "arm64" }, "sha512-EDHAvqSOr8CXzbDvo1aE5blJ6wu1aSbR2LqoXtoeXHemr2T2W42D2TdIWewG6K+/BuRbzZnqt9wnYFBksLW6lw=="],
+
+    "@nanobot/tui/@opentui/core/@opentui/core-linux-x64": ["@opentui/core-linux-x64@0.1.86", "https://registry.npmmirror.com/@opentui/core-linux-x64/-/core-linux-x64-0.1.86.tgz", { "os": "linux", "cpu": "x64" }, "sha512-VBaBkVdQDxYV4WcKjb+jgyMS5PiVHepvfaoKWpz1Bq+J01xXW4XPcXyPGkgR1+2R93KzaugEnLscTW4mWtLHlQ=="],
+
+    "@nanobot/tui/@opentui/core/@opentui/core-win32-arm64": ["@opentui/core-win32-arm64@0.1.86", "https://registry.npmmirror.com/@opentui/core-win32-arm64/-/core-win32-arm64-0.1.86.tgz", { "os": "win32", "cpu": "arm64" }, "sha512-xKbT7sEKYKGwUPkoqmLfHjbJU+vwHPDwf/r/mIunL41JXQBB35CSZ3/QgIwpp2kkteu7oE1tdBdg15ogUU4OMg=="],
+
+    "@nanobot/tui/@opentui/core/@opentui/core-win32-x64": ["@opentui/core-win32-x64@0.1.86", "https://registry.npmmirror.com/@opentui/core-win32-x64/-/core-win32-x64-0.1.86.tgz", { "os": "win32", "cpu": "x64" }, "sha512-HRfgAUlcu71/MrtgfX4Gj7PsDtfXZiuC506Pkn1OnRN1Xomcu10BVRDweUa0/g8ldU9i9kLjMGGnpw6/NjaBFg=="],
 
     "@wdio/repl/@types/node/undici-types": ["undici-types@6.21.0", "https://registry.npmmirror.com/undici-types/-/undici-types-6.21.0.tgz", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 

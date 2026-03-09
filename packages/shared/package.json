@@ -1,0 +1,32 @@
+{
+  "name": "@nanobot/shared",
+  "version": "0.1.1",
+  "description": "Shared types and configuration for nanobot-ts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --format esm && tsc --emitDeclarationOnly --outDir ./dist",
+    "typecheck": "bun tsc --noEmit"
+  },
+  "keywords": [
+    "nanobot",
+    "types",
+    "config"
+  ],
+  "author": "Nanobot TypeScript Team",
+  "license": "MIT",
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "bun-types": "latest",
+    "typescript": "^5.9.3"
+  }
+}

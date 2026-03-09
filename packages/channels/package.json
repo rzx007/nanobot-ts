@@ -1,0 +1,40 @@
+{
+  "name": "@nanobot/channels",
+  "version": "0.1.1",
+  "description": "Message channels for nanobot-ts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --format esm && tsc --emitDeclarationOnly --outDir ./dist",
+    "typecheck": "bun tsc --noEmit"
+  },
+  "keywords": [
+    "nanobot",
+    "channels"
+  ],
+  "author": "Nanobot TypeScript Team",
+  "license": "MIT",
+  "dependencies": {
+    "@nanobot/shared": "workspace:*",
+    "@nanobot/logger": "workspace:*",
+    "@nanobot/utils": "workspace:*",
+    "@larksuiteoapi/node-sdk": "^1.59.0",
+    "baileys": "7.0.0-rc.9",
+    "imapflow": "^1.2.10",
+    "nodemailer": "^8.0.1",
+    "qrcode-terminal": "^0.12.0"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^7.0.11",
+    "@types/qrcode-terminal": "^0.12.2",
+    "bun-types": "latest",
+    "typescript": "^5.9.3"
+  }
+}

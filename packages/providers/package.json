@@ -1,0 +1,41 @@
+{
+  "name": "@nanobot/providers",
+  "version": "0.1.1",
+  "description": "LLM providers for nanobot-ts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --format esm && tsc --emitDeclarationOnly --outDir ./dist",
+    "typecheck": "bun tsc --noEmit"
+  },
+  "keywords": [
+    "nanobot",
+    "providers",
+    "llm"
+  ],
+  "author": "Nanobot TypeScript Team",
+  "license": "MIT",
+  "dependencies": {
+    "@nanobot/shared": "workspace:*",
+    "@nanobot/logger": "workspace:*",
+    "@nanobot/utils": "workspace:*",
+    "ai": "^6.0.99",
+    "@ai-sdk/anthropic": "^2.0.67",
+    "@ai-sdk/deepseek": "^2.0.20",
+    "@ai-sdk/google": "^3.0.31",
+    "@ai-sdk/groq": "^3.0.24",
+    "@ai-sdk/openai": "^2.0.94",
+    "@openrouter/ai-sdk-provider": "^2.2.3"
+  },
+  "devDependencies": {
+    "bun-types": "latest",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "name": "@nanobot/cli",
+  "version": "0.1.1",
+  "description": "CLI tool for nanobot-ts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "nanobot": "./dist/run.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --format esm && tsc --emitDeclarationOnly --outDir ./dist",
+    "typecheck": "bun tsc --noEmit"
+  },
+  "keywords": [
+    "nanobot",
+    "cli"
+  ],
+  "author": "Nanobot TypeScript Team",
+  "license": "MIT",
+  "dependencies": {
+    "@nanobot/shared": "workspace:*",
+    "@nanobot/logger": "workspace:*",
+    "@nanobot/utils": "workspace:*",
+    "@nanobot/main": "workspace:*",
+    "@nanobot/providers": "workspace:*",
+    "@nanobot/tools": "workspace:*",
+    "@nanobot/channels": "workspace:*",
+    "@nanobot/skills": "workspace:*",
+    "@nanobot/mcp": "workspace:*",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
+    "inquirer": "^13.3.0",
+    "ora": "^9.3.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.9",
+    "bun-types": "latest",
+    "typescript": "^5.9.3"
+  }
+}
