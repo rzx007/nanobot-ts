@@ -363,6 +363,32 @@ export const MCPConfigSchema = z.object({
 });
 
 /**
+ * API Key 生成函数
+ */
+function generateApiKey(): string {
+  return `nb_${Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join(
+    '',
+  )}`;
+}
+
+/**
+ * HTTP 服务器配置
+ */
+export const ServerConfigSchema = z.object({
+  /** 是否启用 HTTP 服务器 */
+  enabled: z.boolean().default(false),
+
+  /** 监听端口 */
+  port: z.number().int().positive().default(18790),
+
+  /** 监听主机地址 */
+  host: z.string().default('0.0.0.0'),
+
+  /** API 认证密钥 */
+  apiKey: z.string().min(16).default(generateApiKey),
+});
+
+/**
  * 根配置 Schema
  */
 export const ConfigSchema = z.object({
@@ -380,6 +406,9 @@ export const ConfigSchema = z.object({
 
   /** Subagent 配置 */
   subagent: SubagentConfigSchema,
+
+  /** HTTP 服务器配置 */
+  server: ServerConfigSchema,
 });
 
 // 导出类型
@@ -402,4 +431,5 @@ export type HTTP_MCPServerConfig = z.infer<typeof HTTP_MCPServerSchema>;
 export type MCPServerConfig = z.infer<typeof MCPServerSchema>;
 export type MCPConfig = z.infer<typeof MCPConfigSchema>;
 export type SubagentConfig = z.infer<typeof SubagentConfigSchema>;
+export type ServerConfig = z.infer<typeof ServerConfigSchema>;
 export type Config = z.infer<typeof ConfigSchema>;

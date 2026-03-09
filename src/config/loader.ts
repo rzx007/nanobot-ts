@@ -223,5 +223,13 @@ export function createDefaultConfig(): Config {
       maxWorkerRestarts: 3,
       dataPath: '~/.nanobot/data/bunqueue.db',
     },
+    server: {
+      enabled: false,
+      port: 18790,
+      host: '0.0.0.0',
+      apiKey: `nb_${Array.from({ length: 32 }, () =>
+        Math.floor(Math.random() * 16).toString(16),
+      ).join('')}`,
+    },
   };
 }

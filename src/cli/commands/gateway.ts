@@ -12,30 +12,62 @@ export function registerGatewayCommand(program: Command): void {
   program
     .command('gateway')
     .description('Start message bus and agent (no channels yet)')
-    .option('--port <number>', 'Port for future HTTP server', '18790')
-    .action(async (_opts: { port: string }) => {
-      await runGateway();
+    .option('--port <number>', 'Port for HTTP server', '18790')
+    .option('--http', 'Enable HTTP server', 'true')
+    .option('--static-dir <path>', 'Directory for static files (e.g., React build output)', 'frontend/dist')
+    .action(async (opts: { port: string; http: boolean; staticDir?: string }) => {
+      await runGateway(parseInt(opts.port, 10), opts.http, opts.staticDir);
     });
 }
 
-async function runGateway(): Promise<void> {
+async function runGateway(port: number, http: boolean, staticDir?: string): Promise<void> {
   const config = await requireConfig();
+
   const runtime = await buildAgentRuntime(config);
   const { bus, agent, config: cfg } = runtime;
   const channelManager = new ChannelManager(cfg, bus);
   channelManager.registerChannel('cli', new CLIChannel({}, bus));
   await channelManager.loadChannelsFromConfig(bus);
   await channelManager.startAll();
-  // 启动出站循环
   channelManager.runOutboundLoop();
+
+
 
   agent.run().catch(err => {
     logger.error({ err }, 'Agent loop error');
   });
 
-  // 注册进程退出钩子
+  let httpServer: Awaited<ReturnType<typeof import('@/server').createServer>> | null = null;
+
+  if (http) {
+    const { createServer } = await import('@/server');
+    config.server.port = port;
+    config.server.enabled = true;
+
+    const serverOptions: Parameters<typeof createServer>[0] = {
+      runtime,
+      bus,
+      channelManager,
+      config,
+      startTime: new Date(),
+    };
+
+    if (staticDir) {
+      serverOptions.staticDir = staticDir;
+      info(`HTTP server enabled on port ${port} with static files from: ${staticDir}`);
+    } else {
+      info(`HTTP server enabled on port ${port}`);
+    }
+
+    httpServer = createServer(serverOptions);
+  } else {
+    info('HTTP server disabled');
+  }
   const onExit = async (signal?: string): Promise<void> => {
     logger.info({ signal }, 'Process exit hook triggered');
+    if (httpServer) {
+      await httpServer.close();
+    }
     await channelManager.stop();
     await runtime.subagentManager?.shutdown();
     logger.info('Gateway shutdown complete');

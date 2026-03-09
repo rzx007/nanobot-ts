@@ -10,5 +10,6 @@ export * from './config';
 export * from './storage';
 export * from './utils';
 export * from './mcp';
+export * from './server';
 
 export { version } from '../package.json';
