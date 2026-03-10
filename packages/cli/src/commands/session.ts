@@ -3,10 +3,10 @@
  */
 
 import { Command } from 'commander';
-import { expandHome } from '../../../utils/src';
-import { SessionManager } from '../../../main/src';
-import { info } from '../ui';
-import { requireConfig } from '../setup';
+import { expandHome } from '@nanobot/utils';
+import { SessionManager } from '@nanobot/main';
+import { error, info } from '../ui';
+import { loadConfig } from '@nanobot/shared';
 
 export function registerSessionCommand(program: Command): void {
   program
@@ -18,7 +18,11 @@ export function registerSessionCommand(program: Command): void {
 }
 
 async function runSession(): Promise<void> {
-  const config = await requireConfig();
+  const config = await loadConfig();
+  if (!config) {
+    error('No config found. Run "nanobot init" first.');
+    process.exit(1);
+  }
   const workspace = expandHome(config.agents.defaults.workspace);
   const sessions = new SessionManager(workspace);
   await sessions.init();

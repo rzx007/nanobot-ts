@@ -3,8 +3,8 @@
  */
 
 import { Command } from 'commander';
-import { success, info } from '../ui';
-import { initializeWorkspace } from '../lib/init';
+import { success, info, error } from '../ui';
+import { initializeWorkspace, type InitLogger } from '@nanobot/main';
 
 export function registerInitCommand(program: Command): void {
   program
@@ -17,17 +17,21 @@ export function registerInitCommand(program: Command): void {
 }
 
 async function runInit(force?: boolean): Promise<void> {
-  const cliLogger = {
+  const cliLogger: InitLogger = {
     info: (msg: string) => info(msg),
     success: (msg: string) => success(msg),
-    error: (msg: string) => console.error(msg),
+    error: (msg: string) => error(msg),
   };
 
-  await initializeWorkspace({
-    force: force ?? false,
-    logger: cliLogger,
-  });
-
- 
-  process.exit(0);
+  try {
+    await initializeWorkspace({
+      force: force ?? false,
+      logger: cliLogger,
+    });
+    process.exit(0);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    error(`Initialization failed: ${errorMessage}`);
+    process.exit(1);
+  }
 }

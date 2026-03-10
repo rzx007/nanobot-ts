@@ -5,12 +5,12 @@
  */
 
 import { Worker, Queue } from 'bunqueue/client';
-import { SubagentWorker } from '@nanobot/main/subagent';
-import { logger } from '../../../logger/src';
+import { SubagentWorker } from '@nanobot/main';
+import { logger } from '@nanobot/logger';
 import { loadConfig } from '@nanobot/shared';
-import { LLMProvider } from '../../../providers/src';
-import { ToolRegistry } from '../../../tools/src';
-import { expandHome } from '../../../utils/src';
+import { LLMProvider } from '@nanobot/providers';
+import { ToolRegistry } from '@nanobot/main';
+import { expandHome } from '@nanobot/utils';
 import {
   ReadFileTool,
   WriteFileTool,
@@ -21,7 +21,7 @@ import {
   ExecTool,
   WebSearchTool,
   WebFetchTool,
-} from '../../../tools/src';
+} from '@nanobot/main';
 
 async function main() {
   const workerId = process.argv[2];
@@ -56,7 +56,7 @@ async function main() {
     logger.info('Registered tools for subagent worker');
 
     // 创建结果队列，用于向主进程发送结果
-    const resultQueue = new Queue<import('@/core/subagent/types').SubagentResult>(
+    const resultQueue = new Queue<import('@nanobot/main').SubagentResult>(
       'subagent-results',
       {
         embedded: true,

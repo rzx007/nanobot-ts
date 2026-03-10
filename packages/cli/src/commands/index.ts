@@ -15,7 +15,7 @@ import { registerLogsCommand } from './logs';
 import { registerWhatsAppAuthCommand } from '../whatsapp-auth';
 import { registerMCPCommands } from './mcp';
 import { createSubagentManageCommand } from './subagent/manage';
-// import { runTui } from '../tui';
+import { runTui } from '@nanobot/tui';
 
 export async function runCLI(argv: string[]): Promise<void> {
   const program = new Command();
@@ -40,8 +40,7 @@ export async function runCLI(argv: string[]): Promise<void> {
   program.addCommand(createSubagentManageCommand());
 
   program.action(async () => {
-    // await runTui('home');
-    console.log('TUI mode is temporarily disabled during monorepo migration');
+    await runTui('home');
   });
 
   await program.parseAsync(argv);

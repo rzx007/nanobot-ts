@@ -80,16 +80,16 @@ export interface SubagentResult {
  */
 export interface SubagentManagerConfig {
   /** 完整配置对象 */
-  config: import('../../config/schema').Config;
+  config: import('@nanobot/shared').Config;
 
   /** 消息总线 */
   bus: import('../../bus').MessageBus;
 
   /** LLM 提供商 */
-  provider: import('../../providers').LLMProvider;
+  provider: import('@nanobot/providers').LLMProvider;
 
   /** 工具注册表 */
-  tools: import('../../tools').ToolRegistry;
+  tools: import('../../tools/registry').ToolRegistry;
 
   /** 工作区路径 */
   workspace: string;
@@ -105,13 +105,13 @@ export type SubagentMode = 'embedded' | 'isolated';
  */
 export interface SubagentWorkerConfig {
   /** 完整配置对象 */
-  config: import('../../config/schema').Config;
+  config: import('@nanobot/shared').Config;
 
   /** LLM 提供商 */
-  provider: import('../../providers').LLMProvider;
+  provider: import('@nanobot/providers').LLMProvider;
 
   /** 工具注册表 */
-  tools: import('../../tools').ToolRegistry;
+  tools: import('../../tools/registry').ToolRegistry;
 
   /** 工作区路径 */
   workspace: string;

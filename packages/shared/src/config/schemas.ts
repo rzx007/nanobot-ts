@@ -3,6 +3,9 @@
  */
 
 import { z } from 'zod';
+import { ApprovalConfigSchema } from './approval-schema';
+
+export { ApprovalConfigSchema } from './approval-schema';
 
 export const AgentDefaultsSchema = z.object({
   /** 工作区路径 */
@@ -160,39 +163,102 @@ export const ProvidersConfigSchema = z.object({
   groq: ProviderConfigSchema.optional(),
 });
 
-export const ToolApprovalConfigSchema = z.object({
-  /** 是否启用 */
-  enabled: z.boolean().default(true),
+/**
+ * Shell 执行配置
+ */
+export const ExecConfigSchema = z.object({
+  /** 超时时间 (秒) */
+  timeout: z.number().int().positive().default(60),
 
-  /** 内存窗口 */
-  memoryWindow: z.number().int().positive().default(300),
+  /** 允许的命令列表 */
+  allowedCommands: z.array(z.string()).default([]),
+});
+
+/**
+ * Web 搜索配置
+ */
+export const WebConfigSchema = z.object({
+  /** 搜索 API 配置 */
+  search: z.object({
+    /** Brave Search API 密钥 */
+    apiKey: z.string().optional(),
+  }),
+});
+
+/**
+ * 浏览器自动化配置
+ */
+export const BrowserConfigSchema = z.object({
+  /** 是否启用浏览器工具 */
+  enabled: z.boolean().default(false),
+
+  /** 默认等待策略 */
+  waitForLoad: z.enum(['load', 'domcontentloaded', 'networkidle']).default('networkidle'),
 
   /** 超时时间 (秒) */
   timeout: z.number().int().positive().default(60),
+
+  /** 默认下载路径 */
+  downloadPath: z.string().default('./downloads'),
+
+  /** 允许的域名白名单 (逗号分隔，支持通配符 *.example.com) */
+  allowedDomains: z.array(z.string()).default([]),
+
+  /** 是否启用内容边界标记 (用于 AI 安全) */
+  contentBoundaries: z.boolean().default(true),
+
+  /** 最大输出字符数 (防止上下文溢出) */
+  maxOutput: z.number().int().positive().default(50000),
+
+  /** 是否有头模式 (显示浏览器窗口) */
+  headed: z.boolean().default(false),
+
+  /** 默认会话名称 (用于隔离不同聊天会话) */
+  defaultSession: z.string().default('default'),
 });
 
 export const ToolsConfigSchema = z.object({
+  /** 是否限制在工作区内 */
+  restrictToWorkspace: z.boolean().default(false),
+
+  /** Shell 执行配置 */
+  exec: ExecConfigSchema,
+
+  /** Web 配置 */
+  web: WebConfigSchema,
+
+  /** 浏览器配置 */
+  browser: BrowserConfigSchema.optional(),
+
   /** 审批配置 */
-  approval: ToolApprovalConfigSchema,
+  approval: ApprovalConfigSchema,
 });
 
-export const ApprovalConfigSchema = z.object({
-  /** 是否启用确认机制 */
+/**
+ * Subagent 配置
+ */
+export const SubagentConfigSchema = z.object({
+  /** 是否启用 subagent */
   enabled: z.boolean().default(true),
 
-  /** 会话记忆时间窗口（秒）- MEDIUM风险工具在此时间内重复操作自动确认 */
-  memoryWindow: z.number().int().positive().default(300),
+  /** 执行模式 */
+  mode: z.enum(['embedded', 'isolated']).default('embedded'),
 
-  /** 确认超时时间（秒） */
-  timeout: z.number().int().positive().default(60),
+  /** 最大并发数 */
+  concurrency: z.number().int().positive().default(3),
 
-  /** 严格模式：所有非LOW风险工具都需要确认（忽略会话记忆） */
-  strictMode: z.boolean().default(false),
+  /** 子代理最大迭代次数 */
+  maxIterations: z.number().int().positive().default(15),
 
-  /** 是否启用确认日志 */
-  enableLogging: z.boolean().default(true),
+  /** 子代理超时时间（秒） */
+  timeout: z.number().int().positive().default(300),
+
+  /** Worker 进程最大重启次数（防止无限重启） */
+  maxWorkerRestarts: z.number().int().min(0).default(3),
+
+  /** bunqueue 数据路径 */
+  dataPath: z.string().default('~/.nanobot/data/bunqueue.db'),
 });
-
 
 export const ServerConfigSchema = z.object({
   /** 主机地址 */
@@ -203,6 +269,9 @@ export const ServerConfigSchema = z.object({
 
   /** API 密钥 */
   apiKey: z.string().min(1),
+
+  /** 是否启用 HTTP 服务（CLI gateway 启动时设置） */
+  enabled: z.boolean().optional(),
 });
 
 export const ConfigSchema = z.object({
@@ -220,9 +289,10 @@ export const ConfigSchema = z.object({
 
   /** 服务器配置 */
   server: ServerConfigSchema,
+
+  /** Subagent 配置 */
+  subagent: SubagentConfigSchema,
 });
-
-
 
 // 导出类型
 export type AgentDefaults = z.infer<typeof AgentDefaultsSchema>;
@@ -233,7 +303,11 @@ export type WhatsAppConfig = z.infer<typeof WhatsAppConfigSchema>;
 export type FeishuConfig = z.infer<typeof FeishuConfigSchema>;
 export type EmailConfig = z.infer<typeof EmailConfigSchema>;
 export type ChannelsConfig = z.infer<typeof ChannelsConfigSchema>;
+export type ExecConfig = z.infer<typeof ExecConfigSchema>;
+export type WebConfig = z.infer<typeof WebConfigSchema>;
+export type BrowserConfig = z.infer<typeof BrowserConfigSchema>;
 export type ApprovalConfig = z.infer<typeof ApprovalConfigSchema>;
 export type ToolsConfig = z.infer<typeof ToolsConfigSchema>;
+export type SubagentConfig = z.infer<typeof SubagentConfigSchema>;
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;
 export type Config = z.infer<typeof ConfigSchema>;

@@ -8,7 +8,7 @@
 import path from 'path';
 import os from 'os';
 import type { SessionMessage } from '../storage';
-import type { SkillInfo } from '@nanobot/skills';
+import type { SkillInfo } from '../skills/skills';
 import { expandHome } from '@nanobot/utils';
 
 /** Bootstrap 文件列表 */

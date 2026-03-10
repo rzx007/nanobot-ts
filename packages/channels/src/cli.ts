@@ -9,20 +9,13 @@ import type { BaseChannelConfig, BaseChannel, ChannelStartOptions } from './base
 import { logger } from '@nanobot/logger';
 
 /**
- * CLI 渠道配置
- */
-export interface CLIConfig extends BaseChannelConfig {
-  // CLI 渠道不需要额外的配置选项
-}
-
-/**
  * CLI 渠道
  *
  * 用于直接命令行交互的渠道
  */
 export class CLIChannel implements BaseChannel {
   /** 配置 */
-  readonly config: CLIConfig;
+  readonly config: BaseChannelConfig;
 
   /** 入站回调（由 start(options) 注入） */
   private onInbound: ((msg: InboundMessage) => void | Promise<void>) | null = null;
@@ -30,7 +23,7 @@ export class CLIChannel implements BaseChannel {
   /** 消息回调 (供子类或扩展使用) */
   protected messageCallback: ((msg: InboundMessage) => void) | null = null;
 
-  constructor(config: CLIConfig) {
+  constructor(config: BaseChannelConfig) {
     this.config = config;
   }
 

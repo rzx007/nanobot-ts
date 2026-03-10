@@ -4,7 +4,7 @@
  * 用于管理工具确认的会话记忆，特别是在处理中等风险工具时，能够快速判断某个操作是否已经被批准过
  */
 
-import type { ApprovalConfig } from '../../config/approval-schema';
+import type { ApprovalConfig } from '@nanobot/shared';
 import { logger } from '@nanobot/logger';
 
 /**

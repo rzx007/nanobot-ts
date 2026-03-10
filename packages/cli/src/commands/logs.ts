@@ -5,7 +5,7 @@
 import path from 'path';
 import fs from 'fs-extra';
 import { Command } from 'commander';
-import { expandHome } from '../../../utils/src';
+import { expandHome } from '@nanobot/utils';
 import { error, info } from '../ui';
 
 export function registerLogsCommand(program: Command): void {

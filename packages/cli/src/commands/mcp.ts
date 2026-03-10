@@ -3,10 +3,10 @@
  */
 
 import { Command } from 'commander';
-import { loadConfig } from '../../../shared/src';
-import { MCPManager, loadMCPConfig } from '../../../mcp/src';
-import { logger } from '../../../logger/src';
-import { expandHome } from '../../../utils/src';
+import { loadConfig } from '@nanobot/shared';
+import { MCPManager, loadMCPConfig } from '@nanobot/main';
+import { logger } from '@nanobot/logger';
+import { expandHome } from '@nanobot/utils';
 
 export function registerMCPCommands(program: Command): void {
   program
@@ -36,7 +36,7 @@ export function registerMCPCommands(program: Command): void {
         const manager = new MCPManager();
         await manager.connectAll(mcpConfig.servers);
 
-        const { MCPToolWrapper } = await import('../../mcp');
+        const { MCPToolWrapper } = await import('@nanobot/main');
         const wrapper = new MCPToolWrapper(manager);
         const tools = wrapper.wrapMCPTools();
 
@@ -133,7 +133,7 @@ export function registerMCPCommands(program: Command): void {
         const manager = new MCPManager();
         await manager.connectAll(mcpConfig.servers);
 
-        const { MCPToolWrapper } = await import('../../mcp');
+        const { MCPToolWrapper } = await import('@nanobot/main');
         const wrapper = new MCPToolWrapper(manager);
         const tools = wrapper.wrapMCPTools();
 

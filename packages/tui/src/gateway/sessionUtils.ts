@@ -3,7 +3,7 @@
  */
 
 import type { MessageItem } from '../components/MessageList';
-import type { Session } from '@/storage/session';
+import type { Session } from '@nanobot/main';
 
 /**
  * 将 Session 中的消息转为 Chat 使用的 MessageItem[]

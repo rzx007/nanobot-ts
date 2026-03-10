@@ -4,7 +4,7 @@
 
 import path from 'path';
 import fs from 'fs-extra';
-import { ToolRegistry } from '@nanobot/tools';
+import { ToolRegistry } from '../tools/registry';
 import { MCPManager } from './manager';
 import { MCPToolWrapper } from './wrapper';
 import type { MCPConfig } from '@nanobot/shared';

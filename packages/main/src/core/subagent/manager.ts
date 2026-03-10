@@ -323,7 +323,7 @@ export class SubagentManager {
       sessionKey: options?.sessionKey ?? 'cli:direct',
       status: 'pending',
       createdAt: new Date(),
-      abortSignal: abortController.signal,
+      abortSignal: abortController.signal as any,
     };
 
     // 跟踪任务状态

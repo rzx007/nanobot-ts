@@ -5,7 +5,7 @@
  */
 
 import { Tool } from './base';
-import type { SubagentManager } from '@/core/subagent';
+import type { SubagentManager } from '../core/subagent';
 import { RiskLevel } from './safety';
 import { logger } from '@nanobot/logger';
 

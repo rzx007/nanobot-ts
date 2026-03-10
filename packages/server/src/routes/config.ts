@@ -34,16 +34,16 @@ app.get('/api/v1/config', async c => {
       },
       google: config.providers.google
         ? {
-            apiBase: config.providers.google.apiBase,
-          }
+          apiBase: config.providers.google.apiBase,
+        }
         : null,
       deepseek: {
         apiBase: config.providers.deepseek.apiBase,
       },
       groq: config.providers.groq
         ? {
-            apiBase: config.providers.groq.apiBase,
-          }
+          apiBase: config.providers.groq.apiBase,
+        }
         : null,
       openrouter: {
         apiBase: config.providers.openrouter.apiBase,
@@ -60,9 +60,9 @@ app.get('/api/v1/config', async c => {
       },
       browser: config.tools.browser
         ? {
-            enabled: config.tools.browser.enabled,
-            headed: config.tools.browser.headed,
-          }
+          enabled: config.tools.browser.enabled,
+          headed: config.tools.browser.headed,
+        }
         : null,
       approval: {
         enabled: config.tools.approval.enabled,
@@ -74,7 +74,6 @@ app.get('/api/v1/config', async c => {
       concurrency: config.subagent.concurrency,
     },
     server: {
-      enabled: config.server.enabled,
       port: config.server.port,
       host: config.server.host,
     },

@@ -7,13 +7,13 @@ import type { ReactNode } from 'react';
 import type { MessageItem } from '../components/MessageList';
 import type { SlashCommandContext } from '../commands';
 import type { Config } from '@nanobot/shared';
-import type { AgentRuntime } from '@nanobot/cli';
+import type { Runtime } from '@nanobot/main';
 import type { ViewMode } from '../context';
 import type { DialogContextValue } from '../components/Dialog';
 import type { ChatInputHandle } from '../components/ChatInput';
 
 export interface BuildSlashCommandContextParams {
-  runtime: AgentRuntime | null;
+  runtime: Runtime | null;
   config: Config | null;
   navigateTo: (view: ViewMode) => void;
   setMessages: React.Dispatch<React.SetStateAction<MessageItem[]>>;

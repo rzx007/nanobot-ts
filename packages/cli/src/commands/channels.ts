@@ -5,7 +5,7 @@
 import { Command } from 'commander';
 import { ChannelManager } from '@nanobot/channels';
 import { error, info } from '../ui';
-import { requireConfig } from '../setup';
+import { loadConfig } from '@nanobot/shared';
 
 export function registerChannelsCommand(program: Command): void {
   program
@@ -23,7 +23,11 @@ async function runChannels(action?: string): Promise<void> {
     process.exit(1);
   }
 
-  const config = await requireConfig();
+  const config = await loadConfig();
+  if (!config) {
+    error('No config found. Run "nanobot init" first.');
+    process.exit(1);
+  }
   const channelManager = new ChannelManager(config);
   const statuses = channelManager.getStatus();
 

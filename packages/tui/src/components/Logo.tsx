@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { theme } from '../theme';
-import { logo, marks } from '@nanobot/cli';
+import { logo, marks } from '../constants';
 
 const SHADOW_MARKER = new RegExp(`[${marks}]`);
 

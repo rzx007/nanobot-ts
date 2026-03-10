@@ -4,3 +4,5 @@
 
 export * from './commands';
 export * from './ui';
+export * from './lib/init';
+import './run'

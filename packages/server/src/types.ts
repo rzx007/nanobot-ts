@@ -2,16 +2,16 @@
  * HTTP 服务器类型定义
  */
 
-import type { AgentRuntime } from '@nanobot/cli';
-import type { Config } from '@/config/schema';
-import type { MessageBus } from '@/bus/queue';
+import type { Runtime } from '@nanobot/main';
+import type { Config } from '@nanobot/shared';
+import type { MessageBus } from '@nanobot/main';
 
 /**
  * 服务器上下文
  */
 export interface ServerContext {
   /** Agent 运行时 */
-  runtime: AgentRuntime;
+  runtime: Runtime;
 
   /** 消息总线 */
   bus: MessageBus;
@@ -20,7 +20,7 @@ export interface ServerContext {
   config: Config;
 
   /** 通道管理器 */
-  channelManager: import('@/channels').ChannelManager;
+  channelManager: import('@nanobot/channels').ChannelManager;
 
   /** 服务器启动时间 */
   startTime: Date;

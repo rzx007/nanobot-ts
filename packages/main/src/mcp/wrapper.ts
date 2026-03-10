@@ -3,7 +3,7 @@
  */
 
 import { MCPManager } from './manager';
-import { Tool } from '@nanobot/tools';
+import { Tool } from '../tools/base';
 import type { MCPToolDefinition } from './types';
 import { logger } from '@nanobot/logger';
 

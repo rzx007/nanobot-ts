@@ -7,7 +7,7 @@
 import type { SubagentTask, SubagentResult, SubagentWorkerConfig } from './types';
 import type { ToolSet } from '@nanobot/shared';
 import { LLMProvider } from '@nanobot/providers';
-import type { ToolRegistry } from '@nanobot/tools';
+import type { ToolRegistry } from '../../tools/registry';
 import type { Config } from '@nanobot/shared';
 import { logger } from '@nanobot/logger';
 import { withTimeout } from '@nanobot/utils';

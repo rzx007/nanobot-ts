@@ -9,9 +9,9 @@ import readline from 'readline';
 import makeWASocket, { DisconnectReason, useMultiFileAuthState, Browsers } from 'baileys';
 import qrcode from 'qrcode-terminal';
 import { success, error, info } from './ui';
-import { loadConfig } from '../../../shared/src';
+import { loadConfig } from '@nanobot/shared';
 import { expandHome } from '@nanobot/utils';
-import { createLogger } from '../../../logger/src';
+import { createLogger } from '@nanobot/logger';
 
 // 静默 logger 供 baileys 使用，不输出库内日志
 const logger = createLogger(undefined, { level: 'silent' });

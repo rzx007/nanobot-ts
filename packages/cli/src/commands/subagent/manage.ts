@@ -5,9 +5,9 @@
  */
 
 import { Command } from 'commander';
-import { SubagentManager } from '../../../main/src';
-import { loadConfig } from '../../../shared/src';
-import type { TaskStatus } from '../../../main/src';
+import { SubagentManager } from '@nanobot/main';
+import { loadConfig } from '@nanobot/shared';
+import { TaskStatus } from '@nanobot/main';
 
 export function createSubagentManageCommand(): Command {
   const cmd = new Command('subagent').description('管理子代理任务');

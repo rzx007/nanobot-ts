@@ -1,10 +1,8 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import type { Config } from '@nanobot/shared';
 import { loadConfig } from '@nanobot/shared';
-import { ChannelManager, CLIChannel } from '@nanobot/channels';
-import { buildAgentRuntime, type AgentRuntime } from '@nanobot/cli';
-import { logger } from '@nanobot/utils';
-import { initializeWorkspace } from '@nanobot/cli';
+import { createRuntime, type Runtime, initializeWorkspace, type InitLogger } from '@nanobot/main';
+import { logger } from '@nanobot/logger';
 import { useSelfCheck } from '../hooks';
 import type { SelfCheckResult } from '../setup/types';
 import type { CliRenderer } from '@opentui/core';
@@ -19,8 +17,8 @@ export interface AppContextValue {
   config: Config | null;
   /** 是否已完成首次配置加载（含「无配置」情况） */
   configLoaded: boolean;
-  /** 由 AppContext 统一 build 的 runtime，无配置时为 null */
-  runtime: AgentRuntime | null;
+  /** 由 AppContext 统一 create 的 runtime，无配置时为 null */
+  runtime: Runtime | null;
   /** 自检结果 */
   selfCheckResult: SelfCheckResult | null;
   /** opentui renderer 实例，用于设置终端标题等 */
@@ -52,7 +50,7 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
   const [sessionKey, setSessionKey] = useState<string | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
-  const [runtime, setRuntime] = useState<AgentRuntime | null>(null);
+  const [runtime, setRuntime] = useState<Runtime | null>(null);
   const [renderer, setRendererState] = useState<CliRenderer | null>(null);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
@@ -79,34 +77,15 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
       const loaded = await loadConfig();
       setConfig(loaded);
       if (!loaded) return;
-      const rt = await buildAgentRuntime(loaded);
-      setRuntime(rt);
-      const { bus, agent, config: cfg } = rt;
+      const rt = await createRuntime({ config: loaded, mode: 'tui', startChannels: false });
+      const { bus, channelManager } = rt;
 
-      /** 启动channel管理器 */
-      const channelManager = new ChannelManager(cfg);
-      channelManager.registerChannel('cli', new CLIChannel({}));
-      await channelManager.loadChannelsFromConfig();
       await channelManager.startAll({
         onInbound: (msg: InboundMessage) => void bus.publishInbound(msg),
       });
-      const outboundRunning = true;
-      void (async () => {
-        while (outboundRunning) {
-          try {
-            const msg = await bus.consumeOutbound();
-            await channelManager.dispatchOutbound(msg);
-          } catch (err) {
-            logger.error({ err }, 'Outbound dispatch error');
-          }
-        }
-      })();
 
-      /** 启动Agent */
-      agent.run().catch(err => {
-        logger.error({ err }, 'Agent loop error');
-      });
-      setConfig(cfg);
+      await rt.start({ startChannels: true });
+      setConfig(loaded);
       setConfigLoaded(true);
     } catch {
       setConfig(null);
@@ -121,7 +100,7 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
         if (cancelled) return;
         if (!loaded) {
           // 配置不存在，先执行文件系统初始化
-          const tuiLogger = {
+          const tuiLogger: InitLogger = {
             info: (msg: string) => logger.info(msg),
             success: (msg: string) => logger.info(msg),
             error: (msg: string) => logger.error(msg),
@@ -134,7 +113,7 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
           return;
         }
 
-        const rt = await buildAgentRuntime(loaded);
+        const rt = await createRuntime({ config: loaded, mode: 'tui', startChannels: false });
         if (cancelled) return;
 
         // 注册退出钩子：清空子代理队列
@@ -152,29 +131,13 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
         process.on('SIGTERM', cleanupExit);
 
         setRuntime(rt);
-        const { bus, agent, config: cfg } = rt;
-        const channelManager = new ChannelManager(cfg);
-        channelManager.registerChannel('cli', new CLIChannel({}));
-        await channelManager.loadChannelsFromConfig();
+        const { bus, channelManager } = rt;
         await channelManager.startAll({
           onInbound: msg => void bus.publishInbound(msg),
         });
-        const outboundRunning = true;
-        void (async () => {
-          while (outboundRunning) {
-            try {
-              const msg = await bus.consumeOutbound();
-              await channelManager.dispatchOutbound(msg);
-            } catch (err) {
-              logger.error({ err }, 'Outbound dispatch error');
-            }
-          }
-        })();
 
-        agent.run().catch(err => {
-          logger.error({ err }, 'Agent loop error');
-        });
-        setConfig(cfg);
+        await rt.start({ startChannels: true });
+        setConfig(loaded);
         setConfigLoaded(true);
       } catch (err) {
         if (cancelled) return;

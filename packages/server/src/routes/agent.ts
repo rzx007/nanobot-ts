@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono';
 import type { AppContext } from '../types';
-import type { MessageBus } from '@/bus/queue';
+import type { MessageBus } from '@nanobot/main';
 
 const app = new Hono<AppContext>();
 

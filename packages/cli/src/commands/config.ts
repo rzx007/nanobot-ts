@@ -4,7 +4,8 @@
 
 import { Command } from 'commander';
 import { info } from '../ui';
-import { requireConfig } from '../setup';
+import { loadConfig } from '@nanobot/shared';
+import { error } from '../ui';
 
 export function registerConfigCommand(program: Command): void {
   program
@@ -18,7 +19,11 @@ export function registerConfigCommand(program: Command): void {
 }
 
 async function runConfig(key?: string, value?: string): Promise<void> {
-  const config = await requireConfig();
+  const config = await loadConfig();
+  if (!config) {
+    error('No config found. Run "nanobot init" first.');
+    process.exit(1);
+  }
 
   if (!key) {
     console.log(JSON.stringify(config, null, 2));

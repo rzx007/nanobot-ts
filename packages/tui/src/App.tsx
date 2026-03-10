@@ -3,17 +3,16 @@ import { useKeyboard } from '@opentui/react';
 import { AppProvider, useAppContext } from './context';
 import { HomeView } from './home';
 import { GatewayApp } from './gateway';
-import { StatusApp } from './status';
 import { ConfigApp } from './config';
 import { SetupWizard, CheckError } from './setup';
 import { CommandPalette } from './components/CommandPalette';
 import { DialogProvider } from './components/Dialog';
 import { theme } from './theme';
 import { useWindowTitle } from './hooks';
-import type { TuiOptions } from './index';
+import type { TuiOptions } from './main';
 import type { CliRenderer } from '@opentui/core';
 
-export type ViewMode = 'home' | 'gateway' | 'status' | 'config' | 'setup' | 'check-error';
+export type ViewMode = 'home' | 'gateway' | 'config' | 'setup' | 'check-error';
 
 interface MainAppProps {
   mode: ViewMode;
@@ -35,11 +34,10 @@ function MainAppContent({ options }: Omit<MainAppProps, 'renderer'>) {
   useWindowTitle(
     currentView === 'home' ? 'Nanobot-ts' :
       currentView === 'gateway' ? 'Nanobot - Gateway' :
-        currentView === 'status' ? 'Nanobot - Status' :
-          currentView === 'config' ? 'Nanobot - Config' :
-            currentView === 'setup' ? 'Nanobot - Setup' :
-              currentView === 'check-error' ? 'Nanobot - Error' :
-                'Nanobot CLI'
+        currentView === 'config' ? 'Nanobot - Config' :
+          currentView === 'setup' ? 'Nanobot - Setup' :
+            currentView === 'check-error' ? 'Nanobot - Error' :
+              'Nanobot CLI'
   );
 
   useKeyboard(key => {
@@ -64,9 +62,6 @@ function MainAppContent({ options }: Omit<MainAppProps, 'renderer'>) {
       case 'new-chat':
         navigateTo('home');
         break;
-      case 'view-status':
-        navigateTo('status');
-        break;
       case 'view-config':
         navigateTo('config');
         break;
@@ -87,7 +82,6 @@ function MainAppContent({ options }: Omit<MainAppProps, 'renderer'>) {
       <box flexGrow={1}>
         {currentView === 'home' && <HomeView />}
         {currentView === 'gateway' && <GatewayApp />}
-        {currentView === 'status' && <StatusApp />}
         {currentView === 'config' && (
           <ConfigApp keyOption={options?.key} valueOption={options?.value} />
         )}

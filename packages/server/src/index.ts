@@ -1,18 +1,19 @@
 /**
  * HTTP 服务器入口
  */
+/// <reference types="bun-types" />
 
 import { Hono } from 'hono';
 import { serveStatic } from 'hono/bun';
-import type { AgentRuntime } from '@/cli/setup';
-import type { ChannelManager } from '@/channels';
+import type { Runtime } from '@nanobot/main';
+import type { ChannelManager } from '@nanobot/channels';
 import type { ServerContext } from './types';
 import type { AppContext } from './types';
 import routes from './routes';
 import { logger } from '@nanobot/logger';
 
 export interface CreateServerOptions {
-  runtime: AgentRuntime;
+  runtime: Runtime;
   bus: ServerContext['bus'];
   channelManager: ChannelManager;
   config: ServerContext['config'];

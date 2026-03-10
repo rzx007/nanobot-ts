@@ -71,7 +71,7 @@ export class CronService {
     if (this.store) return this.store;
     try {
       const data = await fs.readJson(this.storePath);
-      const jobs: CronJob[] = (data.jobs ?? []).map((j: any) => ({
+      const jobs: CronJob[] = (data.jobs ?? []).map((j: CronJob) => ({
         id: j.id,
         name: j.name,
         enabled: j.enabled !== false,

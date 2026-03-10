@@ -5,7 +5,7 @@
  */
 
 import { Tool } from './base';
-import type { IMessageBus } from '@nanobot/bus';
+import type { MessageBus } from '../bus';
 import type { Config } from '@nanobot/shared';
 import { RiskLevel } from './safety';
 import { logger } from '@nanobot/logger';
@@ -21,9 +21,9 @@ export class MessageTool extends Tool {
   riskLevel = RiskLevel.LOW;
 
   /** 消息总线 */
-  private bus: IMessageBus;
+  private bus: MessageBus;
 
-  constructor(_config: Config, bus: IMessageBus) {
+  constructor(_config: Config, bus: MessageBus) {
     super();
     this.bus = bus;
   }

@@ -6,7 +6,7 @@ import type { Context } from 'hono';
 import type { StreamTextEvent } from '@nanobot/shared';
 import type { OutboundMessage } from '@nanobot/shared';
 import type { SSEEvent } from '../types';
-import type { MessageBus } from '@/bus/queue';
+import type { MessageBus } from '@nanobot/main';
 
 /**
  * 创建 SSE 流

@@ -5,7 +5,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppContext } from '../types';
-import type { MessageBus } from '@/bus/queue';
+import type { MessageBus } from '@nanobot/main';
 import type { SSEStream } from '../utils/sse';
 import { ValidationError } from '../types';
 

@@ -4,8 +4,11 @@
 
 import { Command } from 'commander';
 import { error, info } from '../ui';
-import { requireConfig, buildAgentRuntime } from '../setup';
-import { logger } from '../../../logger/src';
+import { loadConfig } from '@nanobot/shared';
+import { createRuntime } from '@nanobot/main';
+import { logger } from '@nanobot/logger';
+import type { StreamTextEvent } from '@nanobot/shared';
+import type { ToolHintEvent } from '@nanobot/shared';
 
 export function registerChatCommand(program: Command): void {
   program
@@ -18,9 +21,24 @@ export function registerChatCommand(program: Command): void {
 }
 
 async function runChat(promptArg: string | undefined, interactive?: boolean): Promise<void> {
-  const config = await requireConfig();
-  const runtime = await buildAgentRuntime(config);
-  const { agent, bus } = runtime;
+  const config = await loadConfig();
+  if (!config) {
+    error('No config found. Run "nanobot init" first.');
+    process.exit(1);
+  }
+
+  const runtime = await createRuntime({ config, mode: 'cli', startChannels: false });
+  const { bus, provider, tools, sessions, memory, skills } = runtime;
+  const { AgentLoop } = await import('@nanobot/main');
+  const agent = new AgentLoop({
+    bus,
+    provider,
+    tools,
+    sessions,
+    config,
+    memory,
+    skills,
+  });
 
   if (interactive) {
     info('Interactive chat. Type /exit to quit.');
@@ -53,12 +71,12 @@ async function runChat(promptArg: string | undefined, interactive?: boolean): Pr
     });
 
     // 订阅流式文本和工具提示事件
-    bus.on('stream-text', event => {
+    bus.on('stream-text', (event: StreamTextEvent) => {
       if (event.channel === 'cli') {
         process.stdout.write(event.chunk);
       }
     });
-    bus.on('tool-hint', event => {
+    bus.on('tool-hint', (event: ToolHintEvent) => {
       if (event.channel === 'cli') {
         process.stdout.write(`\n  [tools: ${event.content}]\n`);
       }

@@ -6,7 +6,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "nanobot": "./dist/run.js"
+    "nanobot-ts": "./dist/index.js"
   },
   "exports": {
     ".": {
@@ -15,7 +15,8 @@
     }
   },
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir ./dist --target bun --format esm && tsc --emitDeclarationOnly --outDir ./dist",
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --format esm && tsc --emitDeclarationOnly",
+    "start": "bun ./dist/index.js",
     "typecheck": "bun tsc --noEmit"
   },
   "keywords": [
@@ -25,22 +26,29 @@
   "author": "Nanobot TypeScript Team",
   "license": "MIT",
   "dependencies": {
-    "@nanobot/shared": "workspace:*",
+    "@nanobot/channels": "workspace:*",
     "@nanobot/logger": "workspace:*",
-    "@nanobot/utils": "workspace:*",
     "@nanobot/main": "workspace:*",
     "@nanobot/providers": "workspace:*",
-    "@nanobot/tools": "workspace:*",
-    "@nanobot/channels": "workspace:*",
-    "@nanobot/skills": "workspace:*",
-    "@nanobot/mcp": "workspace:*",
+    "@nanobot/server": "workspace:*",
+    "@nanobot/shared": "workspace:*",
+    "@nanobot/tui": "workspace:*",
+    "@nanobot/utils": "workspace:*",
+    "@opentui/react": "^0.1.87",
+    "baileys": "^7.0.0-rc.9",
+    "bunqueue": "^2.6.7",
     "chalk": "^5.6.2",
     "commander": "^14.0.3",
+    "fs-extra": "^11.2.0",
     "inquirer": "^13.3.0",
-    "ora": "^9.3.0"
+    "opentui-spinner": "^0.0.6",
+    "ora": "^9.3.0",
+    "qrcode-terminal": "^0.12.0"
   },
   "devDependencies": {
     "@types/inquirer": "^9.0.9",
+    "@types/fs-extra": "^11.0.4",
+    "@types/qrcode-terminal": "^0.12.2",
     "bun-types": "latest",
     "typescript": "^5.9.3"
   }

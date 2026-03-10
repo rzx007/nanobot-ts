@@ -4,9 +4,12 @@
  */
 
 import { Tool } from './base';
-import type { CronService } from '@nanobot/cron';
+import type { CronService } from '../cron/service';
 import type { CronSchedule } from '@nanobot/shared';
 import { RiskLevel } from './safety';
+
+
+
 
 export interface CronToolContext {
   setContext(channel: string, chatId: string): void;
@@ -180,32 +183,55 @@ export class CronTool extends Tool {
       return 'Error: tz can only be used with kind="cron"';
     }
 
-    let schedule: CronSchedule;
-    let deleteAfterRun = false;
-
-    if (kind === 'at') {
-      if (!at_time) {
-        return 'Error: at_time is required for kind="at"';
-      }
-      const atMs = this.parseAtTime(at_time);
-      if (atMs === null) {
-        return `Error: invalid at_time '${at_time}'. Use relative time ("30s", "1m", "1h", "1d", "1w", "1M", "1y", "1y3m2d") or absolute datetime (ISO format: "2026-03-05T10:30:00")`;
-      }
-      schedule = { kind: 'at', atMs };
-      deleteAfterRun = true;
-    } else if (kind === 'every') {
-      if (every_seconds == null || every_seconds <= 0) {
-        return 'Error: every_seconds is required for kind="every" and must be > 0';
-      }
-      schedule = { kind: 'every', everyMs: every_seconds * 1000 };
-    } else if (kind === 'cron') {
-      if (!cron_expr) {
-        return 'Error: cron_expr is required for kind="cron"';
-      }
-      schedule = { kind: 'cron', expr: cron_expr, tz: tz ?? null };
-    } else {
-      return `Error: invalid kind '${kind}'. Must be "at", "every", or "cron"`;
+    interface ScheduleResult {
+      schedule: CronSchedule;
+      deleteAfterRun: boolean;
     }
+
+    const createSchedule = (): ScheduleResult => {
+      if (kind === 'at') {
+        if (!at_time) {
+          throw new Error('at_time is required for kind="at"');
+        }
+        const atMs = this.parseAtTime(at_time);
+        if (atMs === null) {
+          throw new Error(
+            `invalid at_time '${at_time}'. Use relative time ("30s", "1m", "1h", "1d", "1w", "1M", "1y", "1y3m2d") or absolute datetime (ISO format: "2026-03-05T10:30:00")`,
+          );
+        }
+        const schedule: CronSchedule = { kind: 'at', atMs, everyMs: null, expr: null, tz: null };
+        return { schedule, deleteAfterRun: true };
+      }
+      if (kind === 'every') {
+        if (every_seconds == null || every_seconds <= 0) {
+          throw new Error('every_seconds is required for kind="every" and must be > 0');
+        }
+        const schedule: CronSchedule = {
+          kind: 'every',
+          atMs: null,
+          everyMs: every_seconds * 1000,
+          expr: null,
+          tz: null,
+        };
+        return { schedule, deleteAfterRun: false };
+      }
+      if (kind === 'cron') {
+        if (!cron_expr) {
+          throw new Error('cron_expr is required for kind="cron"');
+        }
+        const schedule: CronSchedule = {
+          kind: 'cron',
+          atMs: null,
+          everyMs: null,
+          expr: cron_expr,
+          tz: tz ?? null,
+        };
+        return { schedule, deleteAfterRun: false };
+      }
+      throw new Error(`invalid kind '${kind}'. Must be "at", "every", or "cron"`);
+    };
+
+    const { schedule, deleteAfterRun } = createSchedule();
 
     const job = await this.cronService.addJob({
       name: message.slice(0, 30),
@@ -222,7 +248,9 @@ export class CronTool extends Tool {
   private async listJobs(): Promise<string> {
     const jobs = await this.cronService.listJobs();
     if (jobs.length === 0) return 'No scheduled jobs.';
-    const lines = jobs.map(j => `- ${j.name} (id: ${j.id}, ${j.schedule.kind})`);
+    const lines = jobs.map(
+      (j: import('@nanobot/shared').CronJob) => `- ${j.name} (id: ${j.id}, ${j.schedule.kind})`,
+    );
     return 'Scheduled jobs:\n' + lines.join('\n');
   }
 

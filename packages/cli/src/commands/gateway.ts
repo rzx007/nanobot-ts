@@ -3,10 +3,10 @@
  */
 
 import { Command } from 'commander';
-import { ChannelManager, CLIChannel } from '../../../channels/src';
 import { logger } from '@nanobot/logger';
+import { loadConfig } from '@nanobot/shared';
+import { createRuntime } from '@nanobot/main';
 import { info } from '../ui';
-import { requireConfig, buildAgentRuntime } from '../setup';
 
 export function registerGatewayCommand(program: Command): void {
   program
@@ -25,44 +25,21 @@ export function registerGatewayCommand(program: Command): void {
 }
 
 async function runGateway(port: number, http: boolean, staticDir?: string): Promise<void> {
-  const config = await requireConfig();
+  const config = await loadConfig();
+  if (!config) {
+    info('No config found. Run "nanobot init" first.');
+    process.exit(1);
+  }
 
-  const runtime = await buildAgentRuntime(config);
-  const { bus, agent, config: cfg } = runtime;
+  const runtime = await createRuntime({ config, mode: 'gateway', startChannels: true });
+  const { bus, channelManager } = runtime;
 
-  /** 启动channel管理器 */
-  const channelManager = new ChannelManager(cfg);
-  channelManager.registerChannel('cli', new CLIChannel({}));
-  await channelManager.loadChannelsFromConfig();
-  await channelManager.startAll({
-    onInbound: msg => void bus.publishInbound(msg),
-  });
-
-  let outboundRunning = true;
-  void (async () => {
-    while (outboundRunning) {
-      try {
-        const msg = await bus.consumeOutbound();
-        await channelManager.dispatchOutbound(msg);
-      } catch (err) {
-        if (outboundRunning) {
-          logger.error({ err }, 'Outbound dispatch error');
-        }
-      }
-    }
-  })();
-
-  /** 启动Agent */
-  agent.run().catch(err => {
-    logger.error({ err }, 'Agent loop error');
-  });
+  await runtime.start({ startChannels: true });
 
   let httpServer: Awaited<ReturnType<typeof import('@nanobot/server').createServer>> | null = null;
 
   if (http) {
-    // const { createServer } = await import('@nanobot/server');
-    console.log('HTTP server feature temporarily disabled during monorepo migration');
-    return;
+    const { createServer } = await import('@nanobot/server');
     config.server.port = port;
     config.server.enabled = true;
 
@@ -85,14 +62,13 @@ async function runGateway(port: number, http: boolean, staticDir?: string): Prom
   } else {
     info('HTTP server disabled');
   }
+
   const onExit = async (signal?: string): Promise<void> => {
     logger.info({ signal }, 'Process exit hook triggered');
-    outboundRunning = false;
     if (httpServer) {
       await httpServer.close();
     }
-    await channelManager.stop();
-    await runtime.subagentManager?.shutdown();
+    await runtime.stop();
     logger.info('Gateway shutdown complete');
   };
 

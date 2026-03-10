@@ -11,7 +11,7 @@ import type {
   ToolHintEvent,
 } from '@nanobot/shared';
 import { getSessionKey } from '@nanobot/shared';
-import type { ToolRegistry } from '@nanobot/tools';
+import type { ToolRegistry } from '../tools/registry';
 import type { LLMProvider } from '@nanobot/providers';
 import type { Config } from '@nanobot/shared';
 import type { SessionManager } from '../storage';
@@ -42,7 +42,7 @@ export interface AgentOptions {
   memory?: import('./memory').MemoryConsolidator;
 
   /** 技能加载器 (可选，用于系统提示词中的技能) */
-  skills?: import('../skills').SkillLoader;
+  skills?: import('../skills/skills').SkillLoader;
 }
 
 /**
@@ -70,7 +70,7 @@ export class AgentLoop {
   private memory: import('./memory').MemoryConsolidator | null = null;
 
   /** 技能加载器 (可选) */
-  private skills: import('../skills').SkillLoader | null = null;
+  private skills: import('../skills/skills').SkillLoader | null = null;
 
   /** 是否正在运行 */
   private running = false;

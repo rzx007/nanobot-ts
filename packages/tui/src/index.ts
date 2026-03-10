@@ -3,4 +3,4 @@
  */
 
 export * from './components';
-export * from './index';
+export * from './main';

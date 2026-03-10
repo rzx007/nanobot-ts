@@ -4,5 +4,5 @@
  * 包含所有包共用的类型定义、配置 schema 和常量
  */
 
-export * from './types';
 export * from './config';
+export * from './loader';

@@ -7,7 +7,7 @@ import { createRoot } from '@opentui/react';
 import { App } from './App';
 import type { CliRenderer } from '@opentui/core';
 
-export type TuiMode = 'gateway' | 'status' | 'config' | 'home';
+export type TuiMode = 'gateway' | 'config' | 'home';
 
 export interface TuiOptions {
   interactive?: boolean | undefined;
