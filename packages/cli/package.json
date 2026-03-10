@@ -34,6 +34,7 @@
     "@nanobot/shared": "workspace:*",
     "@nanobot/tui": "workspace:*",
     "@nanobot/utils": "workspace:*",
+    "@opentui/core": "^0.1.87",
     "@opentui/react": "^0.1.87",
     "baileys": "^7.0.0-rc.9",
     "bunqueue": "^2.6.7",
@@ -43,7 +44,8 @@
     "inquirer": "^13.3.0",
     "opentui-spinner": "^0.0.6",
     "ora": "^9.3.0",
-    "qrcode-terminal": "^0.12.0"
+    "qrcode-terminal": "^0.12.0",
+    "react": "^19.0.0"
   },
   "devDependencies": {
     "@types/inquirer": "^9.0.9",

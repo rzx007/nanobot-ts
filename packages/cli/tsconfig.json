@@ -11,6 +11,7 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "isolatedDeclarations": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -29,6 +30,6 @@
     "isolatedModules": true,
     "allowImportingTsExtensions": false
   },
-  "include": ["src/**/*"],
+  "include": ["src"],
   "exclude": ["node_modules", "dist"]
 }
