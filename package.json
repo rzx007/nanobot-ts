@@ -14,7 +14,7 @@
     "build": "cd packages/cli && bun run build",
     "build:binary": "bun build ./packages/cli/src/index.ts --compile --outfile nanobot",
     "dev": "NODE_ENV=development bun --watch packages/cli/src/run.ts",
-    "start": "bun packages/cli/dist/run.js",
+    "start": "bun packages/cli/dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage",
