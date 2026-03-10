@@ -66,6 +66,7 @@ export const MEMORY_DIR = 'memory';
 
 /**
  * 获取包根目录
+ *  @example /Users/username/nanobot-ts/packages/
  */
 export function getPackageRoot(metaUrl: string): string {
   const filePath = fileURLToPath(metaUrl);
@@ -82,7 +83,7 @@ export function getPackageRoot(metaUrl: string): string {
  * 获取模板工作区路径
  */
 export function getTemplatesWorkspace(packageRoot: string): string {
-  return path.join(packageRoot, 'templates', 'workspace');
+  return path.join(packageRoot, 'workspace');
 }
 
 /**
@@ -182,11 +183,15 @@ async function setupConfig(force: boolean, options: InitOptions): Promise<boolea
 
 /**
  * 验证并获取模板目录路径
+ * @example /Users/username/nanobot-ts/packages/workspace
  */
 async function validateTemplates(options: InitOptions): Promise<string | null> {
   const { progress, logger } = options;
   const packageRoot = getPackageRoot(import.meta.url);
+
+  // 包目录下的模板workspace路径 /Users/username/nanobot-ts/packages/workspace
   const templatesWorkspace = getTemplatesWorkspace(packageRoot);
+
   if (progress) {
     progress.setStep('Templates', 'running');
   }

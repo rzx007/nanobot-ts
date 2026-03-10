@@ -32,9 +32,11 @@ async function runGateway(port: number, http: boolean, staticDir?: string): Prom
   }
 
   const runtime = await createRuntime({ config, mode: 'gateway', startChannels: true });
+
   const { bus, channelManager } = runtime;
 
   await runtime.start({ startChannels: true });
+
 
   let httpServer: Awaited<ReturnType<typeof import('@nanobot/server').createServer>> | null = null;
 
