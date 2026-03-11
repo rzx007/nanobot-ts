@@ -3,6 +3,7 @@
     "target": "ES2022",
     "module": "ES2022",
     "lib": ["ES2022", "DOM"],
+    "types": ["bun-types"],
     "jsx": "react-jsx",
     "jsxImportSource": "@opentui/react",
     "moduleResolution": "bundler",
@@ -29,18 +30,23 @@
     "allowImportingTsExtensions": false,
     "types":["bun-types"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@nanobot/shared": ["./packages/shared/src"],
+      "@nanobot/logger": ["./packages/logger/src"],
+      "@nanobot/utils": ["./packages/utils/src"],
+      "@nanobot/main": ["./packages/main/src"],
+      "@nanobot/providers": ["./packages/providers/src"],
+      "@nanobot/tools": ["./packages/tools/src"],
+      "@nanobot/channels": ["./packages/channels/src"],
+      "@nanobot/cli": ["./packages/cli/src"],
+      "@nanobot/tui": ["./packages/tui/src"],
+      "@nanobot/server": ["./packages/server/src"],
+      "@nanobot/skills": ["./packages/skills/src"],
+      "@nanobot/mcp": ["./packages/mcp/src"]
     }
   },
   "include": ["src/**/*"],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.test.ts",
-    "**/*.spec.ts",
-    "templates",
-    "tests"
-  ],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "templates", "tests"],
   "ts-node": {
     "compilerOptions": {
       "module": "commonjs"

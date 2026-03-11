@@ -1,0 +1,38 @@
+{
+  "name": "@nanobot/server",
+  "version": "0.1.1",
+  "description": "HTTP server for nanobot-ts",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --format esm && tsc --emitDeclarationOnly --outDir ./dist",
+    "typecheck": "bun tsc --noEmit"
+  },
+  "keywords": [
+    "nanobot",
+    "server"
+  ],
+  "author": "Nanobot TypeScript Team",
+  "license": "MIT",
+  "dependencies": {
+    "@nanobot/channels": "workspace:*",
+    "@nanobot/cli": "workspace:*",
+    "@nanobot/logger": "workspace:*",
+    "@nanobot/main": "workspace:*",
+    "@nanobot/shared": "workspace:*",
+    "@nanobot/utils": "workspace:*",
+    "hono": "^4.12.5",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "bun-types": "latest",
+    "typescript": "^5.9.3"
+  }
+}

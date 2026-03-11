@@ -1,0 +1,56 @@
+{
+  "name": "@nanobot/cli",
+  "version": "0.1.1",
+  "description": "CLI tool for nanobot-ts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "nanobot-ts": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun run bun.config.ts && tsc --emitDeclarationOnly",
+    "start": "bun ./dist/index.js",
+    "typecheck": "bun tsc --noEmit"
+  },
+  "keywords": [
+    "nanobot",
+    "cli"
+  ],
+  "author": "Nanobot TypeScript Team",
+  "license": "MIT",
+  "dependencies": {
+    "@nanobot/channels": "workspace:*",
+    "@nanobot/logger": "workspace:*",
+    "@nanobot/main": "workspace:*",
+    "@nanobot/providers": "workspace:*",
+    "@nanobot/server": "workspace:*",
+    "@nanobot/shared": "workspace:*",
+    "@nanobot/tui": "workspace:*",
+    "@nanobot/utils": "workspace:*",
+    "@opentui/core": "^0.1.87",
+    "@opentui/react": "^0.1.87",
+    "baileys": "^7.0.0-rc.9",
+    "bunqueue": "^2.6.7",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
+    "fs-extra": "^11.2.0",
+    "inquirer": "^13.3.0",
+    "opentui-spinner": "^0.0.6",
+    "ora": "^9.3.0",
+    "qrcode-terminal": "^0.12.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.9",
+    "@types/fs-extra": "^11.0.4",
+    "@types/qrcode-terminal": "^0.12.2",
+    "bun-types": "latest",
+    "typescript": "^5.9.3"
+  }
+}
