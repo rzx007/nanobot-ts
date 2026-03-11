@@ -6,7 +6,7 @@ import { ChatInput, type ChatInputHandle } from '../components/ChatInput';
 import { theme } from '../theme';
 import { useGatewayChat } from './useGatewayChat';
 import { useRef } from 'react';
-// import { SubagentPanel } from '../subagent/SubagentPanel';
+import { SubagentPanel } from '../subagent/SubagentPanel';
 export function GatewayApp() {
   const { configLoaded, config, runtime, pendingPrompt, clearPendingPrompt, navigateTo } =
     useAppContext();
@@ -56,7 +56,7 @@ export function GatewayApp() {
         <box flexGrow={1} minHeight={0} width="100%" overflow="hidden" flexDirection="column">
           <ChatMessages messages={messages} />
         </box>
-        {/* <SubagentPanel runtime={runtime} /> */}
+        <SubagentPanel runtime={runtime} />
         <box paddingTop={1} flexShrink={0} width="100%">
           <ChatInput
             ref={chatInputRef}

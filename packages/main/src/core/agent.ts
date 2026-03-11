@@ -282,8 +282,12 @@ export class AgentLoop {
       return { channel, chatId, content: help };
     }
 
-    // 为需要上下文的工具设置 channel/chatId（如 spawn、cron）
-    for (const name of this.tools.getToolNames()) {
+    // 为当前 inbound 消息分配一个任务 ID，并注册取消信号
+    const taskId = `${channel}:${chatId}:${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    try {
+      // 为需要上下文的工具设置 channel/chatId（如 spawn、cron）
+      for (const name of this.tools.getToolNames()) {
       const t = this.tools.get(name);
       if (
         t &&
@@ -376,9 +380,6 @@ export class AgentLoop {
         chunk,
       } as StreamTextEvent);
     };
-
-    // 为当前 inbound 消息分配一个任务 ID，并注册取消信号
-    const taskId = `${channel}:${chatId}:${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const signal = taskCancellation.register(taskId, {
       channel,
       chatId,
@@ -426,5 +427,12 @@ export class AgentLoop {
       chatId,
       content: typeof assistantContent === 'string' ? assistantContent : '',
     };
+    } catch (error) {
+      // 重新抛出错误，让调用者处理
+      throw error;
+    } finally {
+      // 清理任务资源，防止内存泄漏
+      taskCancellation.cleanup(taskId);
+    }
   }
 }

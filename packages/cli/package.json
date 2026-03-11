@@ -15,7 +15,7 @@
     }
   },
   "scripts": {
-    "build": "bun run bun.config.ts && tsc --emitDeclarationOnly",
+    "build": "bun run bun.config.ts",
     "start": "bun ./dist/index.js",
     "typecheck": "bun tsc --noEmit"
   },

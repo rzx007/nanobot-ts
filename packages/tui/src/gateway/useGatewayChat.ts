@@ -236,12 +236,26 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
     });
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     // 取消当前会话的最近一个任务，sessionKey 取 cli:direct
     try {
       const currentSessionKey = getSessionKey({ channel: 'cli', chatId: 'direct' });
-      // 仅取消当前会话中由用户发起的最近一个任务
+      // 取消当前会话中由用户发起的最近一个任务
       taskCancellation.cancelCurrentTask(currentSessionKey, 'user');
+
+      // 同时取消所有正在运行的 subagent 任务
+      const allTaskStatuses = runtime?.subagentManager?.getAllTaskStatuses();
+      if (allTaskStatuses) {
+        for (const [taskId, status] of allTaskStatuses) {
+          if (status === 'running' || status === 'pending') {
+            try {
+              await runtime?.subagentManager?.cancel(taskId);
+            } catch (error) {
+              console.error(`Failed to cancel subagent task ${taskId}:`, error);
+            }
+          }
+        }
+      }
     } catch {
       // ignore
     }
