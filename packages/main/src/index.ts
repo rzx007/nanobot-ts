@@ -34,3 +34,5 @@ export * from './runtime';
 
 // 重新导出 Channels
 export * from '@nanobot/channels';
+
+export { taskCancellation } from './core/task-cancellation';

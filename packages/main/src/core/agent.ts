@@ -13,6 +13,7 @@ import type {
 import { getSessionKey } from '@nanobot/shared';
 import type { ToolRegistry } from '../tools/registry';
 import type { LLMProvider } from '@nanobot/providers';
+import { taskCancellation } from './task-cancellation';
 import type { Config } from '@nanobot/shared';
 import type { SessionManager } from '../storage';
 import { logger } from '@nanobot/logger';
@@ -354,7 +355,7 @@ export class AgentLoop {
         }
         return `Tool "${name}" returned:\n${result}`;
       },
-    };
+      };
 
     // 发布工具提示事件到消息总线
     (commonParams as any).onStepFinish = (step: { text?: string; toolCalls?: unknown[] }) => {
@@ -376,11 +377,29 @@ export class AgentLoop {
       } as StreamTextEvent);
     };
 
+    // 为当前 inbound 消息分配一个任务 ID，并注册取消信号
+    const taskId = `${channel}:${chatId}:${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const signal = taskCancellation.register(taskId, {
+      channel,
+      chatId,
+      sessionKey,
+      startedAt: new Date(),
+      origin: 'user',
+    });
+
+    // 传递取消信号到 LLM 调用端
+    const llmParams = {
+      ...commonParams,
+      abortSignal: signal,
+    };
+
+    // (重复定义的部分已移除)
+
     // 根据是否需要流式选择调用方式
     const isStreamResponse = this.config.agents.defaults.streaming ?? true;
     const llmResponse = isStreamResponse
-      ? await this.provider.streamChat(commonParams as Parameters<LLMProvider['streamChat']>[0])
-      : await this.provider.chat(commonParams);
+      ? await this.provider.streamChat(llmParams as Parameters<LLMProvider['streamChat']>[0])
+      : await this.provider.chat(llmParams as Parameters<LLMProvider['chat']>[0]);
     const assistantContent = AgentLoop._stripThink(llmResponse.content ?? '');
 
     if (assistantContent) {

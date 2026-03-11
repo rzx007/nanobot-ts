@@ -34,6 +34,9 @@ export const InboundMessageSchema = z.object({
 
   /** 会话密钥覆盖 (用于线程作用域的会话，未指定时用 channel:chatId) */
   sessionKeyOverride: z.string().optional(),
+
+  /** 取消信号（用于中止正在进行的对话） */
+  abortSignal: z.any().optional(),
 });
 
 /**

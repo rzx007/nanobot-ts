@@ -191,9 +191,9 @@ ${this.workspace}
 ## Tools
 You have access to the following tools (excluding spawn, message and subagent to prevent infinite recursion):
 ${this.tools
-  .getToolNames()
-  .filter((n: string) => n !== 'spawn' && n !== 'message' && n !== 'subagent')
-  .join(', ')}
+        .getToolNames()
+        .filter((n: string) => n !== 'spawn' && n !== 'message' && n !== 'subagent')
+        .join(', ')}
 
 ## Instructions
 1. Stay focused on the assigned task

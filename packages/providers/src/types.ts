@@ -39,6 +39,7 @@ export interface LLMProvider {
     model: string;
     temperature?: number;
     maxTokens?: number;
+    abortSignal?: AbortSignal;
     executeTool?: (name: string, args: Record<string, unknown>) => Promise<string>;
     maxSteps?: number;
     onStepFinish?: (step: { text?: string; toolCalls?: unknown[] }) => void;
@@ -53,6 +54,7 @@ export interface LLMProvider {
     model: string;
     temperature?: number;
     maxTokens?: number;
+    abortSignal?: AbortSignal;
     executeTool?: (name: string, args: Record<string, unknown>) => Promise<string>;
     maxSteps?: number;
     onStepFinish?: (step: { text?: string; toolCalls?: unknown[] }) => void;

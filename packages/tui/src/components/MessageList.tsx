@@ -4,7 +4,7 @@ import { MessageContent } from './MessageContent';
 import { EmptyBorder } from './Border';
 
 export interface MessageItem {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
   isStreaming?: boolean | undefined;
   model?: string | undefined;

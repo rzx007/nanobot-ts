@@ -8,6 +8,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { MessageItem } from '../components/MessageList';
 import { getSessionKey, type OutboundMessage } from '@nanobot/shared';
 import { SlashCommandExecutor, createAllHandlers } from '../commands';
+import { taskCancellation } from '@nanobot/main';
 import { buildSlashCommandContext } from './slashCommandContext';
 import { sessionToMessageItems } from './sessionUtils';
 import type { Runtime } from '@nanobot/main';
@@ -15,6 +16,7 @@ import type { Config } from '@nanobot/shared';
 import type { ViewMode } from '../context';
 import type { DialogContextValue } from '../components/Dialog';
 import type { ChatInputHandle } from '../components/ChatInput';
+import { useKeyboard } from '@opentui/react';
 
 export interface UseGatewayChatParams {
   runtime: Runtime | null;
@@ -32,6 +34,8 @@ export interface UseGatewayChatResult {
   setMessages: Dispatch<SetStateAction<MessageItem[]>>;
   status: 'idle' | 'responding';
   inputDisabled: boolean;
+  /** 取消当前对话的处理函数（UI 快捷键调用） */
+  handleCancel?: () => void;
   handleSend: (content: string) => Promise<void>;
   handleSlashCommand: (commandId: string) => Promise<void>;
   slashCommands: Array<{ id: string; label: string; description: string }>;
@@ -50,6 +54,7 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
     dialog,
     chatInputRef,
   } = params;
+  // 注：移除了对 AbortSignal 的直接传递以避免 JSON 序列化问题；取消回退实现为 UI 提示。
 
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [inputDisabled, setInputDisabled] = useState(false);
@@ -231,6 +236,26 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
     });
   };
 
+  const handleCancel = () => {
+    // 取消当前会话的最近一个任务，sessionKey 取 cli:direct
+    try {
+      const currentSessionKey = getSessionKey({ channel: 'cli', chatId: 'direct' });
+      // 仅取消当前会话中由用户发起的最近一个任务
+      taskCancellation.cancelCurrentTask(currentSessionKey, 'user');
+    } catch {
+      // ignore
+    }
+    setInputDisabled(false);
+    setMessages(m => [
+      ...m,
+      {
+        role: 'system',
+        content: '对话已取消（UI 提示）',
+        timestamp: new Date().toISOString(),
+      },
+    ]);
+  };
+
   const handleSlashCommand = async (commandId: string) => {
     const context = buildSlashCommandContext({
       runtime,
@@ -250,6 +275,15 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
   const loading = !configLoaded;
   const error = configLoaded && !config ? 'No config found. Run "nanobot init" first.' : null;
 
+
+  useKeyboard((k) => {
+    if (k.name === 'escape') {
+      handleCancel?.();
+      setStatus('idle')
+    }
+  });
+
+
   return {
     messages,
     setMessages,
@@ -260,5 +294,6 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
     slashCommands,
     loading,
     error,
+    handleCancel,
   };
 }

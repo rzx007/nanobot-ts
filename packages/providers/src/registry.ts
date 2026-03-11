@@ -107,8 +107,15 @@ export class LLMProvider {
     maxSteps?: number;
     /** 每步结束回调（如用于进度） */
     onStepFinish?: (step: { text?: string; toolCalls?: unknown[] }) => void;
+
+    /**取消 */
+    abortSignal?: AbortSignal
   }): Promise<LLMResponse> {
     try {
+      // 提前检查取消信号
+      if (params?.abortSignal?.aborted) {
+        throw new DOMException('Task cancelled', 'AbortError');
+      }
       const {
         messages,
         tools,
@@ -148,12 +155,12 @@ export class LLMProvider {
 
       const usage = result.usage
         ? {
-            promptTokens: result.usage.inputTokens ?? 0,
-            completionTokens: result.usage.outputTokens ?? 0,
-            totalTokens:
-              result.usage.totalTokens ??
-              (result.usage.inputTokens ?? 0) + (result.usage.outputTokens ?? 0),
-          }
+          promptTokens: result.usage.inputTokens ?? 0,
+          completionTokens: result.usage.outputTokens ?? 0,
+          totalTokens:
+            result.usage.totalTokens ??
+            (result.usage.inputTokens ?? 0) + (result.usage.outputTokens ?? 0),
+        }
         : undefined;
 
       return {
@@ -190,8 +197,15 @@ export class LLMProvider {
     onStepFinish?: (step: { text?: string; toolCalls?: unknown[] }) => void;
     /** 文本块回调，用于流式输出 */
     onTextChunk?: (chunk: string) => void;
+
+    /**取消 */
+    abortSignal?: AbortSignal
   }): Promise<LLMResponse> {
     try {
+      // 提前检查取消信号
+      if (params?.abortSignal?.aborted) {
+        throw new DOMException('Task cancelled', 'AbortError');
+      }
       const {
         messages,
         tools,
@@ -213,6 +227,8 @@ export class LLMProvider {
       const toolsToUse =
         executeTool != null ? this.buildToolsWithExecute(tools, executeTool) : tools;
 
+
+
       const result = streamText({
         model,
         messages: normalizedMessages,
@@ -226,6 +242,7 @@ export class LLMProvider {
             onTextChunk((event.chunk as { type: 'text-delta'; text: string }).text);
           }
         },
+        abortSignal: params?.abortSignal ?? new AbortController().signal,
       });
 
       // streamText 返回的 text、usage 等是 Promise，需 await 才会消费流并得到最终值（见 AI SDK 文档 Returns）
@@ -233,10 +250,10 @@ export class LLMProvider {
       const contentStr = typeof content === 'string' ? content : '';
       const usageInfo = usage
         ? {
-            promptTokens: usage.inputTokens ?? 0,
-            completionTokens: usage.outputTokens ?? 0,
-            totalTokens: usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
-          }
+          promptTokens: usage.inputTokens ?? 0,
+          completionTokens: usage.outputTokens ?? 0,
+          totalTokens: usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+        }
         : undefined;
 
       return {
