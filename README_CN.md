@@ -10,9 +10,10 @@ nanobot-ts 是 [nanobot](https://github.com/HKUDS/nanobot) 的 TypeScript 版本
 
 - 🪶 **轻量级**: 约 5000 行 TypeScript 代码
 - 🚀 **快速**: 基于 Bun 运行时
+- 🏗️ **Monorepo**: 模块化架构，10+ 个包便于组织
 - 🔌 **多渠道**: WhatsApp、飞书、邮箱、CLI
 - 🧠 **智能**: LLM 驱动，支持工具调用
-- 🛠️ **可扩展**: 轻松添加自定义工具和渠道
+- 🛠️ **可扩展**: 轻松添加自定义工具、渠道和包
 - 🔐 **安全**: 基于风险等级的工具审批系统
 - 🔌 **MCP 支持**: 支持模型上下文协议扩展外部工具
 - 🎨 **类型安全**: 完整的 TypeScript 支持和 Zod 验证
@@ -20,20 +21,23 @@ nanobot-ts 是 [nanobot](https://github.com/HKUDS/nanobot) 的 TypeScript 版本
 - 💾 **记忆**: 自动会话整合和长期记忆
 - ⏰ **定时任务**: 内置定时任务执行系统
 - 🖥️ **TUI**: 现代化终端界面，支持斜杠命令和搜索
+- 🌐 **Web UI**: React + Vite Dashboard 提供网页端管理
 
 ### 与 Python 版本对比
 
-| 特性     | Python 版本  | TypeScript 版本               |
-| -------- | ------------ | ----------------------------- |
-| 代码行数 | ~4,000       | ~5,000                        |
-| 运行环境 | Python 3.11+ | Bun 1.3+                      |
-| 类型安全 | 可选         | ✅ 完整                       |
-| 性能     | 良好         | ✅ 更好（异步 I/O）           |
-| 生态     | PyPI         | ✅ npm（更大）                |
-| 渠道     | 9+           | 4 (WhatsApp, 飞书, 邮箱, CLI) |
-| LLM SDK  | LiteLLM      | ✅ Vercel AI SDK              |
-| 审批系统 | ✅           | ✅ 基于风险的审批             |
-| MCP 支持 | ✅           | ✅ stdio + HTTP 服务器        |
+| 特性       | Python 版本 | TypeScript 版本               |
+| ---------- | ----------- | ----------------------------- |
+| 代码行数   | ~4,000      | ~5,000                        |
+| 运行环境   | Python 3.11 | Bun 1.3+                      |
+| 架构       | 单仓库      | ✅ Monorepo (10+ 包)          |
+| 类型安全   | 可选        | ✅ 完整                       |
+| 性能       | 良好        | ✅ 更好（异步 I/O）           |
+| 生态       | PyPI        | ✅ npm（更大）                |
+| 渠道       | 9+          | 4 (WhatsApp, 飞书, 邮箱, CLI) |
+| LLM SDK    | LiteLLM     | ✅ Vercel AI SDK              |
+| 审批系统   | ✅          | ✅ 基于风险的审批             |
+| MCP 支持   | ✅          | ✅ stdio + HTTP 服务器        |
+| Web UI     | ❌          | ✅ React + Vite Dashboard      |
 
 ## 🚀 快速开始
 
@@ -515,11 +519,14 @@ nanobot-ts whatsapp:logout
 ## 🎨 开发
 
 ```bash
-# 开发模式（监听）
+# 开发模式（监听 CLI）
 bun dev
 
-# 构建
+# 构建所有包
 bun build
+
+# 构建 CLI 二进制文件
+bun run build:binary
 
 # 运行测试
 bun test
@@ -527,49 +534,193 @@ bun test
 # 测试并生成覆盖率
 bun test:coverage
 
+# 测试监听模式
+bun test:watch
+
 # 代码检查
 bun lint
+
+# 代码检查并自动修复
+bun lint:fix
 
 # 格式化代码
 bun format
 
 # 类型检查
 bun typecheck
+
+# 清理构建产物
+bun clean
+
+# 快速开始命令
+bun onboard           # 初始化配置
+bun agent             # 交互式聊天模式
+bun gateway           # 启动 Gateway
+bun status            # 查看状态
+```
+
+**特定包开发**：
+
+```bash
+# 开发特定包（从根目录）
+cd packages/main && bun run typecheck
+cd packages/cli && bun run build
+cd packages/tui && bun run dev
+cd packages/web && bun run dev
 ```
 
 ## 📊 项目结构
 
+nanobot-ts 使用 Bun workspaces 组织为 monorepo：
+
 ```
 nanobot-ts/
-├── src/                    # 源代码
-│   ├── core/               # 核心 Agent 逻辑
-│   ├── bus/                # 消息总线
-│   ├── channels/           # 渠道实现
-│   ├── tools/              # 工具系统
-│   ├── providers/          # LLM 提供商
-│   ├── config/             # 配置
-│   ├── storage/            # 存储层
-│   ├── cli/                # CLI 命令
-│   │   └── tui/            # 终端用户界面
-│   │       ├── commands/   # 斜杠命令处理器
+├── packages/               # Monorepo 包
+│   ├── main/               # 核心框架（Agent、Memory、Tools、Skills、MCP）
+│   │   ├── src/
+│   │   │   ├── core/       # 核心 Agent 逻辑
+│   │   │   ├── bus/        # 消息总线实现
+│   │   │   ├── tools/      # 内置工具
+│   │   │   ├── storage/    # 存储层
+│   │   │   ├── skills/     # 技能系统
+│   │   │   ├── cron/       # 定时任务服务
+│   │   │   └── mcp/        # MCP 集成
+│   ├── cli/                # CLI 工具和命令
+│   │   └── src/
+│   │       ├── commands/   # CLI 命令处理器
+│   │       └── whatsapp-auth.ts
+│   ├── tui/                # 终端用户界面（opentui）
+│   │   └── src/
 │   │       ├── components/ # TUI React 组件
-│   │       └── hooks/      # 自定义 React hooks
-│   ├── cron/               # 定时任务服务
-│   └── utils/              # 工具函数
-├── templates/               # 工作区模板
+│   │       ├── commands/   # 斜杠命令处理器
+│   │       ├── hooks/      # 自定义 React hooks
+│   │       ├── gateway/    # Gateway UI
+│   │       └── home/       # 首页
+│   ├── channels/           # 消息渠道
+│   │   └── src/
+│   │       ├── base.ts     # 基础渠道接口
+│   │       ├── cli.ts      # CLI 渠道
+│   │       ├── whatsapp.ts # WhatsApp 渠道
+│   │       ├── feishu.ts   # 飞书渠道
+│   │       └── email.ts    # Email 渠道
+│   ├── providers/          # LLM 提供商
+│   │   └── src/
+│   │       ├── adapters/   # 提供商适配器
+│   │       └── registry.ts # 提供商注册表
+│   ├── server/             # HTTP 服务器
+│   │   └── src/
+│   │       ├── routes/     # API 路由
+│   │       └── middleware/ # 服务器中间件
+│   ├── web/                # Web Dashboard（React + Vite）
+│   │   └── src/
+│   │       ├── components/ # Web UI 组件
+│   │       └── lib/        # 工具函数
+│   ├── shared/             # 共享类型和配置
+│   │   └── src/
+│   │       ├── config/     # 配置 schemas 和默认值
+│   │       └── loader.ts   # 配置加载器
+│   ├── logger/             # 日志工具
+│   │   └── src/
+│   │       └── logger.ts   # Logger 实现
+│   ├── utils/              # 工具函数
+│   │   └── src/
+│   │       ├── errors.ts   # 错误处理
+│   │       ├── helpers.ts  # 辅助函数
+│   │       └── retry.ts    # 重试逻辑
+│   └── workspace/          # 工作区模板和示例
+│       ├── AGENTS.md       # Agent 配置指南
+│       ├── TOOLS.md        # 工具配置指南
+│       ├── skills/         # 示例技能
+│       └── memory/         # 记忆存储
 ├── tests/                  # 测试文件
 ├── docs/                   # 文档
-└── package.json
+├── package.json            # 根包（monorepo 配置）
+└── bun.lock                # 锁文件
 ```
+
+## 🏗️ Monorepo 架构
+
+nanobot-ts 使用 Bun workspaces 组织为 monorepo，以实现更好的代码组织和模块化。
+
+### 核心包
+
+| 包名 | 描述 | 主要功能 |
+|-----|------|---------|
+| `@nanobot/main` | 核心框架 | Agent 循环、记忆、工具、技能、MCP、定时任务、审批 |
+| `@nanobot/cli` | CLI 工具 | 命令解析、入口点、WhatsApp 认证 |
+| `@nanobot/tui` | 终端 UI | 基于 opentui 的界面、斜杠命令 |
+| `@nanobot/channels` | 消息渠道 | WhatsApp、飞书、邮箱、CLI |
+| `@nanobot/providers` | LLM 提供商 | OpenAI、Anthropic、OpenRouter 等 |
+| `@nanobot/server` | HTTP 服务器 | REST API、Web 服务器中间件 |
+| `web` | Web Dashboard | React + Vite 前端（独立） |
+| `@nanobot/shared` | 共享类型 | 配置 schemas、类型、默认值 |
+| `@nanobot/logger` | 日志工具 | 控制台和文件日志 |
+| `@nanobot/utils` | 工具函数 | 辅助函数、重试逻辑、错误处理 |
+
+### 构建和发布
+
+所有包都使用 Bun 构建：
+
+```bash
+# 构建所有包
+bun build
+
+# 构建特定包
+cd packages/cli && bun run build
+
+# 类型检查特定包
+cd packages/main && bun run typecheck
+```
+
+### Workspace 优势
+
+- **模块化**: 清晰的职责分离
+- **可维护性**: 更容易定位和修复问题
+- **可重用性**: 包可以独立使用
+- **测试**: 每个包可以独立测试
+- **性能**: 只构建修改的部分
+
+### 添加新包
+
+1. 创建包目录: `packages/new-package/`
+2. 添加包含正确导出的 `package.json`
+3. 如需要添加 TypeScript 配置
+4. 更新根 `package.json` workspaces（可选，自动发现）
+5. 使用包名导入: `@nanobot/new-package`
+
+### 从单仓库迁移
+
+项目已从单个 `src/` 目录迁移到 monorepo 结构。详见 [MIGRATION.md](MIGRATION.md)。
 
 ## 📚 文档
 
+### 架构与设计
 - [Gateway 流程文档](docs/GATEWAY_FLOW.md) - 详细的消息流程图
 - [Mermaid 图表](docs/GATEWAY_MERMAID.md) - 可视化架构图
+- [多 Agent 架构](docs/MULIT-AGEBTS-ARCH.md) - 多 Agent 系统设计
+
+### 配置与设置
 - [飞书渠道指南](docs/FEISHU.md) - 飞书渠道配置
-- [MCP 配置](MCP.md) - 模型上下文协议设置
-- [定时任务服务](src/cron/README.md) - 定时任务执行系统
-- [TUI 斜杠命令](src/cli/tui/commands/README.md) - 终端用户界面命令系统
+- [MCP 配置](docs/MCP.md) - 模型上下文协议设置
+- [部署指南](docs/DEPLOYMENT.md) - 生产环境部署说明
+- [Monorepo 迁移](MIGRATION.md) - 从单仓库迁移到 monorepo
+
+### 功能
+- [定时任务服务](packages/main/src/cron/README.md) - 定时任务执行系统
+- [TUI 斜杠命令](packages/tui/src/commands/README.md) - 终端用户界面命令系统
+- [Subagent 实现](docs/subagent-implementation.md) - 后台任务处理架构
+- [Subagent 使用指南](docs/subagent-usage.md) - 配置和使用示例
+- [技能系统](docs/SKILL-SYSTEM.md) - 基于技能的架构
+- [审批流程](docs/APPROVAL-FLOW.md) - 基于风险的工具审批系统
+
+### 开发
+- [API 文档](docs/API.md) - API 参考
+- [Agent 模式](docs/AGENT-PATTERNS.md) - 常见的 Agent 模式
+- [浏览器自动化](docs/browser-automation-plan.md) - 使用 agent-browser 进行浏览器自动化
+
+### 迁移与升级
+- [Bun 迁移](docs/BUN_MIGRATION.md) - 迁移到 Bun 运行时
+- [TUI 迁移](docs/TUI_MIGRATION.md) - 终端 UI 迁移
 
 ## 📄 许可证
 

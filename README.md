@@ -12,9 +12,10 @@ nanobot-ts is the TypeScript version of [nanobot](https://github.com/HKUDS/nanob
 
 - 🪶 **Lightweight**: ~5000 lines of TypeScript code
 - 🚀 **Fast**: Powered by Bun runtime
+- 🏗️ **Monorepo**: Modular architecture with 10+ packages for better organization
 - 🔌 **Multi-channel**: WhatsApp, Feishu, Email, CLI
 - 🧠 **Smart**: LLM-driven with tool calling
-- 🛠️ **Extensible**: Easy to add custom tools and channels
+- 🛠️ **Extensible**: Easy to add custom tools, channels, and packages
 - 🔐 **Safe**: Risk-based tool approval system
 - 🔌 **MCP Support**: Model Context Protocol for external tools
 - 🎨 **Type-safe**: Full TypeScript support with Zod validation
@@ -23,6 +24,7 @@ nanobot-ts is the TypeScript version of [nanobot](https://github.com/HKUDS/nanob
 - ⏰ **Cron**: Built-in scheduled task execution system
 - 🖥️ **TUI**: Modern terminal interface with slash commands and search
 - 🤖 **Subagent**: High-performance background task processing with embedded/isolated modes
+- 🌐 **Web UI**: React + Vite dashboard for web-based management
 
 ### Comparison with Python Version
 
@@ -30,6 +32,7 @@ nanobot-ts is the TypeScript version of [nanobot](https://github.com/HKUDS/nanob
 | ------------- | -------------- | -------------------------------- |
 | Lines of Code | ~4,000         | ~5,000                           |
 | Runtime       | Python 3.11+   | Bun 1.3+                         |
+| Architecture  | Single repo    | ✅ Monorepo (10+ packages)       |
 | Type Safety   | Optional       | ✅ Full                          |
 | Performance   | Good           | ✅ Better (async I/O)            |
 | Ecosystem     | PyPI           | ✅ npm (larger)                  |
@@ -37,6 +40,7 @@ nanobot-ts is the TypeScript version of [nanobot](https://github.com/HKUDS/nanob
 | LLM SDK       | LiteLLM        | ✅ Vercel AI SDK                 |
 | Approval      | ✅             | ✅ Risk-based approval           |
 | MCP Support   | ✅             | ✅ stdio + HTTP servers          |
+| Web UI        | ❌             | ✅ React + Vite Dashboard        |
 
 ## 🚀 Quick Start
 
@@ -591,14 +595,71 @@ Bot: Task "security analysis" completed successfully
 - [Subagent Feature Checklist](docs/subagent-feature-checklist.md)
 - [Subagent Final Verification](docs/subagent-full-final-verification.md)
 
+## 🏗️ Monorepo Architecture
+
+nanobot-ts uses a monorepo structure with Bun workspaces for better code organization and modularity.
+
+### Core Packages
+
+| Package | Description | Main Features |
+|---------|-------------|---------------|
+| `@nanobot/main` | Core framework | Agent loop, memory, tools, skills, MCP, cron, approval |
+| `@nanobot/cli` | CLI tool | Command parsing, entry point, WhatsApp auth |
+| `@nanobot/tui` | Terminal UI | opentui-based interface, slash commands |
+| `@nanobot/channels` | Message channels | WhatsApp, Feishu, Email, CLI |
+| `@nanobot/providers` | LLM providers | OpenAI, Anthropic, OpenRouter, etc. |
+| `@nanobot/server` | HTTP server | REST API, web server middleware |
+| `web` | Web Dashboard | React + Vite frontend (independent) |
+| `@nanobot/shared` | Shared types | Config schemas, types, defaults |
+| `@nanobot/logger` | Logging utility | Console and file logging |
+| `@nanobot/utils` | Utilities | Helpers, retry logic, error handling |
+
+### Building and Publishing
+
+All packages are built using Bun:
+
+```bash
+# Build all packages
+bun build
+
+# Build specific package
+cd packages/cli && bun run build
+
+# Type check specific package
+cd packages/main && bun run typecheck
+```
+
+### Workspace Benefits
+
+- **Modularity**: Clear separation of concerns
+- **Maintainability**: Easier to locate and fix issues
+- **Reusability**: Packages can be used independently
+- **Testing**: Test each package in isolation
+- **Performance**: Build only what changes
+
+### Adding a New Package
+
+1. Create package directory: `packages/new-package/`
+2. Add `package.json` with proper exports
+3. Add TypeScript config if needed
+4. Update root `package.json` workspaces (optional, auto-discovered)
+5. Import using package name: `@nanobot/new-package`
+
+### Migration from Single Repo
+
+The project was migrated from a single `src/` directory to a monorepo structure. See [MIGRATION.md](MIGRATION.md) for details.
+
 ## 🎨 Development
 
 ```bash
-# Development mode (with watch)
+# Development mode (with watch for CLI)
 bun dev
 
-# Build
+# Build all packages
 bun build
+
+# Build CLI binary
+bun run build:binary
 
 # Run tests
 bun test
@@ -606,69 +667,212 @@ bun test
 # Test with coverage
 bun test:coverage
 
-# Lint
+# Test in watch mode
+bun test:watch
+
+# Lint all packages
 bun lint
+
+# Lint with auto-fix
+bun lint:fix
 
 # Format code
 bun format
 
-# Type check
+# Type check all packages
 bun typecheck
+
+# Clean build artifacts
+bun clean
+
+# Quick start commands
+bun onboard           # Initialize config
+bun agent             # Interactive chat mode
+bun gateway           # Start gateway
+bun status            # View status
+```
+
+**Package-specific Development**:
+
+```bash
+# Work on specific package (from root)
+cd packages/main && bun run typecheck
+cd packages/cli && bun run build
+cd packages/tui && bun run dev
+cd packages/web && bun run dev
 ```
 
 ## 📊 Project Structure
 
+nanobot-ts is organized as a monorepo using Bun workspaces:
+
 ```
 nanobot-ts/
-├── src/                    # Source code
-│   ├── core/               # Core agent logic
-│   ├── bus/                # Message bus
-│   ├── channels/           # Channel implementations
-│   ├── tools/              # Tool system
+├── packages/               # Monorepo packages
+│   ├── main/               # Core framework (Agent, Memory, Tools, Skills, MCP)
+│   │   ├── src/
+│   │   │   ├── core/       # Core agent logic
+│   │   │   ├── bus/        # Message bus implementation
+│   │   │   ├── tools/      # Built-in tools
+│   │   │   ├── storage/    # Storage layer
+│   │   │   ├── skills/     # Skill system
+│   │   │   ├── cron/       # Scheduled task service
+│   │   │   └── mcp/        # MCP integration
+│   ├── cli/                # CLI tool and commands
+│   │   ├── src/
+│   │   │   ├── commands/   # CLI command handlers
+│   │   │   └── whatsapp-auth.ts
+│   ├── tui/                # Terminal User Interface (opentui)
+│   │   ├── src/
+│   │   │   ├── components/ # TUI React components
+│   │   │   ├── commands/   # Slash command handlers
+│   │   │   ├── hooks/      # Custom React hooks
+│   │   │   ├── gateway/    # Gateway UI
+│   │   │   └── home/       # Home screen
+│   ├── channels/           # Message channels
+│   │   ├── src/
+│   │   │   ├── base.ts     # Base channel interface
+│   │   │   ├── cli.ts      # CLI channel
+│   │   │   ├── whatsapp.ts # WhatsApp channel
+│   │   │   ├── feishu.ts   # Feishu channel
+│   │   │   └── email.ts    # Email channel
 │   ├── providers/          # LLM providers
-│   ├── config/             # Configuration
-│   ├── storage/            # Storage layer
-│   ├── cli/                # CLI commands
-│   │   └── tui/            # Terminal User Interface
-│   │       ├── commands/   # Slash command handlers
-│   │       ├── components/ # TUI React components
-│   │       └── hooks/      # Custom React hooks
-│   ├── cron/               # Scheduled task service
-│   └── utils/              # Utilities
-├── templates/               # Workspace templates
+│   │   ├── src/
+│   │   │   ├── adapters/   # Provider adapters
+│   │   │   └── registry.ts # Provider registry
+│   ├── server/             # HTTP server
+│   │   ├── src/
+│   │   │   ├── routes/     # API routes
+│   │   │   └── middleware/ # Server middleware
+│   ├── web/                # Web Dashboard (React + Vite)
+│   │   ├── src/
+│   │   │   ├── components/ # Web UI components
+│   │   │   └── lib/        # Utility functions
+│   ├── shared/             # Shared types and configuration
+│   │   ├── src/
+│   │   │   ├── config/     # Config schemas and defaults
+│   │   │   └── loader.ts   # Config loader
+│   ├── logger/             # Logging utility
+│   │   └── src/
+│   │       └── logger.ts   # Logger implementation
+│   ├── utils/              # Utility functions
+│   │   └── src/
+│   │       ├── errors.ts   # Error handling
+│   │       ├── helpers.ts  # Helper functions
+│   │       └── retry.ts    # Retry logic
+│   └── workspace/          # Workspace templates and examples
+│       ├── AGENTS.md       # Agent configuration guide
+│       ├── TOOLS.md        # Tools configuration guide
+│       ├── skills/         # Example skills
+│       └── memory/         # Memory storage
 ├── tests/                  # Test files
 ├── docs/                   # Documentation
-└── package.json
+├── package.json            # Root package (monorepo config)
+└── bun.lock                # Lockfile
 ```
 
 ```
-消息总线 (MessageBus)
-    ↓
-AgentLoop (自定义主循环)
-    ├── Provider (AI SDK 的 chat/streamChat)
-    ├── ToolRegistry (自定义工具管理)
-    ├── SessionManager (会话管理)
-    ├── MemoryConsolidator (长期记忆)
-    └── SkillLoader (技能加载)
-    ↓
-SubagentManager (子代理管理)
-    ├── BunQueue (任务队列)
-    ├── SubagentWorker (执行器)
-    └── 双模式 (embedded/isolated)
+CLI Entry Point (@nanobot/cli)
+    │
+    ├──> TUI (@nanobot/tui) ──────────────────────┐
+    │                                            │
+    └──> Main (@nanobot/main)                     │
+          ├── Core (Agent, Memory, Skills)       │
+          ├── Bus (Message Queue System)          │
+          ├── Tools (Built-in + MCP)              │
+          ├── Cron (Scheduled Tasks)              │
+          ├── Subagent (Background Processing)    │
+          └── Approval (Risk-based System)        │
+                │                                │
+                ├──> Providers (@nanobot/providers)
+                │     ├── OpenAI
+                │     ├── Anthropic
+                │     └── OpenRouter
+                │
+                ├──> Channels (@nanobot/channels)
+                │     ├── CLI
+                │     ├── WhatsApp
+                │     ├── Feishu
+                │     └── Email
+                │
+                ├──> Shared (@nanobot/shared)
+                │     └── Types & Config
+                │
+                ├──> Logger (@nanobot/logger)
+                │     └── Logging
+                │
+                └──> Utils (@nanobot/utils)
+                      └── Helpers
+```
 
+**Monorepo Architecture Benefits**:
+
+- 🏗️ **Modular Design**: Each package has a clear responsibility
+- 🔗 **Clear Dependencies**: Packages depend only on what they need
+- 🚀 **Faster Development**: Build and test only what changes
+- 📦 **Better Organization**: Easier to understand and maintain
+- 🔄 **Scalability**: Add new packages without affecting existing ones
+
+**Package Dependencies**:
+
+```
+cli ──┬──> main
+       ├──> tui
+       ├──> channels
+       └──> logger
+
+tui ──> main
+       ├──> shared
+       └── logger
+
+server ──> main
+          ├──> channels
+          └── utils
+
+main ──┬──> shared
+       ├──> providers
+       ├──> channels
+       ├──> logger
+       └──> utils
+
+web (independent) ──> No direct dependencies
+                      (communicates via HTTP API)
+
+shared ──> No dependencies
+logger ──> No dependencies
+utils ──> No dependencies
 ```
 
 
 ## 📚 Documentation
 
+### Architecture & Design
 - [Gateway Flow Documentation](docs/GATEWAY_FLOW.md) - Detailed message flow diagrams
 - [Mermaid Diagrams](docs/GATEWAY_MERMAID.md) - Visual architecture diagrams
+- [Multi-Agent Architecture](docs/MULIT-AGEBTS-ARCH.md) - Multi-agent system design
+
+### Configuration & Setup
 - [Feishu Channel Guide](docs/FEISHU.md) - Feishu channel configuration
-- [MCP Configuration](MCP.md) - Model Context Protocol setup
-- [Cron Service](src/cron/README.md) - Scheduled task execution system
-- [TUI Slash Commands](src/cli/tui/commands/README.md) - Terminal user interface command system
-- [Subagent System](docs/subagent-implementation.md) - Background task processing architecture
+- [MCP Configuration](docs/MCP.md) - Model Context Protocol setup
+- [Deployment Guide](docs/DEPLOYMENT.md) - Production deployment instructions
+- [Monorepo Migration](MIGRATION.md) - Migration from single repo to monorepo
+
+### Features
+- [Cron Service](packages/main/src/cron/README.md) - Scheduled task execution system
+- [TUI Slash Commands](packages/tui/src/commands/README.md) - Terminal user interface command system
+- [Subagent Implementation](docs/subagent-implementation.md) - Background task processing architecture
 - [Subagent Usage Guide](docs/subagent-usage.md) - Configuration and usage examples
+- [Skill System](docs/SKILL-SYSTEM.md) - Skill-based architecture
+- [Approval Flow](docs/APPROVAL-FLOW.md) - Risk-based tool approval system
+
+### Development
+- [API Documentation](docs/API.md) - API reference
+- [Agent Patterns](docs/AGENT-PATTERNS.md) - Common agent patterns
+- [Browser Automation](docs/browser-automation-plan.md) - Browser automation with agent-browser
+
+### Migration & Upgrades
+- [Bun Migration](docs/BUN_MIGRATION.md) - Migration to Bun runtime
+- [TUI Migration](docs/TUI_MIGRATION.md) - Terminal UI migration
 
 ## 📄 License
 
