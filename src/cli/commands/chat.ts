@@ -4,8 +4,11 @@
 
 import { Command } from 'commander';
 import { error, info } from '../ui';
-import { requireConfig, buildAgentRuntime } from '../setup';
+import { loadConfig } from '@/config/loader';
+import { createRuntime } from '@/core';
 import { logger } from '@/utils/logger';
+import type { StreamTextEvent } from '@/config/bus-schema';
+import type { ToolHintEvent } from '@/config/bus-schema';
 
 export function registerChatCommand(program: Command): void {
   program
@@ -18,8 +21,13 @@ export function registerChatCommand(program: Command): void {
 }
 
 async function runChat(promptArg: string | undefined, interactive?: boolean): Promise<void> {
-  const config = await requireConfig();
-  const runtime = await buildAgentRuntime(config);
+  const config = await loadConfig();
+  if (!config) {
+    error('No config found. Run "nanobot init" first.');
+    process.exit(1);
+  }
+
+  const runtime = await createRuntime({ config, mode: 'cli', startChannels: false });
   const { agent, bus } = runtime;
 
   if (interactive) {
@@ -53,12 +61,12 @@ async function runChat(promptArg: string | undefined, interactive?: boolean): Pr
     });
 
     // 订阅流式文本和工具提示事件
-    bus.on('stream-text', event => {
+    bus.on('stream-text', (event: StreamTextEvent) => {
       if (event.channel === 'cli') {
         process.stdout.write(event.chunk);
       }
     });
-    bus.on('tool-hint', event => {
+    bus.on('tool-hint', (event: ToolHintEvent) => {
       if (event.channel === 'cli') {
         process.stdout.write(`\n  [tools: ${event.content}]\n`);
       }

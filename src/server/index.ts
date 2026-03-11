@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono';
 import { serveStatic } from 'hono/bun';
-import type { AgentRuntime } from '@/cli/setup';
+import type { Runtime } from '@/core';
 import type { ChannelManager } from '@/channels';
 import type { ServerContext } from './types';
 import type { AppContext } from './types';
@@ -12,7 +12,7 @@ import routes from './routes';
 import { logger } from '@/utils/logger';
 
 export interface CreateServerOptions {
-  runtime: AgentRuntime;
+  runtime: Runtime;
   bus: ServerContext['bus'];
   channelManager: ChannelManager;
   config: ServerContext['config'];

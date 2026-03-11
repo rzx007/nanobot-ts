@@ -6,7 +6,7 @@ import { Command } from 'commander';
 import { expandHome } from '../../utils/helpers';
 import { SessionManager } from '../../storage';
 import { info } from '../ui';
-import { requireConfig } from '../setup';
+import { loadConfig } from '@/config';
 
 export function registerSessionCommand(program: Command): void {
   program
@@ -18,7 +18,12 @@ export function registerSessionCommand(program: Command): void {
 }
 
 async function runSession(): Promise<void> {
-  const config = await requireConfig();
+  const config = await loadConfig();
+  if (!config) {
+    info('No config found. Run "nanobot init" first.');
+    process.exit(1);
+  }
+
   const workspace = expandHome(config.agents.defaults.workspace);
   const sessions = new SessionManager(workspace);
   await sessions.init();

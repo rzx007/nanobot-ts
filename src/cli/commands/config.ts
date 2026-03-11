@@ -4,7 +4,7 @@
 
 import { Command } from 'commander';
 import { info } from '../ui';
-import { requireConfig } from '../setup';
+import { loadConfig } from '@/config/loader';
 
 export function registerConfigCommand(program: Command): void {
   program
@@ -18,7 +18,7 @@ export function registerConfigCommand(program: Command): void {
 }
 
 async function runConfig(key?: string, value?: string): Promise<void> {
-  const config = await requireConfig();
+  const config = await loadConfig();
 
   if (!key) {
     console.log(JSON.stringify(config, null, 2));

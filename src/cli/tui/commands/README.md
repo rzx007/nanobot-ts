@@ -69,7 +69,7 @@ interface SlashCommandHandler {
 
 ```typescript
 interface SlashCommandContext {
-  runtime: AgentRuntime | null;           // Agent 运行时
+  runtime: Runtime | null;           // Agent 运行时
   config: Config | null;                  // 配置对象
   navigateTo: (view: ViewMode) => void;    // 导航方法
   setMessages: Dispatch<...>;              // 设置消息列表

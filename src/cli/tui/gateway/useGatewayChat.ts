@@ -10,14 +10,14 @@ import { getSessionKey, type OutboundMessage } from '@/config/bus-schema';
 import { SlashCommandExecutor, createAllHandlers } from '../commands';
 import { buildSlashCommandContext } from './slashCommandContext';
 import { sessionToMessageItems } from './sessionUtils';
-import type { AgentRuntime } from '@/cli/setup';
+import type { Runtime } from '@/core';
 import type { Config } from '@/config/schema';
 import type { ViewMode } from '../context';
 import type { DialogContextValue } from '../components/Dialog';
 import type { ChatInputHandle } from '../components/ChatInput';
 
 export interface UseGatewayChatParams {
-  runtime: AgentRuntime | null;
+  runtime: Runtime | null;
   config: Config | null;
   configLoaded: boolean;
   pendingPrompt: string | null | undefined;

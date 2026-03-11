@@ -1,7 +1,7 @@
 import type { MessageItem } from '../components/MessageList';
 import type { ViewMode } from '../context';
 import type { Config } from '@/config/schema';
-import type { AgentRuntime } from '@/cli/setup';
+import type { Runtime } from '@/core';
 import type { ReactNode } from 'react';
 import type { ChatInputHandle } from '../components/ChatInput';
 
@@ -16,7 +16,7 @@ export type SlashCommandCategory = 'chat' | 'navigation' | 'system';
  */
 export interface SlashCommandContext {
   /** Agent 运行时实例 */
-  runtime: AgentRuntime | null;
+  runtime: Runtime | null;
 
   /** 配置对象 */
   config: Config | null;

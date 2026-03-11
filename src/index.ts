@@ -12,4 +12,8 @@ export * from './utils';
 export * from './mcp';
 export * from './server';
 
+export * from './core/init/workspace';
+
+export * from './core/runtime';
+
 export { version } from '../package.json';

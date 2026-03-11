@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Config } from '@/config/schema';
-import type { AgentRuntime } from '@/cli/setup';
+import type { Runtime } from '@/core';
 
 /**
  * Dialog 数据结构
@@ -86,7 +86,7 @@ export interface SkillInfo {
  */
 export interface StatusDialogProps {
   /** Agent 运行时实例 */
-  runtime: AgentRuntime | null;
+  runtime: Runtime | null;
   /** 配置对象 */
   config: Config | null;
 }
@@ -149,7 +149,7 @@ export interface SkillsDialogProps {
  * 创建状态 Dialog
  */
 export interface CreateStatusDialogParams {
-  runtime: AgentRuntime | null;
+  runtime: Runtime | null;
   config: Config | null;
 }
 

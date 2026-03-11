@@ -2,7 +2,7 @@
  * HTTP 服务器类型定义
  */
 
-import type { AgentRuntime } from '@/cli/setup';
+import type { Runtime } from '@/core';
 import type { Config } from '@/config/schema';
 import type { MessageBus } from '@/bus/queue';
 
@@ -11,7 +11,7 @@ import type { MessageBus } from '@/bus/queue';
  */
 export interface ServerContext {
   /** Agent 运行时 */
-  runtime: AgentRuntime;
+  runtime: Runtime;
 
   /** 消息总线 */
   bus: MessageBus;

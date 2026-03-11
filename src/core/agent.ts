@@ -113,39 +113,34 @@ export class AgentLoop {
     this.running = true;
     logger.info('Agent main loop started');
 
-    try {
-      // 持续处理入站消息
-      while (this.running) {
-        logger.info('🐞 Agent main loop running');
-        try {
-          // 消费入站消息 (超时 1 秒以允许检查 running 状态)
-          const msg = await this.bus.consumeInbound();
+    // 启动后台循环， 立即返回，防止阻塞主线程
+    void (async () => {
+      try {
+        // 持续处理入站消息
+        while (this.running) {
+          try {
+            // 消费入站消息 (超时 1 秒以允许检查 running 状态)
+            const msg = await this.bus.consumeInbound();
 
-          logger.info(
-            { channel: (msg as InboundMessage).channel, chatId: (msg as InboundMessage).chatId },
-            '🐞 Processing inbound message',
-          );
-
-          const response = await this._processMessage(msg);
-
-          if (response) await this.bus.publishOutbound(response);
-        } catch (rawErr) {
-          const err =
-            rawErr ??
-            new Error(
-              'Rejected with undefined/null (unhandled from SDK or bus.publishOutbound). Run with LOG_LEVEL=debug and check stack.',
+            logger.info(
+              { channel: (msg as InboundMessage).channel, chatId: (msg as InboundMessage).chatId },
+              '🐞 Processing inbound message',
             );
-          const message = err instanceof Error ? err.message : String(err);
-          const stack = err instanceof Error ? err.stack : (err as { stack?: string })?.stack;
-          logger.error({ err, message, stack }, 'Error processing message');
+
+            const response = await this._processMessage(msg);
+
+            if (response) await this.bus.publishOutbound(response);
+          } catch (rawErr) {
+            logger.error({ rawErr }, 'Agent main loop error');
+          }
         }
+      } catch (err) {
+        logger.error({ err }, 'Agent main loop error');
+      } finally {
+        this.running = false;
+        logger.info('Agent main loop stopped');
       }
-    } catch (err) {
-      logger.error({ err }, 'Agent main loop error');
-    } finally {
-      this.running = false;
-      logger.info('Agent main loop stopped');
-    }
+    })();
   }
 
   /**
@@ -326,17 +321,17 @@ export class AgentLoop {
     const messages: Array<{
       role: string;
       content:
-        | string
-        | Array<{ type: 'tool-result'; toolCallId: string; toolName: string; output: string }>;
+      | string
+      | Array<{ type: 'tool-result'; toolCallId: string; toolName: string; output: string }>;
     }> = [
-      ...ContextBuilder.buildMessages({
-        systemPrompt,
-        history,
-        currentMessage: content,
-        channel,
-        chatId,
-      }),
-    ];
+        ...ContextBuilder.buildMessages({
+          systemPrompt,
+          history,
+          currentMessage: content,
+          channel,
+          chatId,
+        }),
+      ];
 
     // 获取工具定义，由 SDK 自动执行工具（executeTool + maxSteps）
     const tools = this.tools.getDefinitions();

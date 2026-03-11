@@ -1,22 +1,62 @@
 /**
- * 共享的初始化逻辑
- * 供命令行 init 和 TUI 首次运行使用
+ * Workspace 初始化模块
+ * 供 CLI 和 TUI 首次运行使用
  */
 
 import path from 'path';
 import fs from 'fs-extra';
+import { fileURLToPath } from 'url';
 import { saveConfig, createDefaultConfig } from '@/config/loader';
 import { saveMCPConfig, createDefaultMCPConfig, getMCPConfigPath } from '@/mcp/loader';
 import { expandHome, ensureDir } from '@/utils/helpers';
-import {
-  NANOBOT_HOME,
-  DEFAULT_CONFIG_PATH,
-  DEFAULT_WORKSPACE_PATH,
-  getPackageRoot,
-  getTemplatesWorkspace,
-  WORKSPACE_SUBDIRS,
-  MEMORY_DIR,
-} from '../constants';
+
+/**
+ * Nanobot 配置目录
+ */
+export const NANOBOT_HOME =
+  process.env.NANOBOT_HOME ??
+  path.join(process.env.HOME ?? process.env.USERPROFILE ?? '~', '.nanobot');
+
+/**
+ * 默认配置文件路径
+ */
+export const DEFAULT_CONFIG_PATH = path.join(NANOBOT_HOME, 'config.json');
+
+/**
+ * 默认工作区路径
+ */
+export const DEFAULT_WORKSPACE_PATH = path.join(NANOBOT_HOME, 'workspace');
+
+/**
+ * 工作区子目录
+ */
+export const WORKSPACE_SUBDIRS = ['memory', 'sessions', 'logs'] as const;
+
+/**
+ * Memory 目录名
+ */
+export const MEMORY_DIR = 'memory';
+
+/**
+ * 获取包根目录
+ */
+export function getPackageRoot(metaUrl: string): string {
+  const filePath = fileURLToPath(metaUrl);
+  const dir = path.dirname(filePath);
+  // 判断一下路劲包含src(大概率是开发环境)
+  if (dir.includes('src')) {
+    return path.resolve(dir, '..', '..');
+  }
+
+  return path.resolve(dir, '..');
+}
+
+/**
+ * 获取模板工作区路径
+ */
+export function getTemplatesWorkspace(packageRoot: string): string {
+  return path.join(packageRoot, 'templates', 'workspace');
+}
 
 /**
  * 初始化进度接口（用于 TUI）
@@ -293,7 +333,9 @@ export async function initializeWorkspace(options: InitOptions = {}): Promise<vo
     if (progress) {
       progress.setDone();
     }
-    logger?.success(`🎉🎉🎉 Init done. Edit ~/.nanobot/config.json and run "nanobot-ts gateway" or run "nanobot-ts" for TUI.`);
+    logger?.success(
+      `🎉🎉🎉 Init done. Edit ~/.nanobot/config.json and run "nanobot-ts gateway" or run "nanobot-ts" for TUI.`,
+    );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     if (progress) {
