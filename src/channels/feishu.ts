@@ -18,7 +18,7 @@ interface FeishuMention {
   name?: string;
 }
 
-export interface FeishuChannelConfig extends FeishuConfig {}
+export interface FeishuChannelConfig extends FeishuConfig { }
 
 export class FeishuChannel implements BaseChannel {
   private client: lark.Client | null = null;
@@ -27,7 +27,7 @@ export class FeishuChannel implements BaseChannel {
   /** 入站回调（由 start(options) 注入） */
   private onInbound: ((msg: InboundMessage) => void | Promise<void>) | null = null;
 
-  constructor(private readonly config: FeishuChannelConfig) {}
+  constructor(private readonly config: FeishuChannelConfig) { }
 
   async start(options?: ChannelStartOptions): Promise<void> {
     this.onInbound = options?.onInbound ?? null;

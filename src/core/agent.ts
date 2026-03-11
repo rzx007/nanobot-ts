@@ -124,7 +124,7 @@ export class AgentLoop {
 
             logger.info(
               { channel: (msg as InboundMessage).channel, chatId: (msg as InboundMessage).chatId },
-              '🐞 Processing inbound message',
+              `🧭🧭🧭 [${msg.channel}] inbound message`,
             );
 
             const response = await this._processMessage(msg);

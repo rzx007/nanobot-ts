@@ -56,6 +56,7 @@ import { AgentLoop } from './agent';
 import { ApprovalManager } from './approval';
 import { MemoryConsolidator } from './memory';
 import { SubagentManager } from './subagent';
+import { InboundMessage } from '@/bus';
 
 /**
  * Runtime 运行时对象
@@ -365,6 +366,9 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
   channelManager.registerChannel('cli', new CLIChannel({}));
   await channelManager.loadChannelsFromConfig();
 
+  await channelManager.startAll({
+    onInbound: (msg: InboundMessage) => void bus.publishInbound(msg),
+  });
 
   // 19. 创建 Runtime 对象
   const runtime = new RuntimeImpl(

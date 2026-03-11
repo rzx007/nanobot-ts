@@ -69,11 +69,11 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
       setConfig(loaded);
       if (!loaded) return;
       const rt = await createRuntime({ config: loaded, mode: 'tui', startChannels: false });
-      const { bus, channelManager } = rt;
+      // const { bus, channelManager } = rt;
 
-      await channelManager.startAll({
-        onInbound: (msg: InboundMessage) => void bus.publishInbound(msg),
-      });
+      // await channelManager.startAll({
+      //   onInbound: (msg: InboundMessage) => void bus.publishInbound(msg),
+      // });
 
       await rt.start({ startChannels: true });
       setConfig(loaded);
@@ -122,10 +122,10 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
         process.on('SIGTERM', cleanupExit);
 
         setRuntime(rt);
-        const { bus, channelManager } = rt;
-        await channelManager.startAll({
-          onInbound: msg => void bus.publishInbound(msg),
-        });
+        // const { bus, channelManager } = rt;
+        // await channelManager.startAll({
+        //   onInbound: msg => void bus.publishInbound(msg),
+        // });
 
         await rt.start({ startChannels: true });
         setConfig(loaded);
