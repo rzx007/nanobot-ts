@@ -6,7 +6,7 @@ import { logger } from '@nanobot/logger';
 import { useSelfCheck } from '../hooks';
 import type { SelfCheckResult } from '../setup/types';
 import type { CliRenderer } from '@opentui/core';
-import { InboundMessage } from '@nanobot/shared';
+// import { InboundMessage } from '@nanobot/shared';
 
 export type ViewMode = 'home' | 'gateway' | 'status' | 'config' | 'setup' | 'check-error';
 
@@ -78,11 +78,11 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
       setConfig(loaded);
       if (!loaded) return;
       const rt = await createRuntime({ config: loaded, mode: 'tui', startChannels: false });
-      const { bus, channelManager } = rt;
+      // const { bus, channelManager } = rt;
 
-      await channelManager.startAll({
-        onInbound: (msg: InboundMessage) => void bus.publishInbound(msg),
-      });
+      // await channelManager.startAll({
+      //   onInbound: (msg: InboundMessage) => void bus.publishInbound(msg),
+      // });
 
       await rt.start({ startChannels: true });
       setConfig(loaded);
@@ -131,10 +131,10 @@ export function AppProvider({ children, initialView = 'home' }: AppProviderProps
         process.on('SIGTERM', cleanupExit);
 
         setRuntime(rt);
-        const { bus, channelManager } = rt;
-        await channelManager.startAll({
-          onInbound: msg => void bus.publishInbound(msg),
-        });
+        // const { bus, channelManager } = rt;
+        // await channelManager.startAll({
+        //   onInbound: msg => void bus.publishInbound(msg),
+        // });
 
         await rt.start({ startChannels: true });
         setConfig(loaded);

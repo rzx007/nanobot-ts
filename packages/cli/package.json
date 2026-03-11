@@ -36,6 +36,7 @@
     "@nanobot/utils": "workspace:*",
     "@opentui/core": "^0.1.87",
     "@opentui/react": "^0.1.87",
+    "react": "^19.0.0",
     "baileys": "^7.0.0-rc.9",
     "bunqueue": "^2.6.7",
     "chalk": "^5.6.2",

@@ -7,8 +7,7 @@ import { error, info } from '../ui';
 import { loadConfig } from '@nanobot/shared';
 import { createRuntime } from '@nanobot/main';
 import { logger } from '@nanobot/logger';
-import type { StreamTextEvent } from '@nanobot/shared';
-import type { ToolHintEvent } from '@nanobot/shared';
+import type { StreamTextEvent, ToolHintEvent } from '@nanobot/shared';
 
 export function registerChatCommand(program: Command): void {
   program
@@ -28,17 +27,7 @@ async function runChat(promptArg: string | undefined, interactive?: boolean): Pr
   }
 
   const runtime = await createRuntime({ config, mode: 'cli', startChannels: false });
-  const { bus, provider, tools, sessions, memory, skills } = runtime;
-  const { AgentLoop } = await import('@nanobot/main');
-  const agent = new AgentLoop({
-    bus,
-    provider,
-    tools,
-    sessions,
-    config,
-    memory,
-    skills,
-  });
+  const { agent, bus, stop } = runtime;
 
   if (interactive) {
     info('Interactive chat. Type /exit to quit.');
@@ -48,8 +37,7 @@ async function runChat(promptArg: string | undefined, interactive?: boolean): Pr
     // 注册进程退出钩子
     const onExit = async (signal?: string): Promise<void> => {
       logger.info({ signal }, 'Process exit hook triggered');
-      await runtime.subagentManager?.shutdown();
-      logger.info('Chat shutdown complete');
+      await stop();
     };
 
     process.on('exit', (code: number) => {

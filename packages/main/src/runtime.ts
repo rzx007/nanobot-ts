@@ -4,7 +4,7 @@
  */
 
 import path from 'path';
-import type { Config } from '@nanobot/shared';
+import type { Config, InboundMessage } from '@nanobot/shared';
 import { expandHome } from '@nanobot/utils';
 import { logger } from '@nanobot/logger';
 import { MessageBus } from './bus';
@@ -71,6 +71,9 @@ export interface Runtime {
   memory: MemoryConsolidator;
   skills: SkillLoader;
 
+  // agent
+  agent: AgentLoop;
+
   // 工具
   approvalManager: ApprovalManager;
   subagentManager: SubagentManager | null;
@@ -136,6 +139,9 @@ class RuntimeImpl implements Runtime {
     return this._agentLoop;
   }
 
+  public get agent(): AgentLoop {
+    return this.agentLoop;
+  }
   async start(options?: { startChannels?: boolean }): Promise<void> {
     if (this.isRunning) {
       logger.warn('Runtime is already running');
@@ -362,6 +368,10 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
   const channelManager = new ChannelManager(config);
   channelManager.registerChannel('cli', new CLIChannel({}));
   await channelManager.loadChannelsFromConfig();
+
+  await channelManager.startAll({
+    onInbound: (msg: InboundMessage) => void bus.publishInbound(msg),
+  });
 
   // 18. 创建 Runtime 对象
   const runtime = new RuntimeImpl(

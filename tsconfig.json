@@ -28,7 +28,6 @@
     "newLine": "lf",
     "isolatedModules": true,
     "allowImportingTsExtensions": false,
-    "types":["bun-types"],
     "paths": {
       "@/*": ["./src/*"],
       "@nanobot/shared": ["./packages/shared/src"],
