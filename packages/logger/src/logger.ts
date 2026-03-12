@@ -4,9 +4,12 @@
  * 使用 winston 实现高性能日志系统
  * 兼容 Pino 风格 API：logger.info(obj, msg) 与 logger.info(msg)，便于打包为单文件二进制（无 worker 线程）
  */
-
 import winston from 'winston';
 import path from 'path';
+import fs from 'fs';
+import { promisify } from 'util';
+
+const readFile = promisify(fs.readFile);
 
 /**
  * 日志级别
@@ -98,6 +101,11 @@ export function createLogger(name?: string, options?: { level?: string }): PinoC
   const logDir = path.join(os.homedir(), '.nanobot/workspace/logs');
   const logFile = path.join(logDir, 'nanobot.log');
 
+  // 确保日志目录存在
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
+
   transports.push(
     new winston.transports.File({
       filename: logFile,
@@ -120,6 +128,46 @@ export function createLogger(name?: string, options?: { level?: string }): PinoC
   });
 
   return wrapLogger(baseLogger, level);
+}
+
+/**
+ * 获取日志文件内容
+ *
+ * @param name - Logger 名称
+ * @param limit - 返回的日志条数限制
+ * @returns 日志条目数组
+ */
+export async function getLogs(name: string = 'nanobot', limit: number = 1000): Promise<any[]> {
+  const os = require('os');
+  const logDir = path.join(os.homedir(), '.nanobot/workspace/logs');
+  const logFile = path.join(logDir, `${name}.log`);
+
+  try {
+    if (!fs.existsSync(logFile)) {
+      return [];
+    }
+
+    const content = await readFile(logFile, 'utf-8');
+    const lines = content.split('\n').filter(line => line.trim());
+    
+    // 解析 JSON 行
+    const logs = lines.map(line => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return { message: line, timestamp: new Date().toISOString() };
+      }
+    });
+
+    // 按时间排序（从新到旧）
+    logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    // 限制返回条数
+    return logs.slice(0, limit);
+  } catch (error) {
+    console.error('Failed to read logs:', error);
+    return [];
+  }
 }
 
 /**

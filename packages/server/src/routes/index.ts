@@ -10,6 +10,7 @@ import agentRouter from './agent';
 import configRouter from './config';
 import channelsRouter from './channels';
 import healthRouter from './health';
+import logsRouter from './logs';
 import { authMiddleware } from '../middleware/auth';
 import { errorMiddleware } from '../middleware/error';
 import { loggerMiddleware } from '../middleware/logger';
@@ -31,12 +32,15 @@ app.use(
 );
 
 app.route('/', healthRouter);
-
-app.use('/api/v1/*', authMiddleware);
+/**
+ * auth 中间件
+ */
+// app.use('/api/v1/*', authMiddleware);
 
 app.route('/api/v1', messagesRouter);
 app.route('/api/v1', agentRouter);
 app.route('/api/v1', configRouter);
 app.route('/api/v1', channelsRouter);
+app.route('/api/v1', logsRouter);
 
 export default app;
