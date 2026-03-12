@@ -17,7 +17,7 @@ export function registerGatewayCommand(program: Command): void {
     .option(
       '--static-dir <path>',
       'Directory for static files (e.g., React build output)',
-      'frontend/dist',
+      'web/dist',
     )
     .action(async (opts: { port: string; http: boolean; staticDir?: string }) => {
       await runGateway(parseInt(opts.port, 10), opts.http, opts.staticDir);

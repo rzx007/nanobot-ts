@@ -1,28 +1,44 @@
-import { createApi, fetchBaseQuery } from '@tanstack/react-query'
-
-export const logsApi = createApi({
-  baseQuery: fetchBaseQuery({ baseUrl: '/api/v1' }),
-  tagTypes: ['Logs'],
-  endpoints: (builder) => ({
-    getLogs: builder.query<LogEntry[], void>({
-      query: () => '/logs',
-      providesTags: ['Logs'],
-    }),
-    getLogLevels: builder.query<string[], void>({
-      query: () => '/logs/levels',
-    }),
-  }),
-})
+import { useQuery } from "@tanstack/react-query";
+import { request } from "@/lib/request";
 
 export interface LogEntry {
-  timestamp: string
-  level: string
-  module: string
-  message: string
-  data?: any
+  timestamp: string;
+  level: string;
+  module: string;
+  message: string;
+  data?: unknown;
 }
 
-export const { useGetLogsQuery, useGetLogLevelsQuery } = logsApi
+const queryKeys = {
+  all: ["logs"] as const,
+  list: () => [...queryKeys.all, "list"] as const,
+  levels: () => [...queryKeys.all, "levels"] as const,
+};
 
-// Re-export the API for use in the component
-export default logsApi
+async function fetchLogs(): Promise<LogEntry[]> {
+  return request<LogEntry[]>("/api/v1/logs");
+}
+
+async function fetchLogLevels(): Promise<string[]> {
+  return request<string[]>("/api/v1/logs/levels");
+}
+
+export function useGetLogsQuery(
+  _args: void | undefined,
+  options?: { refetchInterval?: number | false }
+) {
+  return useQuery({
+    queryKey: queryKeys.list(),
+    queryFn: fetchLogs,
+    refetchInterval: options?.refetchInterval ?? false,
+  });
+}
+
+export function useGetLogLevelsQuery() {
+  return useQuery({
+    queryKey: queryKeys.levels(),
+    queryFn: fetchLogLevels,
+  });
+}
+
+export { queryKeys as logsQueryKeys };

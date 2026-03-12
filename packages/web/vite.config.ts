@@ -22,10 +22,10 @@ export default defineConfig({
   server: {
     open: true,
     proxy: {
-      '/digital': {
+      '/nanobot': {
         target: 'http://localhost:18790/',
         changeOrigin: true,
-        // rewrite: path => path.replace(/^\/api/, '')
+        rewrite: path => path.replace(/^\/nanobot/, '')
       },
 
     }

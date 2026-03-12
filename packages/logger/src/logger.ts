@@ -85,13 +85,13 @@ export function createLogger(name?: string, options?: { level?: string }): PinoC
   // 创建 Winston Logger (开发环境带颜色与时间戳，生产环境 JSON)
   const format = isDev
     ? winston.format.combine(
-        winston.format.colorize(),
-        winston.format.timestamp({ format: 'HH:mm:ss.SSS' }),
-        winston.format.printf(({ level: lvl, message, timestamp, ...meta }) => {
-          const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
-          return `${timestamp} ${lvl}: ${message}${metaStr}`.trim();
-        }),
-      )
+      winston.format.colorize(),
+      winston.format.timestamp({ format: 'HH:mm:ss.SSS' }),
+      winston.format.printf(({ level: lvl, message, timestamp, ...meta }) => {
+        const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
+        return `${timestamp} ${lvl}: ${message}${metaStr}`.trim();
+      }),
+    )
     : winston.format.combine(winston.format.timestamp(), winston.format.json());
 
   const transports: winston.transport[] = [new winston.transports.Console()];
@@ -149,7 +149,7 @@ export async function getLogs(name: string = 'nanobot', limit: number = 1000): P
 
     const content = await readFile(logFile, 'utf-8');
     const lines = content.split('\n').filter(line => line.trim());
-    
+
     // 解析 JSON 行
     const logs = lines.map(line => {
       try {
@@ -159,8 +159,8 @@ export async function getLogs(name: string = 'nanobot', limit: number = 1000): P
       }
     });
 
-    // 按时间排序（从新到旧）
-    logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    // 直接倒序（文件末尾为最新）
+    logs.reverse();
 
     // 限制返回条数
     return logs.slice(0, limit);

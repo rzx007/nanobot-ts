@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SettingsLogsRouteImport } from './routes/settings/logs'
 import { Route as settingsLogsRouteImport } from './routes/(settings)/logs'
 import { Route as settingsDebugRouteImport } from './routes/(settings)/debug'
 import { Route as settingsConfigRouteImport } from './routes/(settings)/config'
@@ -39,11 +38,6 @@ const AboutRoute = AboutRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsLogsRoute = SettingsLogsRouteImport.update({
-  id: '/settings/logs',
-  path: '/settings/logs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const settingsLogsRoute = settingsLogsRouteImport.update({
@@ -123,7 +117,6 @@ export interface FileRoutesByFullPath {
   '/config': typeof settingsConfigRoute
   '/debug': typeof settingsDebugRoute
   '/logs': typeof settingsLogsRoute
-  '/settings/logs': typeof SettingsLogsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -141,7 +134,6 @@ export interface FileRoutesByTo {
   '/config': typeof settingsConfigRoute
   '/debug': typeof settingsDebugRoute
   '/logs': typeof settingsLogsRoute
-  '/settings/logs': typeof SettingsLogsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -160,7 +152,6 @@ export interface FileRoutesById {
   '/(settings)/config': typeof settingsConfigRoute
   '/(settings)/debug': typeof settingsDebugRoute
   '/(settings)/logs': typeof settingsLogsRoute
-  '/settings/logs': typeof SettingsLogsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -180,7 +171,6 @@ export interface FileRouteTypes {
     | '/config'
     | '/debug'
     | '/logs'
-    | '/settings/logs'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -198,7 +188,6 @@ export interface FileRouteTypes {
     | '/config'
     | '/debug'
     | '/logs'
-    | '/settings/logs'
   id:
     | '__root__'
     | '/'
@@ -216,7 +205,6 @@ export interface FileRouteTypes {
     | '/(settings)/config'
     | '/(settings)/debug'
     | '/(settings)/logs'
-    | '/settings/logs'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -235,7 +223,6 @@ export interface RootRouteChildren {
   settingsConfigRoute: typeof settingsConfigRoute
   settingsDebugRoute: typeof settingsDebugRoute
   settingsLogsRoute: typeof settingsLogsRoute
-  SettingsLogsRoute: typeof SettingsLogsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -259,13 +246,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/logs': {
-      id: '/settings/logs'
-      path: '/settings/logs'
-      fullPath: '/settings/logs'
-      preLoaderRoute: typeof SettingsLogsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(settings)/logs': {
@@ -371,7 +351,6 @@ const rootRouteChildren: RootRouteChildren = {
   settingsConfigRoute: settingsConfigRoute,
   settingsDebugRoute: settingsDebugRoute,
   settingsLogsRoute: settingsLogsRoute,
-  SettingsLogsRoute: SettingsLogsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

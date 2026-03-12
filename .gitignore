@@ -12,6 +12,7 @@ pnpm-debug.log*
 nanobot/
 .history/*
 examples/
+.tanstack/
 
 # Config and workspace
 .nanobot/
