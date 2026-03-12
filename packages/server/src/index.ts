@@ -11,6 +11,7 @@ import type { ServerContext } from './types';
 import type { AppContext } from './types';
 import routes from './routes';
 import { logger } from '@nanobot/logger';
+import path from 'path';
 
 export interface CreateServerOptions {
   runtime: Runtime;
@@ -54,6 +55,23 @@ export function createServer(options: CreateServerOptions): ServerInstance {
         },
       }),
     );
+/**
+ * 修复 SPA HTML5 history 模式的 404 问题
+ */
+    app.get('*', async (c) => {
+      if (c.req.path.startsWith('/api/v1') || c.req.path === '/health') {
+        return c.text('Not Found', 404);
+      }
+      const filePath = path.join(staticDir, 'index.html');
+      const file = Bun.file(filePath);
+      
+      if (await file.exists()) {
+        c.header('Content-Type', 'text/html; charset=utf-8');
+        return c.body(await file.text());
+      }
+      
+      return c.text('Not Found', 404);
+    });
 
     logger.info(`Static files served from: ${staticDir}`);
   }

@@ -30,7 +30,7 @@ const defaultHeaders: HeadersInit = {
   "Content-Type": "application/json",
 };
 
-const baseURL = "/nanobot";
+const baseURL = import.meta.env.DEV ?"/nanobot" : '';
 const headers = { ...defaultHeaders };
 
 export const request = ofetch.create({
