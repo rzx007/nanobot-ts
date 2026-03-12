@@ -11,7 +11,7 @@ const app = new Hono<AppContext>();
 /**
  * GET /api/v1/agent/status - Agent 运行状态
  */
-app.get('/api/v1/agent/status', async c => {
+app.get('/agent/status', async c => {
   const runtime = c.get('runtime');
   const bus = c.get('bus') as MessageBus;
   const startTime = c.get('startTime');
@@ -47,7 +47,7 @@ app.get('/api/v1/agent/status', async c => {
 /**
  * GET /api/v1/agent/sessions - 所有会话列表
  */
-app.get('/api/v1/agent/sessions', async c => {
+app.get('/agent/sessions', async c => {
   const sessions = c.get('runtime').sessions;
 
   const sessionList = await sessions.listSessions();
@@ -65,7 +65,7 @@ app.get('/api/v1/agent/sessions', async c => {
 /**
  * GET /api/v1/agent/sessions/:key - 特定会话详情
  */
-app.get('/api/v1/agent/sessions/:key', async c => {
+app.get('/agent/sessions/:key', async c => {
   const key = c.req.param('key');
   const sessions = c.get('runtime').sessions;
 
@@ -88,7 +88,7 @@ app.get('/api/v1/agent/sessions/:key', async c => {
 /**
  * GET /api/v1/agent/memory/:key - 会话内存状态
  */
-app.get('/api/v1/agent/memory/:key', async c => {
+app.get('/agent/memory/:key', async c => {
   const key = c.req.param('key');
   const sessions = c.get('runtime').sessions;
   const memory = c.get('runtime').memory;

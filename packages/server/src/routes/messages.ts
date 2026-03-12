@@ -14,7 +14,7 @@ const app = new Hono<AppContext>();
 /**
  * POST /api/v1/messages - 发送消息
  */
-app.post('/api/v1/messages', async c => {
+app.post('/messages', async c => {
   const schema = z.object({
     content: z.string().min(1),
     chatId: z.string().optional(),
@@ -124,7 +124,7 @@ app.post('/api/v1/messages', async c => {
 /**
  * GET /api/v1/messages/:chatId - 获取聊天历史
  */
-app.get('/api/v1/messages/:chatId', async c => {
+app.get('/messages/:chatId', async c => {
   const chatId = c.req.param('chatId');
   const sessions = c.get('runtime').sessions;
   const sessionId = `http:${chatId}`;
@@ -145,7 +145,7 @@ app.get('/api/v1/messages/:chatId', async c => {
 /**
  * DELETE /api/v1/messages/:chatId - 清空会话历史
  */
-app.delete('/api/v1/messages/:chatId', async c => {
+app.delete('/messages/:chatId', async c => {
   const chatId = c.req.param('chatId');
   const sessions = c.get('runtime').sessions;
   const sessionId = `http:${chatId}`;

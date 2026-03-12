@@ -10,7 +10,7 @@ const app = new Hono<AppContext>();
 /**
  * GET /api/v1/config - 获取配置（脱敏）
  */
-app.get('/api/v1/config', async c => {
+app.get('/config', async c => {
   const config = c.get('config');
 
   const sanitizedConfig = {
@@ -100,7 +100,7 @@ app.get('/api/v1/config', async c => {
 /**
  * GET /api/v1/config/skills - 已加载技能列表
  */
-app.get('/api/v1/config/skills', async c => {
+app.get('/config/skills', async c => {
   const skills = c.get('runtime').skills;
 
   const skillsList = skills.getAllSkills();
@@ -118,7 +118,7 @@ app.get('/api/v1/config/skills', async c => {
 /**
  * GET /api/v1/config/tools - 已注册工具列表
  */
-app.get('/api/v1/config/tools', async c => {
+app.get('/config/tools', async c => {
   const tools = c.get('runtime').tools;
 
   const toolsList = tools.getToolNames();

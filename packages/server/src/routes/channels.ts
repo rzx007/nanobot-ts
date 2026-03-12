@@ -10,7 +10,7 @@ const app = new Hono<AppContext>();
 /**
  * GET /api/v1/channels - 通道状态
  */
-app.get('/api/v1/channels', async c => {
+app.get('/channels', async c => {
   const channelManager = c.get('channelManager');
 
   const channels = channelManager.getStatus();

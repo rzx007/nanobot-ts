@@ -11,6 +11,7 @@ import configRouter from './config';
 import channelsRouter from './channels';
 import healthRouter from './health';
 import logsRouter from './logs';
+import skillsRouter from './skills';
 import { authMiddleware } from '../middleware/auth';
 import { errorMiddleware } from '../middleware/error';
 import { loggerMiddleware } from '../middleware/logger';
@@ -42,5 +43,6 @@ app.route('/api/v1', agentRouter);
 app.route('/api/v1', configRouter);
 app.route('/api/v1', channelsRouter);
 app.route('/api/v1', logsRouter);
+app.route('/api/v1', skillsRouter);
 
 export default app;
