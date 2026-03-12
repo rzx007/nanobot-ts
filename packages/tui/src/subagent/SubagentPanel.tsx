@@ -29,27 +29,30 @@ export function SubagentPanel({ runtime }: { runtime: any }) {
   };
 
   return (
-    <box flexDirection="column" padding={1} border borderStyle="rounded" borderColor={theme.border}>
-      <text>Subagent Tasks (live)</text>
-      {tasks.length === 0 && <text fg={theme.textMuted}>No running tasks</text>}
-      {tasks.map((t, i) => (
-        <box key={t.taskId ?? `task-${i}`} flexDirection="row" justifyContent="space-between" width="100%">
-          <text>{t.taskId ?? ''} - {t.status ?? ''}</text>
-          <box
-            border
-            borderStyle="single"
-            paddingLeft={1}
-            paddingRight={1}
-            onMouseDown={evt => evt.stopPropagation()}
-            onMouseUp={evt => {
-              evt.stopPropagation();
-              onCancel(t.taskId!);
-            }}
-          >
-            <text fg={theme.accent}>Cancel</text>
-          </box>
-        </box>
-      ))}
-    </box>
+    <>
+      {tasks.length ?
+        <box flexDirection="column" padding={1} border borderStyle="rounded" borderColor={theme.border}>
+          <text>Subagent Tasks (live)</text>
+          {tasks.map((t, i) => (
+            <box key={t.taskId ?? `task-${i}`} flexDirection="row" justifyContent="space-between" width="100%">
+              <text>{t.taskId ?? ''} - {t.status ?? ''}</text>
+              <box
+                border
+                borderStyle="single"
+                paddingLeft={1}
+                paddingRight={1}
+                onMouseDown={evt => evt.stopPropagation()}
+                onMouseUp={evt => {
+                  evt.stopPropagation();
+                  onCancel(t.taskId!);
+                }}
+              >
+                <text fg={theme.accent}>Cancel</text>
+              </box>
+            </box>
+          ))}
+        </box> : null}
+    </>
+
   );
 }
