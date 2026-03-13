@@ -12,6 +12,7 @@ import type { AppContext } from './types';
 import routes from './routes';
 import { logger } from '@nanobot/logger';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 export interface CreateServerOptions {
   runtime: Runtime;
@@ -29,8 +30,11 @@ export interface ServerInstance {
 }
 
 export function createServer(options: CreateServerOptions): ServerInstance {
-  const { runtime, bus, channelManager, config, startTime, staticDir } = options;
-
+  const { runtime, bus, channelManager, config, startTime, } = options;
+  /** 当前文件路径往前跳两个目录（如 server/src -> server），再拼 web/dist 作为默认静态目录 */
+  const twoUp = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+  const staticDir = path.join(twoUp, 'web', 'dist');
+  console.log("🚀 ~ createServer ~ staticDir:", staticDir)
   const app = new Hono<AppContext>();
 
   app.use('*', async (c, next) => {
@@ -55,21 +59,21 @@ export function createServer(options: CreateServerOptions): ServerInstance {
         },
       }),
     );
-/**
- * 修复 SPA HTML5 history 模式的 404 问题
- */
+    /**
+     * 修复 SPA HTML5 history 模式的 404 问题
+     */
     app.get('*', async (c) => {
       if (c.req.path.startsWith('/api/v1') || c.req.path === '/health') {
         return c.text('Not Found', 404);
       }
       const filePath = path.join(staticDir, 'index.html');
       const file = Bun.file(filePath);
-      
+
       if (await file.exists()) {
         c.header('Content-Type', 'text/html; charset=utf-8');
         return c.body(await file.text());
       }
-      
+
       return c.text('Not Found', 404);
     });
 

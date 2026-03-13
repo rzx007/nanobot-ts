@@ -14,17 +14,12 @@ export function registerGatewayCommand(program: Command): void {
     .description('Start message bus and agent (no channels yet)')
     .option('--port <number>', 'Port for HTTP server', '18790')
     .option('--http', 'Enable HTTP server', 'true')
-    .option(
-      '--static-dir <path>',
-      'Directory for static files (e.g., React build output)',
-      'packages/web/dist',
-    )
-    .action(async (opts: { port: string; http: boolean; staticDir?: string }) => {
-      await runGateway(parseInt(opts.port, 10), opts.http, opts.staticDir);
+    .action(async (opts: { port: string; http: boolean }) => {
+      await runGateway(parseInt(opts.port, 10), opts.http);
     });
 }
 
-async function runGateway(port: number, http: boolean, staticDir?: string): Promise<void> {
+async function runGateway(port: number, http: boolean): Promise<void> {
   const config = await loadConfig();
   if (!config) {
     info('No config found. Run "nanobot init" first.');
@@ -53,12 +48,7 @@ async function runGateway(port: number, http: boolean, staticDir?: string): Prom
       startTime: new Date(),
     };
 
-    if (staticDir) {
-      serverOptions.staticDir = staticDir;
-      info(`HTTP server enabled on port ${port} with static files from: ${staticDir}`);
-    } else {
-      info(`HTTP server enabled on port ${port}`);
-    }
+    info(`HTTP server enabled on port ${port}`);
 
     httpServer = createServer(serverOptions);
   } else {
