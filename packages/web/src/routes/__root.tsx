@@ -11,9 +11,9 @@ import {
 
 const RootLayout = () => (
     <>
-        <SidebarProvider className='h-svh'>
+        <SidebarProvider className='h-svh overflow-hidden'>
             <AppSidebar />
-            <SidebarInset>
+            <SidebarInset className="min-h-0">
                 <header className="flex h-16 shrink-0 items-center gap-2">
                     <div className="flex items-center gap-2 px-4">
                         <SidebarTrigger className="-ml-1" />

