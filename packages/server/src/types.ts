@@ -38,7 +38,19 @@ export type AppContext = {
 };
 
 /**
- * API 错误类型
+ * API 错误响应
+ */
+export interface ApiErrorResponse {
+  error: {
+    code: number;
+    message: string;
+    data?: T;
+    details?: unknown;
+  }
+}
+
+/**
+ * 健康检查响应
  */
 export class ApiError extends Error {
   constructor(

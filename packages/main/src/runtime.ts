@@ -408,13 +408,14 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
   );
 
   // 19. 问题事件监听（仅 CLI 渠道）
-  if (mode === 'cli' || mode === 'tui') {
+
+  if (mode === 'gateway' ) {
     const cliQuestionHandler = new CLIQuestionHandler(questionManager);
     bus.on('question', (event: QuestionEvent) => {
       if (
         event.type === 'question.asked' &&
         event.channel === 'cli' &&
-        mode === 'cli'
+        mode === 'gateway'
       ) {
         void cliQuestionHandler.handleQuestions(event.requestID, event.questions);
       }

@@ -86,6 +86,7 @@ export function createServer(options: CreateServerOptions): ServerInstance {
     fetch: app.fetch,
     port: config.server.port,
     hostname: config.server.host,
+    idleTimeout: 255,
   });
 
   logger.info(
@@ -117,4 +118,3 @@ export { default as routes } from './routes';
 export { authMiddleware } from './middleware/auth';
 export { errorMiddleware } from './middleware/error';
 export { loggerMiddleware } from './middleware/logger';
-export { streamSSE, setupStreamListener, type SSEStream } from './utils/sse';

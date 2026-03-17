@@ -12,7 +12,7 @@ import { taskCancellation } from '@nanobot/main';
 import { buildSlashCommandContext } from './slashCommandContext';
 import { sessionToMessageItems } from './sessionUtils';
 import type { Runtime } from '@nanobot/main';
-import type { Config } from '@nanobot/shared';
+import type { Config, QuestionEvent } from '@nanobot/shared';
 import type { ViewMode } from '../context';
 import type { DialogContextValue } from '../components/Dialog';
 import type { ChatInputHandle } from '../components/ChatInput';
@@ -127,6 +127,11 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
       // 预留：在对应消息下方显示工具提示
     };
 
+    const questionHandler = (event: QuestionEvent) => {
+      if (event.channel !== 'cli') return;
+      setMessages(m => [...m, { role: 'assistant', content: event.questions.map(q => q.question).join('\n'), timestamp: new Date().toISOString() }]);
+    };
+
     const outboundHandler = (msg: OutboundMessage) => {
       if (msg.channel !== 'cli') return;
 
@@ -173,11 +178,13 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
 
     runtime.bus.on('stream-text', streamTextHandler);
     runtime.bus.on('tool-hint', toolHintHandler);
+    runtime.bus.on('question', questionHandler);
     runtime.bus.on('outbound', outboundHandler);
 
     return () => {
       runtime.bus.off('stream-text', streamTextHandler);
       runtime.bus.off('tool-hint', toolHintHandler);
+      runtime.bus.off('question', questionHandler);
       runtime.bus.off('outbound', outboundHandler);
     };
   }, [runtime, streaming, defaultModel]);

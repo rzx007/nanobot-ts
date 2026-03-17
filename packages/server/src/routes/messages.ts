@@ -3,10 +3,10 @@
  */
 
 import { Hono } from 'hono';
+import { streamSSE } from "hono/streaming"
 import { z } from 'zod';
 import type { AppContext } from '../types';
 import type { MessageBus } from '@nanobot/main';
-import type { SSEStream } from '../utils/sse';
 import { ValidationError } from '../types';
 
 const app = new Hono<AppContext>();
@@ -45,69 +45,61 @@ app.post('/messages', async c => {
   });
 
   if (enableStream) {
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        const sseStream: SSEStream = {
-          write: event => {
-            const lines: string[] = [];
-            if (event.event) lines.push(`event: ${event.event}`);
-            if (event.id) lines.push(`id: ${event.id}`);
-            if (event.retry) lines.push(`retry: ${event.retry}`);
-            lines.push(`data: ${event.data}`);
-            lines.push('');
-            controller.enqueue(encoder.encode(lines.join('\n')));
-          },
-          writeSSE: event => {
-            const data = typeof event.data === 'string' ? event.data : JSON.stringify(event.data);
-            const lines: string[] = [];
-            if (event.event) lines.push(`event: ${event.event}`);
-            if (event.id) lines.push(`id: ${event.id}`);
-            if (event.retry) lines.push(`retry: ${event.retry}`);
-            lines.push(`data: ${data}`);
-            lines.push('');
-            controller.enqueue(encoder.encode(lines.join('\n')));
-          },
-          close: () => {
-            controller.close();
-          },
-        };
+    return streamSSE(c, async (stream) => {
+      // 流式文本监听器
+      const streamTextListener = (event: any) => {
+        if (event.channel === 'http' && event.chatId === chatId) {
+          stream.writeSSE({
+            event: 'stream-text',
+            data: event.chunk,
+          });
+        }
+      };
 
-        const streamTextListener = (evt: unknown) => {
-          const event = evt as { channel: string; chatId: string; chunk: string };
-          if (event.channel === 'http' && event.chatId === chatId) {
-            sseStream.writeSSE({ data: event.chunk });
-          }
-        };
+      // 完成监听器
+      const outboundListener = (msg: any) => {
+        if (msg.channel === 'http' && msg.chatId === chatId) {
+          stream.writeSSE({
+            event: 'done',
+            data: '[DONE]',
+          });
+        }
+      };
 
-        const outboundListener = (msg: unknown) => {
-          const outbound = msg as { channel: string; chatId: string };
-          if (outbound.channel === 'http' && outbound.chatId === chatId) {
-            sseStream.writeSSE({ event: 'done', data: '[DONE]' });
-          }
-        };
+      // 问题监听器
+      const questionListener = (event: any) => {
+        console.log('11111event', JSON.stringify(event));
+        if (event.channel === 'http' && event.chatId === chatId) {
+          stream.writeSSE({
+            event: 'question',
+            data: JSON.stringify(event),
+          });
+        }
+      };
 
-        bus.on('stream-text', streamTextListener);
-        bus.on('outbound', outboundListener);
+      // 注册所有监听器
+      bus.on('stream-text', streamTextListener);
+      bus.on('outbound', outboundListener);
+      bus.on('question', questionListener);
 
-        return new Promise<void>(resolve => {
-          setTimeout(() => {
-            bus.off('stream-text', streamTextListener);
-            bus.off('outbound', outboundListener);
-            controller.close();
-            resolve();
-          }, 300000);
+      // 心跳保持连接活跃（每30秒）
+      const heartbeat = setInterval(() => {
+        stream.writeSSE({
+          event: 'heartbeat',
+          data: JSON.stringify({ timestamp: Date.now() }),
         });
-      },
-    });
+      }, 30_000);
 
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      },
+      // 保持连接直到客户端断开
+      await new Promise<void>((resolve) => {
+        stream.onAbort(() => {
+          clearInterval(heartbeat);
+          bus.off('stream-text', streamTextListener);
+          bus.off('outbound', outboundListener);
+          bus.off('question', questionListener);
+          resolve();
+        });
+      });
     });
   }
 
