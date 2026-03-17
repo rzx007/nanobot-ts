@@ -12,6 +12,7 @@ export * from './tools/browser';
 export * from './tools/message';
 export * from './tools/spawn';
 export * from './tools/subagent';
+export * from './tools/question';
 export { CronTool as CronToolExport } from './tools/cronTool';
 
 export * from './tools/skill';

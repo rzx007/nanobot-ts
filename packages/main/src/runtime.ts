@@ -4,7 +4,7 @@
  */
 
 import path from 'path';
-import type { Config, InboundMessage } from '@nanobot/shared';
+import type { Config, InboundMessage, QuestionEvent } from '@nanobot/shared';
 import { expandHome } from '@nanobot/utils';
 import { logger } from '@nanobot/logger';
 import { MessageBus } from './bus';
@@ -12,10 +12,13 @@ import { SessionManager } from './storage';
 import { MemoryConsolidator } from './core/memory';
 import { AgentLoop } from './core/agent';
 import { ApprovalManager } from './core/approval';
+import { QuestionManager } from './core/question';
 import type { SubagentManager } from './core/subagent';
 import { SkillLoader } from './skills/skills';
 import { ToolRegistry } from './tools/registry';
+import { QuestionTool } from './tools/question';
 import { CronTool } from './tools/cronTool';
+import { CLIQuestionHandler } from '@nanobot/channels';
 import {
   ReadFileTool,
   WriteFileTool,
@@ -76,6 +79,7 @@ export interface Runtime {
 
   // 工具
   approvalManager: ApprovalManager;
+  questionManager: QuestionManager;
   subagentManager: SubagentManager | null;
   cronService: CronService;
 
@@ -119,6 +123,7 @@ class RuntimeImpl implements Runtime {
     public memory: MemoryConsolidator,
     public skills: SkillLoader,
     public approvalManager: ApprovalManager,
+    public questionManager: QuestionManager,
     public subagentManager: SubagentManager | null,
     public cronService: CronService,
     public channelManager: ChannelManager,
@@ -299,7 +304,17 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
     tools.register(subagentTool);
   }
 
-  // 11. 浏览器工具
+  // 11. Question Manager
+  const questionManager = new QuestionManager(bus, {
+    timeout: config.tools?.question?.timeout ?? 300,
+  });
+  // 12. Question Tool
+  if (config.tools?.question?.enabled !== false) {
+    const questionTool = new QuestionTool(questionManager);
+    tools.register(questionTool);
+  }
+
+  // 13. 浏览器工具
   if (config.tools.browser?.enabled) {
     tools.register(new BrowserOpenTool(config));
     tools.register(new BrowserCloseTool(config));
@@ -322,11 +337,11 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
     tools.register(new BrowserPdfTool(config));
   }
 
-  // 12. MCP 工具
+  // 14. MCP 工具
   const mcpLoader = new MCPToolLoader();
   await mcpLoader.load(config, tools);
 
-  // 13. Cron 服务
+  // 15. Cron 服务
   const cronStorePath = path.join(workspace, 'cron.json');
   const cronService = new CronService({
     storePath: cronStorePath,
@@ -349,14 +364,16 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
   await cronService.start();
   tools.register(new CronTool(cronService));
 
-  // 14. Memory Consolidator
+
+
+  // 16. Memory Consolidator
   const memory = new MemoryConsolidator(config);
 
-  // 15. Skills Loader
+  // 17. Skills Loader
   const skills = new SkillLoader(config);
   await skills.init();
 
-  // 16. 技能工具
+  // 18. 技能工具
   const loadSkillTool = new LoadSkillTool();
   const matchSkillTool = new MatchSkillTool();
   loadSkillTool.setSkillLoader(skills);
@@ -364,7 +381,7 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
   tools.register(loadSkillTool);
   tools.register(matchSkillTool);
 
-  // 17. Channel Manager
+  // 19. Channel Manager
   const channelManager = new ChannelManager(config);
   channelManager.registerChannel('cli', new CLIChannel({}));
   await channelManager.loadChannelsFromConfig();
@@ -373,7 +390,7 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
     onInbound: (msg: InboundMessage) => void bus.publishInbound(msg),
   });
 
-  // 18. 创建 Runtime 对象
+  // 20. 创建 Runtime 对象
   const runtime = new RuntimeImpl(
     config,
     workspace,
@@ -384,10 +401,25 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
     memory,
     skills,
     approvalManager,
+    questionManager,
     subagentManager,
     cronService,
     channelManager,
   );
+
+  // 19. 问题事件监听（仅 CLI 渠道）
+  if (mode === 'cli' || mode === 'tui') {
+    const cliQuestionHandler = new CLIQuestionHandler(questionManager);
+    bus.on('question', (event: QuestionEvent) => {
+      if (
+        event.type === 'question.asked' &&
+        event.channel === 'cli' &&
+        mode === 'cli'
+      ) {
+        void cliQuestionHandler.handleQuestions(event.requestID, event.questions);
+      }
+    });
+  }
 
   logger.info('Runtime created successfully');
 

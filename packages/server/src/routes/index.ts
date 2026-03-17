@@ -9,6 +9,7 @@ import messagesRouter from './messages';
 import agentRouter from './agent';
 import configRouter from './config';
 import channelsRouter from './channels';
+import questionsRouter from './questions';
 import healthRouter from './health';
 import logsRouter from './logs';
 import skillsRouter from './skills';
@@ -42,6 +43,7 @@ app.route('/api/v1', messagesRouter);
 app.route('/api/v1', agentRouter);
 app.route('/api/v1', configRouter);
 app.route('/api/v1', channelsRouter);
+app.route('/api/v1', questionsRouter);
 app.route('/api/v1', logsRouter);
 app.route('/api/v1', skillsRouter);
 

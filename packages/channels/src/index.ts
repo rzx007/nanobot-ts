@@ -8,3 +8,4 @@ export * from './manager';
 export * from './whatsapp';
 export * from './feishu';
 export * from './email';
+export * from './question-handlers/cli';

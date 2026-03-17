@@ -22,6 +22,7 @@
   "author": "Nanobot TypeScript Team",
   "license": "MIT",
   "dependencies": {
+    "@hono/zod-validator": "^0.7.6",
     "@nanobot/channels": "workspace:*",
     "@nanobot/cli": "workspace:*",
     "@nanobot/logger": "workspace:*",

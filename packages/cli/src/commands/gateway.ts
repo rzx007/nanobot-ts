@@ -28,7 +28,7 @@ async function runGateway(port: number, http: boolean): Promise<void> {
 
   const runtime = await createRuntime({ config, mode: 'gateway', startChannels: true });
 
-  const { bus, channelManager } = runtime;
+  const { bus, questionManager, channelManager } = runtime;
 
   await runtime.start({ startChannels: true });
 
@@ -43,6 +43,7 @@ async function runGateway(port: number, http: boolean): Promise<void> {
     const serverOptions: Parameters<typeof createServer>[0] = {
       runtime,
       bus,
+      questionManager,
       channelManager,
       config,
       startTime: new Date(),

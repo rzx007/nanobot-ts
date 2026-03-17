@@ -216,6 +216,11 @@ export function createDefaultConfig(): Config {
         strictMode: false,
         enableLogging: true,
       },
+      question: {
+        enabled: true,
+        timeout: 300,
+        defaultHandler: 'cli',
+      },
     },
     subagent: {
       enabled: true,

@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@nanobot/shared": "workspace:*",
     "@fontsource-variable/noto-serif": "^5.2.9",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
     "@rive-app/react-webgl2": "^4.27.1",

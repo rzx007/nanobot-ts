@@ -73,6 +73,13 @@ export const TOOL_DEFAULTS = {
     memoryWindow: 300,
     timeout: 60,
   },
+
+  /** 问题默认配置 */
+  question: {
+    enabled: true,
+    timeout: 300,
+    defaultHandler: 'cli' as const,
+  },
 } as const;
 
 export const SERVER_DEFAULTS = {

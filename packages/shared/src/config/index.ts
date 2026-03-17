@@ -10,3 +10,4 @@ export * from './cron-schema';
 export * from './bus-schema';
 export * from './tool-schema';
 export * from './session-schema';
+export * from './question-schema';

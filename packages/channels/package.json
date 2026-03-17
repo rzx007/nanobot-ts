@@ -22,12 +22,14 @@
   "author": "Nanobot TypeScript Team",
   "license": "MIT",
   "dependencies": {
-    "@nanobot/shared": "workspace:*",
-    "@nanobot/logger": "workspace:*",
-    "@nanobot/utils": "workspace:*",
     "@larksuiteoapi/node-sdk": "^1.59.0",
+    "@nanobot/logger": "workspace:*",
+    "@nanobot/shared": "workspace:*",
+    "@nanobot/utils": "workspace:*",
+    "@nanobot/main": "workspace:*",
     "baileys": "7.0.0-rc.9",
     "imapflow": "^1.2.10",
+    "inquirer": "^13.3.2",
     "nodemailer": "^8.0.1",
     "qrcode-terminal": "^0.12.0"
   },

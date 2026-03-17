@@ -3,7 +3,7 @@
  */
 
 import type { Context } from 'hono';
-import type { StreamTextEvent } from '@nanobot/shared';
+import type { StreamTextEvent, QuestionEvent } from '@nanobot/shared';
 import type { OutboundMessage } from '@nanobot/shared';
 import type { SSEEvent } from '../types';
 import type { MessageBus } from '@nanobot/main';
@@ -106,11 +106,19 @@ export function setupStreamListener(
     }
   };
 
+  const questionListener = (event: QuestionEvent) => {
+    if (event.channel === 'http' && event.chatId === chatId) {
+      stream.writeSSE({ event: 'question', data: JSON.stringify(event) });
+    }
+  };
+
   bus.on('stream-text', streamTextListener);
   bus.on('outbound', outboundListener);
+  bus.on('question', questionListener);
 
   return () => {
     bus.off('stream-text', streamTextListener);
     bus.off('outbound', outboundListener);
+    bus.off('question', questionListener);
   };
 }

@@ -11,6 +11,7 @@ import type {
   OutboundMessage,
   StreamTextEvent,
   ToolHintEvent,
+  QuestionEvent,
 } from '@nanobot/shared';
 import { createLogger } from '@nanobot/logger';
 /**
@@ -28,6 +29,9 @@ interface MessageBusEvents {
 
   /** 工具提示事件 */
   'tool-hint': (event: ToolHintEvent) => void;
+
+  /** 问题事件 */
+  question: (event: QuestionEvent) => void;
 }
 
 /**
