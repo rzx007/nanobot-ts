@@ -5,7 +5,7 @@
 import type { Runtime } from '@nanobot/main';
 import type { Config } from '@nanobot/shared';
 import type { MessageBus } from '@nanobot/main';
-import type { QuestionManager } from '@nanobot/shared';
+import type { QuestionManager, ApprovalManager } from '@nanobot/shared';
 
 /**
  * 服务器上下文
@@ -19,6 +19,9 @@ export interface ServerContext {
 
   /** 问题管理器 */
   questionManager: QuestionManager;
+
+  /** 审批管理器 */
+  approvalManager: ApprovalManager;
 
   /** 配置 */
   config: Config;

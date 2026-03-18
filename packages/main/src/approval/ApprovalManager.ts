@@ -1,27 +1,38 @@
 /**
  * 确认管理器
  *
- * 统一管理所有渠道的工具确认逻辑
+ * 统一管理所有渠道的工具确认逻辑，使用事件驱动架构
  */
 
-import type { ApprovalHandler, ConfirmationRequest } from './approval-handlers/types';
-import { ApprovalMemory } from './approval-handlers/memory';
+import type { ApprovalEvent } from '@nanobot/shared';
+import { ApprovalMemory } from './memory';
 import { ApprovalConfigSchema, type ApprovalConfig } from '@nanobot/shared';
 import type { Config } from '@nanobot/shared';
 import { RiskLevel, DEFAULT_RISK_LEVELS } from '@nanobot/shared';
 import { logger } from '@nanobot/logger';
-import type { IMessageBus } from '@nanobot/shared';
-import { MessageApprovalHandler } from './approval-handlers/message';
+import type { MessageBus } from '../bus/queue';
+
+interface PendingApproval {
+  toolName: string;
+  params: Record<string, unknown>;
+  resolve: (value: boolean) => void;
+  reject: (error: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+  channel: string;
+  chatId: string;
+}
+
 /**
  * 确认管理器
  *
  * 负责协调不同渠道的确认处理器，管理确认流程
+ * 使用事件驱动架构，所有确认请求都通过 bus.emit('approval') 发出
  */
 export class ApprovalManager {
   name = 'approval';
 
-  /** 确认处理器映射表 */
-  private handlers: Map<string, ApprovalHandler>;
+  /** 待处理的确认请求 */
+  private pending = new Map<string, PendingApproval>();
 
   /** 会话记忆管理器 */
   private memory: ApprovalMemory;
@@ -29,8 +40,8 @@ export class ApprovalManager {
   /** 确认配置（从 Config 解析） */
   private config: ApprovalConfig;
 
-  /** 主配置（用于 initializeDefaultHandlers 按渠道注册） */
-  private appConfig: Config;
+  /** 消息总线 */
+  private bus: MessageBus;
 
   /** 默认风险级别 */
   private defaultRiskLevels: Record<string, RiskLevel>;
@@ -39,13 +50,17 @@ export class ApprovalManager {
    * 构造函数
    *
    * @param config - 主配置（确认配置从 config.tools?.approval 解析）
+   * @param bus - 消息总线
    * @param memory - 会话记忆管理器（可选，默认根据确认配置新建）
    */
-  constructor(config: Config, memory?: ApprovalMemory) {
-    this.appConfig = config;
+  constructor(
+    config: Config,
+    bus: MessageBus,
+    memory?: ApprovalMemory
+  ) {
     this.config = ApprovalConfigSchema.parse(config.tools?.approval ?? {});
+    this.bus = bus;
     this.memory = memory ?? new ApprovalMemory(this.config);
-    this.handlers = new Map();
     this.defaultRiskLevels = DEFAULT_RISK_LEVELS;
 
     logger.info(
@@ -57,71 +72,6 @@ export class ApprovalManager {
       },
       'ApprovalManager initialized',
     );
-  }
-
-  /**
-   * 初始化默认处理器
-   *
-   * 按渠道名注册：cli 使用 CLI 处理器，feishu/whatsapp/email 使用消息处理器（根据构造函数传入的 config 中已启用的渠道）。
-   *
-   * @param bus - 消息总线（可选，用于消息渠道）
-   * @param tui - 是否是 TUI 模式
-   */
-  initializeDefaultHandlers(bus?: IMessageBus): void {
-    // 根据 appConfig 为已启用的消息渠道逐个注册 MessageApprovalHandler（与 ChannelManager 判定一致）
-    if (bus) {
-      const { whatsapp, feishu, email } = this.appConfig.channels;
-      const messageHandler = new MessageApprovalHandler(bus);
-      this.registerHandler('cli', messageHandler);
-      if (whatsapp.enabled) {
-        this.registerHandler('whatsapp', messageHandler);
-      }
-      if (feishu.enabled && feishu.appId && feishu.appSecret) {
-        this.registerHandler('feishu', messageHandler);
-      }
-      if (
-        email.enabled &&
-        email.consentGranted &&
-        email.imapHost &&
-        email.imapUsername &&
-        email.smtpHost &&
-        email.smtpUsername &&
-        email.fromAddress
-      ) {
-        this.registerHandler('email', messageHandler);
-      }
-    }
-  }
-
-  /**
-   * 注册确认处理器
-   *
-   * @param channel - 渠道名称
-   * @param handler - 确认处理器
-   */
-  registerHandler(channel: string, handler: ApprovalHandler): void {
-    this.handlers.set(channel, handler);
-    logger.info(`Approval handler registered for channel: ${channel}`);
-  }
-
-  /**
-   * 注销确认处理器
-   *
-   * @param channel - 渠道名称
-   */
-  unregisterHandler(channel: string): void {
-    this.handlers.delete(channel);
-    logger.info(`Approval handler unregistered for channel: ${channel}`);
-  }
-
-  /**
-   * 获取确认处理器
-   *
-   * @param channel - 渠道名称
-   * @returns 确认处理器或 undefined
-   */
-  getHandler(channel: string): ApprovalHandler | undefined {
-    return this.handlers.get(channel);
   }
 
   /**
@@ -190,7 +140,8 @@ export class ApprovalManager {
   }
 
   /**
-   * 工具执行前，请求用户确认 (给渠道(whatsapp、feishu、email 等)发送确认消息, 等待用户回复)
+   * 工具执行前，请求用户确认
+   * 发出事件 'approval'，由各渠道的监听器处理
    *
    * @param toolName - 工具名称
    * @param params - 工具参数
@@ -198,80 +149,124 @@ export class ApprovalManager {
    * @param chatId - 聊天ID
    * @returns 是否批准
    */
-  async requestApproval(
+  async request(
     toolName: string,
     params: Record<string, unknown>,
     channel: string,
     chatId: string,
   ): Promise<boolean> {
-    const handler = this.getHandler(channel);
-
-    if (!handler) {
-      logger.warn(`No approval handler for channel: ${channel}, denying by default`);
-      return false;
+    // 检查是否需要确认
+    const needsCheck = await this.needsApproval(toolName, params, undefined, channel, chatId);
+    if (!needsCheck) {
+      return true;
     }
 
-    const req: ConfirmationRequest = {
-      toolName,
-      params,
-      channel,
-      chatId,
+    // 生成唯一请求ID
+    const requestID = this.generateRequestID();
+
+    logger.info({ requestID, toolName, channel, chatId }, 'Approval requested');
+
+    return new Promise<boolean>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.cleanup(requestID);
+        logger.warn({ requestID }, 'Approval timed out');
+        resolve(false); // 超时默认拒绝
+      }, this.config.timeout * 1000);
+
+      this.pending.set(requestID, {
+        toolName,
+        params,
+        resolve,
+        reject,
+        timer,
+        channel,
+        chatId,
+      });
+
+      // 发出事件（统一入口）
+      const event: ApprovalEvent = {
+        type: 'approval.asked',
+        requestID,
+        channel,
+        chatId,
+        toolName,
+        params,
+        timeout: this.config.timeout,
+        timestamp: new Date(),
+      };
+
+      this.bus.emit('approval', event);
+    });
+  }
+
+  /**
+   * 解析审批请求
+   * 由各渠道监听 'approval' 事件后调用此方法
+   *
+   * @param requestID - 请求ID
+   * @param approved - 是否批准
+   */
+  async respond(requestID: string, approved: boolean): Promise<void> {
+    const pending = this.pending.get(requestID);
+    if (!pending) {
+      throw new Error(`Approval request not found: ${requestID}`);
+    }
+
+    logger.info({ requestID, approved }, 'Approval resolved');
+
+    // 如果批准，记录到记忆
+    if (approved) {
+      this.memory.recordApproval(pending.toolName, pending.params, pending.channel, pending.chatId);
+    }
+
+    this.cleanup(requestID);
+
+    // 发出回复事件
+    const event: ApprovalEvent = {
+      type: 'approval.replied',
+      requestID,
+      channel: pending.channel,
+      chatId: pending.chatId,
+      toolName: pending.toolName,
+      params: pending.params,
       timeout: this.config.timeout,
+      timestamp: new Date(),
     };
 
-    try {
-      logger.info({ toolName, channel, chatId }, 'Requesting user approval');
+    this.bus.emit('approval', event);
 
-      // 渠道的确认处理器 来处理确认请求
-      const approved = await handler!.requestApproval(req);
+    pending.resolve(approved);
+  }
 
-      if (approved) {
-        // 记录到会话记忆
-        this.memory.recordApproval(toolName, params, channel, chatId);
-        logger.info({ toolName, channel, chatId }, 'User approved tool execution');
-      } else {
-        logger.info({ toolName, channel, chatId }, 'User declined tool execution');
-      }
-
-      return approved;
-    } catch (error) {
-      logger.error({ error, toolName, channel, chatId }, 'Approval request failed');
-      return false;
+  /**
+   * 取消审批请求
+   *
+   * @param requestID - 请求ID
+   */
+  cancel(requestID: string): void {
+    const pending = this.pending.get(requestID);
+    if (pending) {
+      this.cleanup(requestID);
+      pending.reject(new Error('Approval cancelled'));
+      logger.info({ requestID }, 'Approval cancelled');
+    }
+  }
+  /**
+   * 关闭管理器，清理所有待处理请求
+   */
+  close(): void {
+    for (const [requestID] of this.pending) {
+      this.cancel(requestID);
     }
   }
 
   /**
-   * 处理用户消息（用于消息渠道的确认回复，确认回复后，处理工具执行或拒绝），此过程会释放requestApproval等待中的 Promise
-   *
-   * @param channel - 渠道
-   * @param chatId - 聊天ID
-   * @param content - 消息内容
-   * @returns 是否是确认回复（true表示已处理，false表示普通消息）
+   * 获取待处理数量
    */
-  handleUserMessage(channel: string, chatId: string, content: string): boolean {
-    const handler = this.getHandler(channel);
-    if (
-      handler &&
-      'handleUserMessage' in handler &&
-      typeof handler.handleUserMessage === 'function'
-    ) {
-      return handler.handleUserMessage(channel, chatId, content);
-    }
-    return false;
+  get pendingCount(): number {
+    return this.pending.size;
   }
 
-  /**
-   * 取消待处理的确认
-   *
-   * @param channel - 渠道
-   * @param chatId - 聊天ID
-   */
-  cancelPending(channel: string, chatId: string): void {
-    const handler = this.getHandler(channel);
-    if (handler?.cancelPending) {
-      handler.cancelPending(chatId);
-    }
-  }
   /**
    * 获取会话记忆管理器
    *
@@ -342,16 +337,38 @@ export class ApprovalManager {
   getStats(): {
     enabled: boolean;
     memorySize: number;
-    registeredHandlers: string[];
+    pendingCount: number;
     strictMode: boolean;
     memoryWindow: number;
   } {
     return {
       enabled: this.config.enabled,
       memorySize: this.memory.size,
-      registeredHandlers: Array.from(this.handlers.keys()),
+      pendingCount: this.pending.size,
       strictMode: this.config.strictMode,
       memoryWindow: this.config.memoryWindow,
     };
+  }
+
+  /**
+   * 生成请求ID
+   *
+   * @returns 请求ID
+   */
+  private generateRequestID(): string {
+    return `apr_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+  }
+
+  /**
+   * 清理待处理记录
+   *
+   * @param requestID - 请求ID
+   */
+  private cleanup(requestID: string): void {
+    const pending = this.pending.get(requestID);
+    if (pending) {
+      clearTimeout(pending.timer);
+      this.pending.delete(requestID);
+    }
   }
 }

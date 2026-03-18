@@ -177,9 +177,20 @@ export type ToolHintEvent = z.infer<typeof ToolHintEventSchema>;
 export type ProgressOptions = z.infer<typeof ProgressOptionsSchema>;
 
 /**
+ * 消息总线队列状态（用于调试与健康检查）
+ */
+export interface MessageBusStatus {
+  inboundQueueLength: number;
+  outboundQueueLength: number;
+  inboundConsumersLength: number;
+  outboundConsumersLength: number;
+}
+
+/**
  * 消息总线接口
  *
- * 供 ChannelManager、渠道等组件使用，解耦具体实现
+ * 供 ChannelManager、渠道、ApprovalManager、QuestionManager 等组件使用，解耦具体实现。
+ * 入站/出站消息为队列语义；流式、工具提示、审批、提问为事件广播语义。
  */
 export interface IMessageBus {
   /** 发布入站消息 */
@@ -194,6 +205,9 @@ export interface IMessageBus {
   /** 消费出站消息 (阻塞直到有消息) */
   consumeOutbound(): Promise<OutboundMessage>;
 
-  /** 添加入站消息过滤器 */
+  /** 添加入站消息过滤器（返回 true 表示拦截，不入队） */
   addInboundFilter(filter: (msg: InboundMessage) => boolean): void;
+
+  /** 获取队列状态（用于调试与健康检查） */
+  getStatus(): MessageBusStatus;
 }

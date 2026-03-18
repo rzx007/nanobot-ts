@@ -288,145 +288,145 @@ export class AgentLoop {
     try {
       // 为需要上下文的工具设置 channel/chatId（如 spawn、cron）
       for (const name of this.tools.getToolNames()) {
-      const t = this.tools.get(name);
-      if (
-        t &&
-        'setContext' in t &&
-        typeof (t as { setContext?: (ch: string, cid: string) => void }).setContext === 'function'
-      ) {
-        (t as { setContext: (ch: string, cid: string) => void }).setContext(channel, chatId);
-      }
-    }
-
-    // 添加用户消息到会话
-    await this.sessions.addMessage(sessionKey, {
-      role: 'user',
-      content,
-      timestamp: new Date().toISOString(),
-    });
-
-    // 获取会话历史
-    const history = await this.sessions.getHistory(sessionKey, this.memoryWindow);
-
-    // 构建系统提示词 (Identity + Bootstrap + Memory + Skills)
-    const memoryContext = this.memory ? await this.memory.readLongTerm() : '';
-    const buildOpts: import('./context').BuildSystemPromptOptions = {
-      workspace: this.config.agents.defaults.workspace,
-      alwaysSkills: this.skills?.getAlwaysSkills() ?? [],
-    };
-    if (this.skills) {
-      // 构建技能摘要
-      const summary = this.skills.buildSkillsSummary();
-      if (summary) buildOpts.skillsSummary = summary;
-    }
-    if (memoryContext) buildOpts.memoryContext = memoryContext;
-    const systemPrompt = await ContextBuilder.buildSystemPrompt(buildOpts);
-
-    // 构建消息列表 (含运行时上下文注入)
-    const messages: Array<{
-      role: string;
-      content:
-      | string
-      | Array<{ type: 'tool-result'; toolCallId: string; toolName: string; output: string }>;
-    }> = [
-        ...ContextBuilder.buildMessages({
-          systemPrompt,
-          history,
-          currentMessage: content,
-          channel,
-          chatId,
-        }),
-      ];
-
-    // 获取工具定义，由 SDK 自动执行工具（executeTool + maxSteps）
-    const tools = this.tools.getDefinitions();
-
-    const commonParams = {
-      messages,
-      tools,
-      model: this.config.agents.defaults.model,
-      temperature: this.config.agents.defaults.temperature,
-      maxTokens: this.config.agents.defaults.maxTokens,
-      maxSteps: this.maxIterations,
-      executeTool: async (name: string, args: Record<string, unknown>) => {
-        // 传递上下文信息给工具注册表（用于确认机制）
-        let result = await this.tools.execute(name, args, {
-          channel,
-          chatId,
-        });
-        if (result.length > AgentLoop.TOOL_RESULT_MAX_CHARS) {
-          result = result.slice(0, AgentLoop.TOOL_RESULT_MAX_CHARS) + '\n... (truncated)';
+        const t = this.tools.get(name);
+        if (
+          t &&
+          'setContext' in t &&
+          typeof (t as { setContext?: (ch: string, cid: string) => void }).setContext === 'function'
+        ) {
+          (t as { setContext: (ch: string, cid: string) => void }).setContext(channel, chatId);
         }
-        return `Tool "${name}" returned:\n${result}`;
-      },
+      }
+
+      // 添加用户消息到会话
+      await this.sessions.addMessage(sessionKey, {
+        role: 'user',
+        content,
+        timestamp: new Date().toISOString(),
+      });
+
+      // 获取会话历史
+      const history = await this.sessions.getHistory(sessionKey, this.memoryWindow);
+
+      // 构建系统提示词 (Identity + Bootstrap + Memory + Skills)
+      const memoryContext = this.memory ? await this.memory.readLongTerm() : '';
+      const buildOpts: import('./context').BuildSystemPromptOptions = {
+        workspace: this.config.agents.defaults.workspace,
+        alwaysSkills: this.skills?.getAlwaysSkills() ?? [],
+      };
+      if (this.skills) {
+        // 构建技能摘要
+        const summary = this.skills.buildSkillsSummary();
+        if (summary) buildOpts.skillsSummary = summary;
+      }
+      if (memoryContext) buildOpts.memoryContext = memoryContext;
+      const systemPrompt = await ContextBuilder.buildSystemPrompt(buildOpts);
+
+      // 构建消息列表 (含运行时上下文注入)
+      const messages: Array<{
+        role: string;
+        content:
+        | string
+        | Array<{ type: 'tool-result'; toolCallId: string; toolName: string; output: string }>;
+      }> = [
+          ...ContextBuilder.buildMessages({
+            systemPrompt,
+            history,
+            currentMessage: content,
+            channel,
+            chatId,
+          }),
+        ];
+
+      // 获取工具定义，由 SDK 自动执行工具（executeTool + maxSteps）
+      const tools = this.tools.getDefinitions();
+
+      const commonParams = {
+        messages,
+        tools,
+        model: this.config.agents.defaults.model,
+        temperature: this.config.agents.defaults.temperature,
+        maxTokens: this.config.agents.defaults.maxTokens,
+        maxSteps: this.maxIterations,
+        executeTool: async (name: string, args: Record<string, unknown>) => {
+          // 传递上下文信息给工具注册表（用于确认机制）
+          let result = await this.tools.execute(name, args, {
+            channel,
+            chatId,
+          });
+          if (result.length > AgentLoop.TOOL_RESULT_MAX_CHARS) {
+            result = result.slice(0, AgentLoop.TOOL_RESULT_MAX_CHARS) + '\n... (truncated)';
+          }
+          return `Tool "${name}" returned:\n${result}`;
+        },
       };
 
-    // 发布工具提示事件到消息总线
-    (commonParams as any).onStepFinish = (step: { text?: string; toolCalls?: unknown[] }) => {
-      if (step?.text != null && step.text !== '') {
-        this.bus.publishToolHint({
+      // 发布工具提示事件到消息总线
+      (commonParams as any).onStepFinish = (step: { text?: string; toolCalls?: unknown[] }) => {
+        if (step?.text != null && step.text !== '') {
+          this.bus.emit('tool-hint', {
+            channel,
+            chatId,
+            content: step.text,
+          } as ToolHintEvent);
+        }
+      };
+
+      // 发布流式文本事件到消息总线
+      (commonParams as any).onTextChunk = (chunk: string) => {
+        this.bus.emit('stream-text', {
           channel,
           chatId,
-          content: step.text,
-        } as ToolHintEvent);
-      }
-    };
-
-    // 发布流式文本事件到消息总线
-    (commonParams as any).onTextChunk = (chunk: string) => {
-      this.bus.publishStreamText({
+          chunk,
+        } as StreamTextEvent);
+      };
+      const signal = taskCancellation.register(taskId, {
         channel,
         chatId,
-        chunk,
-      } as StreamTextEvent);
-    };
-    const signal = taskCancellation.register(taskId, {
-      channel,
-      chatId,
-      sessionKey,
-      startedAt: new Date(),
-      origin: 'user',
-    });
-
-    // 传递取消信号到 LLM 调用端
-    const llmParams = {
-      ...commonParams,
-      abortSignal: signal,
-    };
-
-    // (重复定义的部分已移除)
-
-    // 根据是否需要流式选择调用方式
-    const isStreamResponse = this.config.agents.defaults.streaming ?? true;
-    const llmResponse = isStreamResponse
-      ? await this.provider.streamChat(llmParams as Parameters<LLMProvider['streamChat']>[0])
-      : await this.provider.chat(llmParams as Parameters<LLMProvider['chat']>[0]);
-    const assistantContent = AgentLoop._stripThink(llmResponse.content ?? '');
-
-    if (assistantContent) {
-      // 存储消息
-      await this.sessions.addMessage(sessionKey, {
-        role: 'assistant',
-        content: assistantContent,
-        timestamp: new Date().toISOString(),
-        model: this.config.agents.defaults.model,
+        sessionKey,
+        startedAt: new Date(),
+        origin: 'user',
       });
-    }
 
-    // 内存整合 (超过阈值时): 增量归档，更新 lastConsolidated
-    if (this.memory) {
-      const session = await this.sessions.getOrCreate(sessionKey);
-      if (this.memory.needsConsolidation(session)) {
-        await this.memory.consolidate(session);
-        await this.sessions.saveSession(session);
+      // 传递取消信号到 LLM 调用端
+      const llmParams = {
+        ...commonParams,
+        abortSignal: signal,
+      };
+
+      // (重复定义的部分已移除)
+
+      // 根据是否需要流式选择调用方式
+      const isStreamResponse = this.config.agents.defaults.streaming ?? true;
+      const llmResponse = isStreamResponse
+        ? await this.provider.streamChat(llmParams as Parameters<LLMProvider['streamChat']>[0])
+        : await this.provider.chat(llmParams as Parameters<LLMProvider['chat']>[0]);
+      const assistantContent = AgentLoop._stripThink(llmResponse.content ?? '');
+
+      if (assistantContent) {
+        // 存储消息
+        await this.sessions.addMessage(sessionKey, {
+          role: 'assistant',
+          content: assistantContent,
+          timestamp: new Date().toISOString(),
+          model: this.config.agents.defaults.model,
+        });
       }
-    }
 
-    return {
-      channel,
-      chatId,
-      content: typeof assistantContent === 'string' ? assistantContent : '',
-    };
+      // 内存整合 (超过阈值时): 增量归档，更新 lastConsolidated
+      if (this.memory) {
+        const session = await this.sessions.getOrCreate(sessionKey);
+        if (this.memory.needsConsolidation(session)) {
+          await this.memory.consolidate(session);
+          await this.sessions.saveSession(session);
+        }
+      }
+
+      return {
+        channel,
+        chatId,
+        content: typeof assistantContent === 'string' ? assistantContent : '',
+      };
     } catch (error) {
       // 重新抛出错误，让调用者处理
       throw error;

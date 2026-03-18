@@ -18,6 +18,7 @@ export interface CreateServerOptions {
   runtime: Runtime;
   bus: ServerContext['bus'];
   questionManager: ServerContext['questionManager'];
+  approvalManager: ServerContext['approvalManager'];
   channelManager: ChannelManager;
   config: ServerContext['config'];
   startTime: Date;
@@ -31,7 +32,7 @@ export interface ServerInstance {
 }
 
 export function createServer(options: CreateServerOptions): ServerInstance {
-  const { runtime, bus, questionManager, channelManager, config, startTime, } = options;
+  const { runtime, bus, questionManager, approvalManager, channelManager, config, startTime, } = options;
   /** 当前文件路径往前跳两个目录（如 server/src -> server），再拼 web/dist 作为默认静态目录 */
   const twoUp = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
   const staticDir = path.join(twoUp, 'web', 'dist');
@@ -42,6 +43,7 @@ export function createServer(options: CreateServerOptions): ServerInstance {
     c.set('runtime', runtime as AppContext['Variables']['runtime']);
     c.set('bus', bus as AppContext['Variables']['bus']);
     c.set('questionManager', questionManager as AppContext['Variables']['questionManager']);
+    c.set('approvalManager', approvalManager as AppContext['Variables']['approvalManager']);
     c.set('channelManager', channelManager as AppContext['Variables']['channelManager']);
     c.set('config', config as AppContext['Variables']['config']);
     c.set('startTime', startTime as AppContext['Variables']['startTime']);

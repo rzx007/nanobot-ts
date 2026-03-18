@@ -4,61 +4,35 @@
  */
 
 import path from 'path';
-import type { Config, InboundMessage, QuestionEvent } from '@nanobot/shared';
+import type { Config, InboundMessage, QuestionEvent, ApprovalEvent } from '@nanobot/shared';
 import { expandHome } from '@nanobot/utils';
 import { logger } from '@nanobot/logger';
 import { MessageBus } from './bus';
 import { SessionManager } from './storage';
 import { MemoryConsolidator } from './core/memory';
 import { AgentLoop } from './core/agent';
-import { ApprovalManager } from './core/approval';
-import { QuestionManager } from './core/question';
-import type { SubagentManager } from './core/subagent';
+import { ApprovalManager } from './approval';
+import { SubagentManager } from './core/subagent';
 import { SkillLoader } from './skills/skills';
 import { ToolRegistry } from './tools/registry';
 import { QuestionTool } from './tools/question';
 import { CronTool } from './tools/cronTool';
-import { CLIQuestionHandler } from '@nanobot/channels';
-import {
-  ReadFileTool,
-  WriteFileTool,
-  CreateFileTool,
-  EditFileTool,
-  DeleteFileTool,
-  ListDirTool,
-} from './tools/filesystem';
-import { ExecTool } from './tools/shell';
-import { WebSearchTool, WebFetchTool } from './tools/web';
-import {
-  BrowserOpenTool,
-  BrowserCloseTool,
-  BrowserSnapshotTool,
-  BrowserClickTool,
-  BrowserFillTool,
-  BrowserTypeTool,
-  BrowserScreenshotTool,
-  BrowserWaitTool,
-  BrowserGetTool,
-  BrowserEvalTool,
-  BrowserPressTool,
-  BrowserSelectTool,
-  BrowserCheckTool,
-  BrowserUncheckTool,
-  BrowserScrollTool,
-  BrowserBackTool,
-  BrowserForwardTool,
-  BrowserReloadTool,
-  BrowserPdfTool,
-} from './tools/browser';
-import { MessageTool } from './tools/message';
-import { SubagentTool } from './tools/subagent';
-import { LoadSkillTool, MatchSkillTool } from './tools/skill';
-import { HotNewsTool } from './tools/hotnews';
-import { CronService } from './cron/service';
+import { CLIChannel } from '@nanobot/channels';
+import { CLIApprovalHandler, MessageApprovalHandler, TUIApprovalHandler } from './approval';
+import { QuestionManager } from './question';
+import { CLIQuestionHandler } from './question';
 import { MCPToolLoader } from './mcp/loader';
 import { LLMProvider } from '@nanobot/providers';
 import { ChannelManager } from '@nanobot/channels';
-import { CLIChannel } from '@nanobot/channels';
+import { CronService } from './cron';
+import { BrowserOpenTool, BrowserCloseTool, BrowserSnapshotTool, BrowserClickTool, BrowserFillTool, BrowserTypeTool, BrowserScreenshotTool, BrowserWaitTool, BrowserGetTool, BrowserEvalTool, BrowserPressTool, BrowserSelectTool, BrowserCheckTool, BrowserUncheckTool, BrowserScrollTool, BrowserBackTool, BrowserForwardTool, BrowserReloadTool, BrowserPdfTool } from './tools/browser';
+import { ReadFileTool, WriteFileTool, CreateFileTool, EditFileTool, DeleteFileTool, ListDirTool } from './tools/filesystem';
+import { HotNewsTool } from './tools/hotnews';
+import { MessageTool } from './tools/message';
+import { ExecTool } from './tools/shell';
+import { LoadSkillTool, MatchSkillTool } from './tools/skill';
+import { SubagentTool } from './tools/subagent';
+import { WebSearchTool, WebFetchTool } from './tools/web';
 
 /**
  * Runtime 运行时对象
@@ -261,14 +235,22 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
   const tools = new ToolRegistry();
 
   // 5. Approval Manager
-  const approvalManager = new ApprovalManager(config);
+  const approvalManager = new ApprovalManager(config, bus);
   tools.setApprovalCheck(approvalManager);
 
-  // 6. 初始化默认处理器
-  approvalManager.initializeDefaultHandlers(bus);
+  // 6. 消息过滤器（检查是否是确认回复）
+  bus.addInboundFilter(m => {
+    // 检查是否是确认回复（通过 metadata.approvalRequestID）
+    if (m.metadata?.approvalRequestID) {
+      const trimmed = m.content.trim().toLowerCase();
+      const approved = trimmed === 'yes' || trimmed === 'y' || trimmed === '是' || trimmed === '确认';
 
-  // 7. 消息过滤器
-  bus.addInboundFilter(m => approvalManager.handleUserMessage(m.channel, m.chatId, m.content));
+      approvalManager.respond(m.metadata.approvalRequestID as string, approved);
+      return false; // 拦截，不继续处理
+    }
+
+    return true;
+  });
 
   // 8. Subagent Manager
   let subagentManager: SubagentManager | null = null;
@@ -403,8 +385,43 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
     channelManager,
   );
 
-  // 19. 问题事件监听（仅 CLI 渠道）
+  // 21. 注册 approval 事件监听器
 
+  // CLI 渠道监听器
+  if (mode === 'gateway') {
+    const cliApprovalHandler = new CLIApprovalHandler(approvalManager);
+
+    bus.on('approval', (event: ApprovalEvent) => {
+      if (event.channel === 'cli' && event.type === 'approval.asked') {
+        void cliApprovalHandler.handleApproval(event);
+      }
+    });
+  }
+
+  // TUI 渠道监听器
+  if (mode === 'gateway') {
+    const tuiApprovalHandler = new TUIApprovalHandler(bus, approvalManager);
+
+    bus.on('approval', (event: ApprovalEvent) => {
+      if (event.channel === 'cli' && event.type === 'approval.asked') {
+        void tuiApprovalHandler.handleApproval(event);
+      }
+    });
+  }
+
+  // 三方渠道监听器（WhatsApp、Feishu、Email）
+  const messageApprovalHandler = new MessageApprovalHandler(bus, approvalManager);
+
+  bus.on('approval', (event: ApprovalEvent) => {
+    if (
+      ['whatsapp', 'feishu', 'email'].includes(event.channel) &&
+      event.type === 'approval.asked'
+    ) {
+      messageApprovalHandler.handleApproval(event);
+    }
+  });
+
+  // 22. 问题事件监听（仅 CLI 渠道）
   if (mode === 'gateway') {
     const cliQuestionHandler = new CLIQuestionHandler(questionManager);
     bus.on('question', (event: QuestionEvent) => {

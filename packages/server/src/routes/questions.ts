@@ -6,7 +6,6 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import type { AppContext } from '../types';
-import { ValidationError } from '../types';
 
 const app = new Hono<AppContext>();
 

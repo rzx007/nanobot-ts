@@ -41,7 +41,7 @@ export interface ApprovalCheck {
    * @param chatId - 聊天ID
    * @returns 是否批准
    */
-  requestApproval(
+  request(
     toolName: string,
     params: Record<string, unknown>,
     channel: string,
@@ -194,7 +194,7 @@ export class ToolRegistry {
         context.chatId,
       );
       if (needsApproval) {
-        const approved = await this.approvalCheck.requestApproval(
+        const approved = await this.approvalCheck.request(
           name,
           params,
           context.channel,

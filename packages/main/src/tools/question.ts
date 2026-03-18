@@ -6,7 +6,7 @@
 
 import { Tool } from './base';
 import { jsonSchema, JSONSchema7, tool } from 'ai';
-import type { QuestionManager } from '../core/question';
+import type { QuestionManager } from '../question';
 import type { Question } from '@nanobot/shared';
 
 export class QuestionTool extends Tool {

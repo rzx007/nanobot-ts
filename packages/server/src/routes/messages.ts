@@ -8,6 +8,7 @@ import { z } from 'zod';
 import type { AppContext } from '../types';
 import type { MessageBus } from '@nanobot/main';
 import { ValidationError } from '../types';
+import type { ApprovalEvent } from '@nanobot/shared';
 
 const app = new Hono<AppContext>();
 
@@ -77,10 +78,21 @@ app.post('/messages', async c => {
         }
       };
 
+      // 审批监听器
+      const approvalListener = (event: ApprovalEvent) => {
+        if (event.channel === 'http' && event.chatId === chatId) {
+          stream.writeSSE({
+            event: 'approval',
+            data: JSON.stringify(event),
+          });
+        }
+      };
+
       // 注册所有监听器
       bus.on('stream-text', streamTextListener);
       bus.on('outbound', outboundListener);
       bus.on('question', questionListener);
+      bus.on('approval', approvalListener);
 
       // 心跳保持连接活跃（每30秒）
       const heartbeat = setInterval(() => {
@@ -97,6 +109,7 @@ app.post('/messages', async c => {
           bus.off('stream-text', streamTextListener);
           bus.off('outbound', outboundListener);
           bus.off('question', questionListener);
+          bus.off('approval', approvalListener);
           resolve();
         });
       });

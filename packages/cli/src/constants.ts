@@ -33,7 +33,7 @@ export function getPackageRoot(metaUrl: string): string {
   if (dir.includes('src')) {
     return path.resolve(dir, '..', '..', '..');
   }
-  
+
   return path.resolve(dir, '..', '..');
 }
 

@@ -1,4 +1,6 @@
 export * from './core';
+export * from './approval';
+export * from './question';
 export * from './bus';
 export * from './storage';
 export * from './cron';
@@ -12,7 +14,6 @@ export * from './tools/browser';
 export * from './tools/message';
 export * from './tools/spawn';
 export * from './tools/subagent';
-export * from './tools/question';
 export { CronTool as CronToolExport } from './tools/cronTool';
 
 export * from './tools/skill';

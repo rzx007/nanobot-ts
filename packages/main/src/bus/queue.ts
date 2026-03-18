@@ -7,39 +7,35 @@
 
 import { EventEmitter } from 'eventemitter3';
 import type {
+  ApprovalEvent,
+  IMessageBus,
   InboundMessage,
+  MessageBusStatus,
   OutboundMessage,
   StreamTextEvent,
   ToolHintEvent,
   QuestionEvent,
 } from '@nanobot/shared';
 import { createLogger } from '@nanobot/logger';
+
 /**
- * 消息总线事件
+ * 消息总线事件（供 EventEmitter 订阅，实现层细节）
  */
 interface MessageBusEvents {
-  /** 入站消息事件 */
   inbound: (msg: InboundMessage) => void;
-
-  /** 出站消息事件 */
   outbound: (msg: OutboundMessage) => void;
-
-  /** 流式文本事件 */
   'stream-text': (event: StreamTextEvent) => void;
-
-  /** 工具提示事件 */
   'tool-hint': (event: ToolHintEvent) => void;
-
-  /** 问题事件 */
   question: (event: QuestionEvent) => void;
+  approval: (event: ApprovalEvent) => void;
 }
 
 /**
  * 消息总线
  *
- * 负责消息的发布和消费，实现异步队列机制
+ * 负责消息的发布和消费，实现异步队列机制；同时实现 IMessageBus 供上层解耦使用。
  */
-export class MessageBus extends EventEmitter<MessageBusEvents> {
+export class MessageBus extends EventEmitter<MessageBusEvents> implements IMessageBus {
   /** 入站消息队列 */
   private readonly inboundQueue: InboundMessage[] = [];
 
@@ -149,17 +145,7 @@ export class MessageBus extends EventEmitter<MessageBusEvents> {
     });
   }
 
-  /**
-   * 获取队列状态 (用于调试）
-   *
-   * @returns 队列状态信息
-   */
-  getStatus(): {
-    inboundQueueLength: number;
-    outboundQueueLength: number;
-    inboundConsumersLength: number;
-    outboundConsumersLength: number;
-  } {
+  getStatus(): MessageBusStatus {
     return {
       inboundQueueLength: this.inboundQueue.length,
       outboundQueueLength: this.outboundQueue.length,
@@ -168,21 +154,4 @@ export class MessageBus extends EventEmitter<MessageBusEvents> {
     };
   }
 
-  /**
-   * 发布流式文本事件
-   *
-   * @param event - 流式文本事件
-   */
-  publishStreamText(event: StreamTextEvent): void {
-    this.emit('stream-text', event);
-  }
-
-  /**
-   * 发布工具提示事件
-   *
-   * @param event - 工具提示事件
-   */
-  publishToolHint(event: ToolHintEvent): void {
-    this.emit('tool-hint', event);
-  }
 }

@@ -12,7 +12,7 @@ import { taskCancellation } from '@nanobot/main';
 import { buildSlashCommandContext } from './slashCommandContext';
 import { sessionToMessageItems } from './sessionUtils';
 import type { Runtime } from '@nanobot/main';
-import type { Config, QuestionEvent } from '@nanobot/shared';
+import type { Config, QuestionEvent, ApprovalEvent } from '@nanobot/shared';
 import type { ViewMode } from '../context';
 import type { DialogContextValue } from '../components/Dialog';
 import type { ChatInputHandle } from '../components/ChatInput';
@@ -132,34 +132,48 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
       setMessages(m => [...m, { role: 'assistant', content: event.questions.map(q => q.question).join('\n'), timestamp: new Date().toISOString() }]);
     };
 
+    const approvalHandler = (event: ApprovalEvent) => {
+      if (event.channel !== 'cli' || event.type !== 'approval.asked') return;
+
+      const paramsDisplay = Object.entries(event.params)
+        .map(([key, value]) => {
+          const valueStr = JSON.stringify(value);
+          const truncated = valueStr.length > 50 ? `${valueStr.slice(0, 50)}...` : valueStr;
+          return `${key}=${truncated}`;
+        })
+        .join(', ');
+
+      const message = (
+        `⚠️ 工具执行需要确认\n` +
+        `工具: ${event.toolName}\n` +
+        `参数: ${paramsDisplay}\n` +
+        `超时: ${event.timeout}秒\n\n` +
+        `回复 "yes" 确认，"no" 取消`
+      );
+
+      setMessages(m => [
+        ...m,
+        {
+          role: 'assistant',
+          content: message,
+          model: defaultModel,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+    };
+
     const outboundHandler = (msg: OutboundMessage) => {
       if (msg.channel !== 'cli') return;
-
-      const isApproval = msg.metadata?.approvalId != null;
-
-      if (isApproval) {
-        // 审核确认消息：仅追加展示，不恢复 idle，继续等待用户确认
-        setMessages(m => [
-          ...m,
-          {
-            role: 'assistant',
-            content: msg.content,
-            model: defaultModel,
-            timestamp: new Date().toISOString(),
-          },
-        ]);
-        return;
-      }
 
       // Agent 回复：恢复可输入并结束本轮
       setStatus('idle');
       setInputDisabled(false);
       setMessages(m => {
         if (streaming) {
-          const last = m[m.length - 1];
+          const last = m[m.length -1];
           if (last?.role === 'assistant' && last.isStreaming) {
             const next = [...m];
-            next[next.length - 1] = { ...last, isStreaming: false };
+            next[next.length -1] = { ...last, isStreaming: false };
             return next;
           }
           return m;
@@ -179,12 +193,14 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
     runtime.bus.on('stream-text', streamTextHandler);
     runtime.bus.on('tool-hint', toolHintHandler);
     runtime.bus.on('question', questionHandler);
+    runtime.bus.on('approval', approvalHandler);
     runtime.bus.on('outbound', outboundHandler);
 
     return () => {
       runtime.bus.off('stream-text', streamTextHandler);
       runtime.bus.off('tool-hint', toolHintHandler);
       runtime.bus.off('question', questionHandler);
+      runtime.bus.off('approval', approvalHandler);
       runtime.bus.off('outbound', outboundHandler);
     };
   }, [runtime, streaming, defaultModel]);
