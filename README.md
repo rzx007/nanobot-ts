@@ -140,10 +140,10 @@ For MCP configuration, create `~/.nanobot/workspace/mcp.json`:
 ### Run
 
 ```bash
-# Start gateway with TUI (Terminal User Interface)
-nanobot-ts
+# Launch TUI (Terminal User Interface)
+nanobot-ts tui
 
-# Start gateway with cli command
+# Start gateway with CLI command
 nanobot-ts gateway
 
 # Single-shot message
@@ -155,7 +155,7 @@ nanobot-ts chat --interactive
 
 ### TUI Mode
 
-The `nanobot-ts gateway` command now includes a modern Terminal User Interface (TUI) powered by opentui:
+The `nanobot-ts tui` command launches a modern Terminal User Interface (TUI) powered by opentui:
 
 **Features**:
 
@@ -193,18 +193,20 @@ The `nanobot-ts gateway` command now includes a modern Terminal User Interface (
 
 | Command                           | Description                                                                  |
 | --------------------------------- | ---------------------------------------------------------------------------- |
-| `nanobot-ts init`                 | Initialize config & workspace in `~/.nanobot`, use `-f/--force` to overwrite |
-| `nanobot-ts chat [prompt]`        | Send a prompt and get reply; add `-i/--interactive` for interactive mode     |
-| `nanobot-ts gateway`              | Start message bus and Agent (default port: `--port 18790`)                   |
-| `nanobot-ts status`               | View configuration and runtime status                                        |
-| `nanobot-ts session`              | List all sessions                                                            |
-| `nanobot-ts config [key] [value]` | View or set config (e.g., `agents.defaults.model`)                           |
-| `nanobot-ts channels status`      | Check channel status                                                         |
-| `nanobot-ts logs`                 | View logs, use `-t/--tail <n>` (default 50)                                  |
-| `nanobot-ts whatsapp:auth`        | WhatsApp QR code / pairing code login                                        |
-| `nanobot-ts whatsapp:status`      | Check WhatsApp login status                                                  |
-| `nanobot-ts whatsapp:logout`      | Clear WhatsApp credentials                                                   |
-| `nanobot-ts mcp:list`             | List connected MCP servers and tools                                         |
+| `nanobot-ts`                     | Show help information                                                        |
+| `nanobot-ts tui`                 | Launch TUI (Terminal User Interface)                                          |
+| `nanobot-ts init`                | Initialize config & workspace in `~/.nanobot`, use `-f/--force` to overwrite |
+| `nanobot-ts chat [prompt]`       | Send a prompt and get reply; add `-i/--interactive` for interactive mode     |
+| `nanobot-ts gateway`             | Start message bus and Agent (default port: `--port 18790`)                   |
+| `nanobot-ts status`              | View configuration and runtime status                                        |
+| `nanobot-ts session`             | List all sessions                                                            |
+| `nanobot-ts config [key] [value]`| View or set config (e.g., `agents.defaults.model`)                           |
+| `nanobot-ts channels status`     | Check channel status                                                         |
+| `nanobot-ts logs`                | View logs, use `-t/--tail <n>` (default 50)                                  |
+| `nanobot-ts whatsapp:auth`       | WhatsApp QR code / pairing code login                                        |
+| `nanobot-ts whatsapp:status`     | Check WhatsApp login status                                                  |
+| `nanobot-ts whatsapp:logout`     | Clear WhatsApp credentials                                                   |
+| `nanobot-ts mcp:list`            | List connected MCP servers and tools                                         |
 
 ### Examples
 
@@ -687,7 +689,7 @@ bun clean
 
 # Quick start commands
 bun onboard           # Initialize config
-bun agent             # Interactive chat mode
+bun tui               # Launch TUI
 bun gateway           # Start gateway
 bun status            # View status
 ```

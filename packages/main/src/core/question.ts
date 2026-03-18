@@ -27,7 +27,6 @@ export class QuestionManager implements IQuestionManager {
 
   constructor(
     private bus: MessageBus,
-    private config: { timeout: number }
   ) {
     this.logger.info('QuestionManager initialized');
   }
@@ -52,8 +51,8 @@ export class QuestionManager implements IQuestionManager {
     return new Promise<string[][]>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.cleanup(requestID);
-        reject(new Error(`Question timeout after ${this.config.timeout}s`));
-      }, this.config.timeout * 1000);
+        reject(new Error(`Question timeout after 60s`));
+      }, 60 * 1000);
 
       this.pending.set(requestID, {
         questions,

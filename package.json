@@ -24,8 +24,8 @@
     "format": "prettier --write \"src/**/*.ts\" \"packages/**/*.ts\"",
     "typecheck": "bun tsc --noEmit",
     "clean": "rm -rf packages/*/dist node_modules/.cache",
+    "tui": "bun packages/cli/dist/run.js tui",
     "onboard": "bun packages/cli/dist/run.js init",
-    "agent": "bun packages/cli/dist/run.js chat --interactive",
     "gateway": "bun packages/cli/dist/run.js gateway",
     "status": "bun packages/cli/dist/run.js status"
   },

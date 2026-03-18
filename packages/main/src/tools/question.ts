@@ -96,8 +96,8 @@ export class QuestionTool extends Tool {
     }
   }
 
-  setContext(context: { channel: string; chatId: string }): void {
-    this.context = context;
+  setContext(channel: string, chatId: string): void {
+    this.context = { channel, chatId };
   }
 
   toSchema() {

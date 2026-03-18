@@ -4,7 +4,6 @@
 
 import { z } from 'zod';
 import { ApprovalConfigSchema } from './approval-schema';
-import { QuestionConfigSchema } from './question-schema';
 
 export const AgentDefaultsSchema = z.object({
   /** 工作区路径 */
@@ -232,8 +231,6 @@ export const ToolsConfigSchema = z.object({
   /** 审批配置 */
   approval: ApprovalConfigSchema,
 
-  /** 问题配置 */
-  question: QuestionConfigSchema,
 });
 
 /**
@@ -309,9 +306,8 @@ export type ExecConfig = z.infer<typeof ExecConfigSchema>;
 export type WebConfig = z.infer<typeof WebConfigSchema>;
 export type BrowserConfig = z.infer<typeof BrowserConfigSchema>;
 export type ApprovalConfig = z.infer<typeof ApprovalConfigSchema>;
-export type QuestionConfig = z.infer<typeof QuestionConfigSchema>;
 export type ToolsConfig = z.infer<typeof ToolsConfigSchema>;
 export type SubagentConfig = z.infer<typeof SubagentConfigSchema>;
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;
 export type Config = z.infer<typeof ConfigSchema>;
-export { ApprovalConfigSchema, QuestionConfigSchema };
+export { ApprovalConfigSchema };

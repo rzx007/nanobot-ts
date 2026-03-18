@@ -33,7 +33,7 @@ export class MessageTool extends Tool {
     properties: {
       channel: {
         type: 'string',
-        description: '目标渠道 (whatsapp, feishu, email, cli)',
+        description: '目标渠道 (whatsapp, feishu, email, cli, http)',
       },
       chatId: {
         type: 'string',

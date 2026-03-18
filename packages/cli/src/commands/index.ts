@@ -25,6 +25,14 @@ export async function runCLI(argv: string[]): Promise<void> {
     .description('Ultra-lightweight personal AI assistant')
     .version('0.1.0');
 
+  // 注册 TUI 命令
+  program
+    .command('tui')
+    .description('Launch TUI (Terminal User Interface)')
+    .action(async () => {
+      await runTui('home');
+    });
+
   registerInitCommand(program);
   registerGatewayCommand(program);
   registerChatCommand(program);
@@ -38,10 +46,6 @@ export async function runCLI(argv: string[]): Promise<void> {
 
   // 注册子代理管理命令
   program.addCommand(createSubagentManageCommand());
-
-  program.action(async () => {
-    await runTui('home');
-  });
 
   await program.parseAsync(argv);
 }

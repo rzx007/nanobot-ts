@@ -305,14 +305,10 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
   }
 
   // 11. Question Manager
-  const questionManager = new QuestionManager(bus, {
-    timeout: config.tools?.question?.timeout ?? 300,
-  });
+  const questionManager = new QuestionManager(bus);
   // 12. Question Tool
-  if (config.tools?.question?.enabled !== false) {
-    const questionTool = new QuestionTool(questionManager);
-    tools.register(questionTool);
-  }
+  const questionTool = new QuestionTool(questionManager);
+  tools.register(questionTool);
 
   // 13. 浏览器工具
   if (config.tools.browser?.enabled) {
@@ -409,7 +405,7 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
 
   // 19. 问题事件监听（仅 CLI 渠道）
 
-  if (mode === 'gateway' ) {
+  if (mode === 'gateway') {
     const cliQuestionHandler = new CLIQuestionHandler(questionManager);
     bus.on('question', (event: QuestionEvent) => {
       if (
