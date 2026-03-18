@@ -24,6 +24,7 @@ app.post('/messages', async c => {
   });
 
   const body = await c.req.json();
+
   const validated = schema.safeParse(body);
 
   if (!validated.success) {
@@ -69,7 +70,6 @@ app.post('/messages', async c => {
 
       // 问题监听器
       const questionListener = (event: any) => {
-        console.log('11111event', JSON.stringify(event));
         if (event.channel === 'http' && event.chatId === chatId) {
           stream.writeSSE({
             event: 'question',

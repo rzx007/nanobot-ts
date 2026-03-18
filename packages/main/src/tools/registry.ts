@@ -194,6 +194,7 @@ export class ToolRegistry {
         context.chatId,
       );
       if (needsApproval) {
+        // 发送审批请求， 等待用户回复 
         const approved = await this.approvalCheck.request(
           name,
           params,

@@ -1,5 +1,5 @@
 import { request } from './request';
-import type { StreamTextEvent, QuestionEvent } from '@nanobot/shared';
+import type { QuestionEvent } from '@nanobot/shared';
 
 export interface ChatHistoryItem {
   role: 'user' | 'assistant';
@@ -23,7 +23,7 @@ export async function sendMessage(
   callbacks: MessageStreamCallbacks = {}
 ): Promise<void> {
   try {
-    const response = await fetch('/api/v1/messages', {
+    const response = await request.raw('/api/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -50,12 +50,12 @@ export async function sendMessage(
 
       for (const line of lines) {
         const trimmedLine = line.trim();
-        
+
         if (trimmedLine.startsWith('event: ')) {
           currentEvent = trimmedLine.slice(7);
         } else if (trimmedLine.startsWith('data: ')) {
           const data = trimmedLine.slice(6);
-          
+
           if (data === '[DONE]') {
             callbacks.onDone?.();
             return;
@@ -81,7 +81,7 @@ export async function sendMessage(
 export async function getChatHistory(
   chatId: string
 ): Promise<ChatHistoryItem[]> {
-  const result: any = await request(`/api/v1/messages/${chatId}`);
+  const result = await request<{ data: { history: ChatHistoryItem[] } }>(`/api/v1/messages/${chatId}`);
   return result.data?.history || [];
 }
 

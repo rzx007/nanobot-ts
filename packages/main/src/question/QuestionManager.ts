@@ -71,7 +71,7 @@ export class QuestionManager implements IQuestionManager {
         questions,
         timestamp: new Date(),
       };
-
+      
       this.bus.emit('question', event);
     });
   }

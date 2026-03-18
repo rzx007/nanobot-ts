@@ -237,7 +237,7 @@ abstract class BrowserTool extends Tool {
 
 export class BrowserOpenTool extends BrowserTool {
   name = 'browser_open';
-  riskLevel = RiskLevel.LOW;
+  riskLevel = RiskLevel.HIGH;
   description =
     '打开浏览器并导航到指定 URL。支持指定会话名称、有头模式等。使用场景：需要访问网页进行交互操作（如登录、填写表单、浏览内容等）。重要提示：页面打开后会自动等待加载完成（使用配置中的 waitForLoad 策略，默认 networkidle），等待完成后即可直接使用其他浏览器工具（如 browser_snapshot、browser_fill、browser_click、browser_screenshot 等），无需再次调用 browser_wait。如果需要立即进行交互操作，可以直接在打开后调用相应工具，不需要额外的检查步骤。';
 

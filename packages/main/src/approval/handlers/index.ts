@@ -4,4 +4,3 @@
 
 export { CLIApprovalHandler } from './cli';
 export { MessageApprovalHandler } from './message-handler';
-export { TUIApprovalHandler } from './tui-handler';

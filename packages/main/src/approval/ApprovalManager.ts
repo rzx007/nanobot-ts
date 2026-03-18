@@ -155,11 +155,6 @@ export class ApprovalManager {
     channel: string,
     chatId: string,
   ): Promise<boolean> {
-    // 检查是否需要确认
-    const needsCheck = await this.needsApproval(toolName, params, undefined, channel, chatId);
-    if (!needsCheck) {
-      return true;
-    }
 
     // 生成唯一请求ID
     const requestID = this.generateRequestID();

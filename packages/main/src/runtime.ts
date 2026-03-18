@@ -18,7 +18,7 @@ import { ToolRegistry } from './tools/registry';
 import { QuestionTool } from './tools/question';
 import { CronTool } from './tools/cronTool';
 import { CLIChannel } from '@nanobot/channels';
-import { CLIApprovalHandler, MessageApprovalHandler, TUIApprovalHandler } from './approval';
+import { CLIApprovalHandler, MessageApprovalHandler } from './approval';
 import { QuestionManager } from './question';
 import { CLIQuestionHandler } from './question';
 import { MCPToolLoader } from './mcp/loader';
@@ -246,10 +246,10 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
       const approved = trimmed === 'yes' || trimmed === 'y' || trimmed === '是' || trimmed === '确认';
 
       approvalManager.respond(m.metadata.approvalRequestID as string, approved);
-      return false; // 拦截，不继续处理
+      return true; // 拦截，不继续处理
     }
 
-    return true;
+    return false;
   });
 
   // 8. Subagent Manager
@@ -387,24 +387,14 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
 
   // 21. 注册 approval 事件监听器
 
-  // CLI 渠道监听器
+  // CLI 渠道监听器（仅在 gateway 模式且非 TUI 时使用）
   if (mode === 'gateway') {
     const cliApprovalHandler = new CLIApprovalHandler(approvalManager);
 
     bus.on('approval', (event: ApprovalEvent) => {
+      // 只处理非 TUI 场景（TUI 由自己的 useGatewayChat 处理）
       if (event.channel === 'cli' && event.type === 'approval.asked') {
         void cliApprovalHandler.handleApproval(event);
-      }
-    });
-  }
-
-  // TUI 渠道监听器
-  if (mode === 'gateway') {
-    const tuiApprovalHandler = new TUIApprovalHandler(bus, approvalManager);
-
-    bus.on('approval', (event: ApprovalEvent) => {
-      if (event.channel === 'cli' && event.type === 'approval.asked') {
-        void tuiApprovalHandler.handleApproval(event);
       }
     });
   }

@@ -60,6 +60,7 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
   const [inputDisabled, setInputDisabled] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [status, setStatus] = useState<'idle' | 'responding'>('idle');
+  const [pendingApprovalRequestID, setPendingApprovalRequestID] = useState<string | null>(null);
 
   const streaming = config?.agents.defaults.streaming ?? true;
   const defaultModel = config?.agents.defaults.model ?? '';
@@ -135,6 +136,9 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
     const approvalHandler = (event: ApprovalEvent) => {
       if (event.channel !== 'cli' || event.type !== 'approval.asked') return;
 
+      // 存储当前的 approval requestID
+      setPendingApprovalRequestID(event.requestID);
+
       const paramsDisplay = Object.entries(event.params)
         .map(([key, value]) => {
           const valueStr = JSON.stringify(value);
@@ -158,6 +162,7 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
           content: message,
           model: defaultModel,
           timestamp: new Date().toISOString(),
+          metadata: { approvalRequestID: event.requestID },
         },
       ]);
     };
@@ -165,15 +170,17 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
     const outboundHandler = (msg: OutboundMessage) => {
       if (msg.channel !== 'cli') return;
 
-      // Agent 回复：恢复可输入并结束本轮
+      // Agent 回复：恢复可输入并结束本轮，清除 pending approval
       setStatus('idle');
       setInputDisabled(false);
+      setPendingApprovalRequestID(null);
+
       setMessages(m => {
         if (streaming) {
-          const last = m[m.length -1];
+          const last = m[m.length - 1];
           if (last?.role === 'assistant' && last.isStreaming) {
             const next = [...m];
-            next[next.length -1] = { ...last, isStreaming: false };
+            next[next.length - 1] = { ...last, isStreaming: false };
             return next;
           }
           return m;
@@ -256,7 +263,10 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
       chatId: 'direct',
       content: processedContent,
       timestamp: new Date(),
+      metadata: pendingApprovalRequestID ? { approvalRequestID: pendingApprovalRequestID } : {},
     });
+    // 清除 pending approval
+    setPendingApprovalRequestID(null);
   };
 
   const handleCancel = async () => {
