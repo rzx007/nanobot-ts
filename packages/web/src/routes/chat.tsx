@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input"
 import type { ToolUIPart } from "ai"
-import type { QuestionEvent } from "@nanobot/shared"
+import type { QuestionEvent, ApprovalEvent } from "@nanobot/shared"
 
 import {
   Attachment,
@@ -13,8 +13,9 @@ import {
   sendMessage,
   getChatHistory,
   clearChatHistory,
-} from "@/lib/message-api"
+} from "@/services"
 import { QuestionDialog } from "@/components/question-dialog"
+import { ApprovalDialog } from "@/components/approval-dialog"
 import {
   Conversation,
   ConversationContent,
@@ -261,6 +262,7 @@ const ChatPage = () => {
     return newId
   })
   const [questionEvent, setQuestionEvent] = useState<QuestionEvent | null>(null)
+  const [approvalEvent, setApprovalEvent] = useState<ApprovalEvent | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
 
   const selectedModelData = useMemo(
@@ -331,6 +333,9 @@ const ChatPage = () => {
           },
           onQuestion: (event) => {
             setQuestionEvent(event)
+          },
+          onApproval: (event) => {
+            setApprovalEvent(event)
           },
           onError: (error) => {
             console.error("Message stream error:", error)
@@ -470,14 +475,6 @@ const ChatPage = () => {
         <ConversationScrollButton />
       </Conversation>
       <div className="grid shrink-0 gap-4 pt-4">
-        {questionEvent && (
-          <div className="px-4 py-2">
-            <QuestionDialog
-              questionEvent={questionEvent}
-              onClose={() => setQuestionEvent(null)}
-            />
-          </div>
-        )}
         <Suggestions className="px-4">
           {suggestions.map((suggestion) => (
             <SuggestionItem
@@ -487,7 +484,19 @@ const ChatPage = () => {
             />
           ))}
         </Suggestions>
-        <div className="w-full px-4 pb-4">
+        <div className="w-full px-4 pb-4 space-y-3">
+          {questionEvent && (
+            <QuestionDialog
+              questionEvent={questionEvent}
+              onClose={() => setQuestionEvent(null)}
+            />
+          )}
+          {approvalEvent && (
+            <ApprovalDialog
+              approvalEvent={approvalEvent}
+              onClose={() => setApprovalEvent(null)}
+            />
+          )}
           <PromptInput globalDrop multiple onSubmit={handleSubmit}>
             <PromptInputHeader>
               <PromptInputAttachmentsDisplay />

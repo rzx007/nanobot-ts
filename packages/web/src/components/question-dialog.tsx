@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { replyQuestion, cancelQuestion } from '@/lib/question-api';
+import { replyQuestion, cancelQuestion } from '@/services';
 import type { QuestionEvent } from '@nanobot/shared';
 import { Button } from '@/components/ui/button';
 
@@ -17,7 +17,7 @@ export function QuestionDialog({ questionEvent, onClose }: QuestionDialogProps) 
 
   const handleOptionToggle = (questionIndex: number, optionLabel: string) => {
     const question = questionEvent.questions[questionIndex];
-    
+
     setAnswers(prev => {
       const newAnswers = [...prev];
       if (question.multiple) {
@@ -92,13 +92,12 @@ export function QuestionDialog({ questionEvent, onClose }: QuestionDialogProps) 
               {question.options.map((option, oIndex) => {
                 const isSelected = answers[qIndex].includes(option.label);
                 const inputType = question.multiple ? 'checkbox' : 'radio';
-                
+
                 return (
                   <label
                     key={oIndex}
-                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                      isSelected ? 'bg-primary/5 border-primary' : 'hover:bg-muted'
-                    }`}
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'bg-primary/5 border-primary' : 'hover:bg-muted'
+                      }`}
                   >
                     <input
                       type={inputType}

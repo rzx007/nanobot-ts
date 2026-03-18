@@ -11,7 +11,7 @@
     "nanobot-ts": "./packages/cli/dist/index.js"
   },
   "scripts": {
-    "build": "cd packages/cli && bun run build",
+    "build": "cd packages/cli && bun run build && cd ../web && bun run build",
     "build:binary": "bun build ./packages/cli/src/index.ts --compile --outfile nanobot",
     "dev": "NODE_ENV=development bun --watch packages/cli/src/run.ts",
     "start": "bun packages/cli/dist/index.js",

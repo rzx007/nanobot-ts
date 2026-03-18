@@ -1,5 +1,5 @@
-import { request } from './request';
-import type { QuestionEvent } from '@nanobot/shared';
+import { request } from '@/lib/request';
+import type { QuestionEvent, ApprovalEvent } from '@nanobot/shared';
 
 export interface ChatHistoryItem {
   role: 'user' | 'assistant';
@@ -11,6 +11,7 @@ export interface MessageStreamCallbacks {
   onChunk?: (chunk: string) => void;
   onDone?: () => void;
   onQuestion?: (event: QuestionEvent) => void;
+  onApproval?: (event: ApprovalEvent) => void;
   onError?: (error: Error) => void;
 }
 
@@ -64,6 +65,9 @@ export async function sendMessage(
           if (currentEvent === 'question') {
             const questionEvent = JSON.parse(data) as QuestionEvent;
             callbacks.onQuestion?.(questionEvent);
+          } else if (currentEvent === 'approval') {
+            const approvalEvent = JSON.parse(data) as ApprovalEvent;
+            callbacks.onApproval?.(approvalEvent);
           } else if (currentEvent === 'stream-text') {
             callbacks.onChunk?.(data);
           }
