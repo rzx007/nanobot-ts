@@ -86,7 +86,7 @@ export interface SubagentManagerConfig {
   bus: import('../../bus').MessageBus;
 
   /** LLM 提供商 */
-  provider: import('@nanobot/providers').LLMProvider;
+  provider: import('@nanobot/providers').LLMProviderImpl;
 
   /** 工具注册表 */
   tools: import('../../tools/registry').ToolRegistry;
@@ -108,7 +108,7 @@ export interface SubagentWorkerConfig {
   config: import('@nanobot/shared').Config;
 
   /** LLM 提供商 */
-  provider: import('@nanobot/providers').LLMProvider;
+  provider: import('@nanobot/providers').LLMProviderImpl;
 
   /** 工具注册表 */
   tools: import('../../tools/registry').ToolRegistry;

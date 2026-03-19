@@ -10,10 +10,8 @@ import type {
   ApprovalEvent,
   IMessageBus,
   InboundMessage,
-  MessageBusStatus,
   OutboundMessage,
-  StreamTextEvent,
-  ToolHintEvent,
+
   QuestionEvent,
 } from '@nanobot/shared';
 import { createLogger } from '@nanobot/logger';
@@ -24,8 +22,9 @@ import { createLogger } from '@nanobot/logger';
 interface MessageBusEvents {
   inbound: (msg: InboundMessage) => void;
   outbound: (msg: OutboundMessage) => void;
-  'stream-text': (event: StreamTextEvent) => void;
-  'tool-hint': (event: ToolHintEvent) => void;
+  'stream-part': (event: any) => void;
+  'stream-finish': (event: any) => void;
+
   question: (event: QuestionEvent) => void;
   approval: (event: ApprovalEvent) => void;
 }
@@ -145,6 +144,9 @@ export class MessageBus extends EventEmitter<MessageBusEvents> implements IMessa
     });
   }
 
+  /**
+   * 获取队列状态（用于调试与健康检查）
+   */
   getStatus(): MessageBusStatus {
     return {
       inboundQueueLength: this.inboundQueue.length,
@@ -153,5 +155,4 @@ export class MessageBus extends EventEmitter<MessageBusEvents> implements IMessa
       outboundConsumersLength: this.outboundConsumers.length,
     };
   }
-
 }

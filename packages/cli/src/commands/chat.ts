@@ -7,7 +7,7 @@ import { error, info } from '../ui';
 import { loadConfig } from '@nanobot/shared';
 import { createRuntime } from '@nanobot/main';
 import { logger } from '@nanobot/logger';
-import type { StreamTextEvent, ToolHintEvent } from '@nanobot/shared';
+import type { StreamPartEvent, ToolHintEvent } from '@nanobot/shared';
 
 export function registerChatCommand(program: Command): void {
   program
@@ -59,9 +59,12 @@ async function runChat(promptArg: string | undefined, interactive?: boolean): Pr
     });
 
     // 订阅流式文本和工具提示事件
-    bus.on('stream-text', (event: StreamTextEvent) => {
+    bus.on('stream-part', (event: StreamPartEvent) => {
       if (event.channel === 'cli') {
-        process.stdout.write(event.chunk);
+        const part = event.part;
+        if (part.type === 'text-delta') {
+          process.stdout.write(part.text);
+        }
       }
     });
     bus.on('tool-hint', (event: ToolHintEvent) => {
@@ -120,9 +123,12 @@ async function runChat(promptArg: string | undefined, interactive?: boolean): Pr
   };
 
   // 订阅流式文本事件
-  bus.on('stream-text', event => {
+  bus.on('stream-part', event => {
     if (event.channel === 'cli') {
-      process.stdout.write(event.chunk);
+      const part = event.part;
+      if (part.type === 'text-delta') {
+        process.stdout.write(part.text);
+      }
     }
   });
 

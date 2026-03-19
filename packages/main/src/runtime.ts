@@ -22,7 +22,7 @@ import { CLIApprovalHandler, MessageApprovalHandler } from './approval';
 import { QuestionManager } from './question';
 import { CLIQuestionHandler } from './question';
 import { MCPToolLoader } from './mcp/loader';
-import { LLMProvider } from '@nanobot/providers';
+import { LLMProviderImpl } from '@nanobot/providers';
 import { ChannelManager } from '@nanobot/channels';
 import { CronService } from './cron';
 import { BrowserOpenTool, BrowserCloseTool, BrowserSnapshotTool, BrowserClickTool, BrowserFillTool, BrowserTypeTool, BrowserScreenshotTool, BrowserWaitTool, BrowserGetTool, BrowserEvalTool, BrowserPressTool, BrowserSelectTool, BrowserCheckTool, BrowserUncheckTool, BrowserScrollTool, BrowserBackTool, BrowserForwardTool, BrowserReloadTool, BrowserPdfTool } from './tools/browser';
@@ -43,7 +43,7 @@ export interface Runtime {
   workspace: string;
   bus: MessageBus;
   sessions: SessionManager;
-  provider: LLMProvider;
+  provider: LLMProviderImpl;
   tools: ToolRegistry;
   memory: MemoryConsolidator;
   skills: SkillLoader;
@@ -92,7 +92,7 @@ class RuntimeImpl implements Runtime {
     public workspace: string,
     public bus: MessageBus,
     public sessions: SessionManager,
-    public provider: LLMProvider,
+    public provider: LLMProviderImpl,
     public tools: ToolRegistry,
     public memory: MemoryConsolidator,
     public skills: SkillLoader,
@@ -229,7 +229,7 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
   const bus = new MessageBus();
 
   // 3. LLM Provider
-  const provider = new LLMProvider(config);
+  const provider = new LLMProviderImpl(config);
 
   // 4. Tool Registry
   const tools = new ToolRegistry();

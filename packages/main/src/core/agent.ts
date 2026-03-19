@@ -4,21 +4,34 @@
  * AI 对话的核心处理引擎
  */
 
-import type {
-  InboundMessage,
-  OutboundMessage,
-  StreamTextEvent,
-  ToolHintEvent,
-} from '@nanobot/shared';
 import { getSessionKey } from '@nanobot/shared';
 import type { ToolRegistry } from '../tools/registry';
-import type { LLMProvider } from '@nanobot/providers';
+import type { LLMProvider, OnChunkResult } from '@nanobot/providers';
 import { taskCancellation } from './task-cancellation';
 import type { Config } from '@nanobot/shared';
 import type { SessionManager } from '../storage';
 import { logger } from '@nanobot/logger';
 import { ContextBuilder } from './context';
 import type { MessageBus } from '../bus';
+
+type InboundMessage = {
+  channel: string;
+  chatId: string;
+  senderId: string;
+  content: string;
+  timestamp: Date;
+  metadata?: Record<string, unknown>;
+  sessionKeyOverride?: string;
+};
+
+type OutboundMessage = {
+  channel: string;
+  chatId: string;
+  content: string;
+  replyTo?: string;
+  media?: string[];
+  metadata?: Record<string, unknown>;
+};
 
 /**
  * Agent 配置选项
@@ -52,6 +65,8 @@ export interface AgentOptions {
  * 负责处理消息、调用 LLM、执行工具的主逻辑
  */
 export class AgentLoop {
+  private static readonly TOOL_RESULT_MAX_CHARS = 12000;
+
   /** 配置 */
   private config: Config;
 
@@ -82,9 +97,6 @@ export class AgentLoop {
   /** 内存窗口 */
   private readonly memoryWindow: number;
 
-  /** 工具结果最大字符数 (截断长输出) */
-  private static readonly TOOL_RESULT_MAX_CHARS = 500;
-
   /**
    * 构造函数
    *
@@ -114,13 +126,10 @@ export class AgentLoop {
     this.running = true;
     logger.info('Agent main loop started');
 
-    // 启动后台循环， 立即返回，防止阻塞主线程
     void (async () => {
       try {
-        // 持续处理入站消息
         while (this.running) {
           try {
-            // 消费入站消息 (超时 1 秒以允许检查 running 状态)
             const msg = await this.bus.consumeInbound();
 
             logger.info(
@@ -157,28 +166,15 @@ export class AgentLoop {
    * 默认使用流式输出，通过消息总线发布事件
    *
    * @param msg - 入站消息
-   * @returns 出站消息或 null
+   @returns 出站消息或 null
    */
   async process(msg: InboundMessage): Promise<OutboundMessage | null> {
     logger.info(`Processing message: ${msg.channel}:${msg.chatId}`);
 
-    // CLI 单次调用时未走 run()，this.running 一直为 false，会导致 _processMessage 内 while 不执行
     const wasRunning = this.running;
     this.running = true;
     try {
-      // 处理 subagent 结果消息
-      if (msg.channel === 'system' && msg.senderId === 'subagent') {
-        return await this.handleSubagentResult(msg);
-      }
-
-      // 执行消息处理流程
       const response = await this._processMessage(msg);
-
-      // 发布到出站队列(未消费)
-      // if (response) {
-      //   await this.bus.publishOutbound(response);
-      // }
-
       return response;
     } catch (err) {
       logger.error({ err }, 'Failed to process message');
@@ -196,7 +192,6 @@ export class AgentLoop {
 
     logger.info(`Processing subagent result: ${content}`);
 
-    // 提取任务结果并生成用户友好的总结
     const summary = await this.summarizeSubagentResult(content);
 
     return {
@@ -210,19 +205,13 @@ export class AgentLoop {
    * 总结 subagent 结果
    */
   private async summarizeSubagentResult(content: string): Promise<string> {
-    // 简单的总结逻辑：提取关键信息并用自然语言表达
-    // TODO: 可以使用 LLM 来生成更智能的总结
-
-    // 提取任务标签和状态
     const statusMatch = content.match(/\[Subagent '([^\]]+)' (completed successfully|failed)/);
     const taskLabel = statusMatch?.[1] ?? '任务';
     const status = statusMatch?.[2] ?? 'completed';
 
-    // 提取结果（在 "Result:" 之后）
     const resultMatch = content.match(/Result:\n([\s\S]*?)\n/);
     const result = resultMatch?.[1] ?? '';
 
-    // 生成用户友好的总结
     let summary: string;
     if (status === 'completed successfully') {
       summary = `${taskLabel} 已完成。`;
@@ -240,11 +229,11 @@ export class AgentLoop {
   }
 
   /**
-   * 去除 <think> 块 (部分模型会在 content 中嵌入思考)
+   * 去除思考块 (部分模型会在 content 中嵌入思考)
    */
   private static _stripThink(text: string | null | undefined): string {
     if (!text || typeof text !== 'string') return '';
-    return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim() || '';
+    return text.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim() || '';
   }
 
   /**
@@ -256,7 +245,11 @@ export class AgentLoop {
    */
   private async _processMessage(msg: InboundMessage): Promise<OutboundMessage> {
     const { channel, chatId, content } = msg;
-    const sessionKey = getSessionKey(msg);
+    const sessionKey = getSessionKey({
+      channel: msg.channel,
+      chatId: msg.chatId,
+      sessionKeyOverride: msg.sessionKeyOverride,
+    });
 
     // 处理 subagent 结果消息
     if (msg.senderId === 'subagent') {
@@ -315,7 +308,6 @@ export class AgentLoop {
         alwaysSkills: this.skills?.getAlwaysSkills() ?? [],
       };
       if (this.skills) {
-        // 构建技能摘要
         const summary = this.skills.buildSkillsSummary();
         if (summary) buildOpts.skillsSummary = summary;
       }
@@ -341,15 +333,27 @@ export class AgentLoop {
       // 获取工具定义，由 SDK 自动执行工具（executeTool + maxSteps）
       const tools = this.tools.getDefinitions();
 
-      const commonParams = {
+      const signal = taskCancellation.register(taskId, {
+        channel,
+        chatId,
+        sessionKey,
+        startedAt: new Date(),
+        origin: 'user',
+      });
+
+      let finishEvent: any = null;
+      let finalAssistantContent = '';
+      let finishEmitted = false;
+
+      const streamResult = await this.provider.streamChat({
         messages,
         tools,
         model: this.config.agents.defaults.model,
         temperature: this.config.agents.defaults.temperature,
         maxTokens: this.config.agents.defaults.maxTokens,
+        abortSignal: signal,
         maxSteps: this.maxIterations,
         executeTool: async (name: string, args: Record<string, unknown>) => {
-          // 传递上下文信息给工具注册表（用于确认机制）
           let result = await this.tools.execute(name, args, {
             channel,
             chatId,
@@ -359,58 +363,82 @@ export class AgentLoop {
           }
           return `Tool "${name}" returned:\n${result}`;
         },
-      };
+        onChunk: (event: OnChunkResult<any>) => {
+          if (event.type === 'chunk') {
+            this.bus.emit('stream-part', {
+              channel,
+              chatId,
+              part: event.chunk,
+            });
+            return;
+          }
 
-      // 发布工具提示事件到消息总线
-      (commonParams as any).onStepFinish = (step: { text?: string; toolCalls?: unknown[] }) => {
-        if (step?.text != null && step.text !== '') {
-          this.bus.emit('tool-hint', {
-            channel,
-            chatId,
-            content: step.text,
-          } as ToolHintEvent);
-        }
-      };
+          if (event.type === 'finish') {
+            finishEvent = event.finish;
+            this.bus.emit('stream-finish', {
+              channel,
+              chatId,
+              part: {
+                type: 'finish',
+                finishReason: event.finish.finishReason,
+                usage: event.finish.usage,
+                totalUsage: event.finish.totalUsage,
+                toolCalls: event.finish.toolCalls,
+              },
+            });
+            finishEmitted = true;
+            return;
+          }
 
-      // 发布流式文本事件到消息总线
-      (commonParams as any).onTextChunk = (chunk: string) => {
-        this.bus.emit('stream-text', {
-          channel,
-          chatId,
-          chunk,
-        } as StreamTextEvent);
-      };
-      const signal = taskCancellation.register(taskId, {
-        channel,
-        chatId,
-        sessionKey,
-        startedAt: new Date(),
-        origin: 'user',
+          if (event.type === 'error') {
+            this.bus.emit('stream-part', {
+              channel,
+              chatId,
+              part: { type: 'error', error: event.error.message },
+            });
+            logger.error(`LLM stream error: ${event.error.message}`);
+            return;
+          }
+
+          if (event.type === 'abort') {
+            this.bus.emit('stream-part', {
+              channel,
+              chatId,
+              part: { type: 'abort', steps: event.steps },
+            });
+          }
+        },
+        onError: (error: Error) => {
+          logger.error(`LLM stream error: ${error.message}`);
+        },
       });
 
-      // 传递取消信号到 LLM 调用端
-      const llmParams = {
-        ...commonParams,
-        abortSignal: signal,
-      };
 
-      // (重复定义的部分已移除)
+      const streamedText = await streamResult.text;
+      if (!finalAssistantContent) {
+        finalAssistantContent = AgentLoop._stripThink(streamedText ?? '');
+      }
 
-      // 根据是否需要流式选择调用方式
-      const isStreamResponse = this.config.agents.defaults.streaming ?? true;
-      const llmResponse = isStreamResponse
-        ? await this.provider.streamChat(llmParams as Parameters<LLMProvider['streamChat']>[0])
-        : await this.provider.chat(llmParams as Parameters<LLMProvider['chat']>[0]);
-      const assistantContent = AgentLoop._stripThink(llmResponse.content ?? '');
+      if (!finishEmitted) {
+        const fallbackFinishEvent = finishEvent ?? {};
+        this.bus.emit('stream-finish', {
+          channel,
+          chatId,
+          assistantContent: finalAssistantContent,
+          finishReason: fallbackFinishEvent.finishReason,
+          usage: fallbackFinishEvent.usage,
+          totalUsage: fallbackFinishEvent.totalUsage,
+          toolCalls: fallbackFinishEvent.toolCalls,
+        });
+      }
 
-      if (assistantContent) {
-        // 存储消息
+      if (finalAssistantContent) {
         await this.sessions.addMessage(sessionKey, {
           role: 'assistant',
-          content: assistantContent,
+          content: finalAssistantContent,
           timestamp: new Date().toISOString(),
           model: this.config.agents.defaults.model,
-        });
+        } as any);
       }
 
       // 内存整合 (超过阈值时): 增量归档，更新 lastConsolidated
@@ -425,11 +453,16 @@ export class AgentLoop {
       return {
         channel,
         chatId,
-        content: typeof assistantContent === 'string' ? assistantContent : '',
+        content: finalAssistantContent,
       };
     } catch (error) {
-      // 重新抛出错误，让调用者处理
-      throw error;
+      const err = error instanceof Error ? error : new Error(String(error));
+      logger.error({ error: err }, 'Failed to process message');
+      return {
+        channel,
+        chatId,
+        content: `Error: ${err.message}`,
+      };
     } finally {
       // 清理任务资源，防止内存泄漏
       taskCancellation.cleanup(taskId);

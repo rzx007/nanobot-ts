@@ -8,7 +8,7 @@ import { z } from 'zod';
 import type { AppContext } from '../types';
 import type { MessageBus } from '@nanobot/main';
 import { ValidationError } from '../types';
-import type { ApprovalEvent } from '@nanobot/shared';
+import type { ApprovalEvent, } from '@nanobot/shared';
 
 const app = new Hono<AppContext>();
 
@@ -48,19 +48,22 @@ app.post('/messages', async c => {
 
   if (enableStream) {
     return streamSSE(c, async (stream) => {
-      // 流式文本监听器
-      const streamTextListener = (event: any) => {
+      // 流式部分监听器
+      const streamPartListener = (event: any) => {
         if (event.channel === 'http' && event.chatId === chatId) {
           stream.writeSSE({
-            event: 'stream-text',
-            data: event.chunk,
+            event: 'part',
+            data: JSON.stringify(event.part),
           });
         }
       };
-
-      // 完成监听器
-      const outboundListener = (msg: any) => {
-        if (msg.channel === 'http' && msg.chatId === chatId) {
+      // 完成事件监听器
+      const streamFinishListener = (event: any) => {
+        if (event.channel === 'http' && event.chatId === chatId) {
+          stream.writeSSE({
+            event: 'finish',
+            data: JSON.stringify(event),
+          });
           stream.writeSSE({
             event: 'done',
             data: '[DONE]',
@@ -89,8 +92,8 @@ app.post('/messages', async c => {
       };
 
       // 注册所有监听器
-      bus.on('stream-text', streamTextListener);
-      bus.on('outbound', outboundListener);
+      bus.on('stream-part', streamPartListener);
+      bus.on('stream-finish', streamFinishListener);
       bus.on('question', questionListener);
       bus.on('approval', approvalListener);
 
@@ -106,8 +109,8 @@ app.post('/messages', async c => {
       await new Promise<void>((resolve) => {
         stream.onAbort(() => {
           clearInterval(heartbeat);
-          bus.off('stream-text', streamTextListener);
-          bus.off('outbound', outboundListener);
+          bus.off('stream-part', streamPartListener);
+          bus.off('stream-finish', streamFinishListener);
           bus.off('question', questionListener);
           bus.off('approval', approvalListener);
           resolve();

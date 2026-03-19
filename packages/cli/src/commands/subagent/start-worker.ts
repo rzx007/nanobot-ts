@@ -8,7 +8,7 @@ import { Worker, Queue } from 'bunqueue/client';
 import { SubagentWorker } from '@nanobot/main';
 import { logger } from '@nanobot/logger';
 import { loadConfig } from '@nanobot/shared';
-import { LLMProvider } from '@nanobot/providers';
+import { LLMProviderImpl } from '@nanobot/providers';
 import { ToolRegistry } from '@nanobot/main';
 import { expandHome } from '@nanobot/utils';
 import {
@@ -39,7 +39,7 @@ async function main() {
       process.exit(1);
     }
 
-    const provider = new LLMProvider(config);
+    const provider = new LLMProviderImpl(config);
     const tools = new ToolRegistry();
     const workspace = expandHome(config.agents.defaults.workspace);
 

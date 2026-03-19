@@ -6,7 +6,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { MessageItem } from '../components/MessageList';
-import { getSessionKey, type OutboundMessage } from '@nanobot/shared';
+import { getSessionKey } from '@nanobot/shared';
 import { SlashCommandExecutor, createAllHandlers } from '../commands';
 import { taskCancellation } from '@nanobot/main';
 import { buildSlashCommandContext } from './slashCommandContext';
@@ -17,6 +17,10 @@ import type { ViewMode } from '../context';
 import type { DialogContextValue } from '../components/Dialog';
 import type { ChatInputHandle } from '../components/ChatInput';
 import { useKeyboard } from '@opentui/react';
+
+type OutboundMessage = { channel: string; chatId: string; content: string };
+type StreamPartEvent = { channel: string; chatId: string; part: any };
+type StepEvent = { channel: string; chatId: string; stepIndex: number; step: any };
 
 export interface UseGatewayChatParams {
   runtime: Runtime | null;
@@ -54,7 +58,6 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
     dialog,
     chatInputRef,
   } = params;
-  // 注：移除了对 AbortSignal 的直接传递以避免 JSON 序列化问题；取消回退实现为 UI 提示。
 
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [inputDisabled, setInputDisabled] = useState(false);
@@ -78,7 +81,11 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
     if (!runtime || historyLoaded) return;
 
     const loadHistory = async () => {
-      const sessionKey = getSessionKey({ channel: 'cli', chatId: 'direct' });
+      const sessionKey = getSessionKey({
+        channel: 'cli',
+        chatId: 'direct',
+        sessionKeyOverride: undefined,
+      });
       const session = await runtime.sessions.getOrCreate(sessionKey);
       setMessages(sessionToMessageItems(session));
       setHistoryLoaded(true);
@@ -87,45 +94,127 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
     void loadHistory();
   }, [runtime, historyLoaded]);
 
-  // 统一订阅：stream-text 仅流式时累积；outbound 时按模式区分：流式更新最后一条，非流式直接追加
+  // 统一订阅：处理完整的流事件
   useEffect(() => {
     if (!runtime) return;
 
-    const streamTextHandler = (event: { channel: string; chatId: string; chunk: string }) => {
+    const streamPartHandler = (event: StreamPartEvent) => {
       if (event.channel !== 'cli' || !streaming) return;
+
+      const part = event.part;
 
       setMessages(m => {
         const last = m[m.length - 1];
-        if (last?.role !== 'assistant' || last.isStreaming === false) {
-          return [
-            ...m,
-            {
-              role: 'assistant',
-              content: event.chunk,
-              isStreaming: true,
-              timestamp: new Date().toISOString(),
-            },
-          ];
-        }
+        if (!last || last.role !== 'assistant') return m;
+
         const next = [...m];
         const lastIdx = next.length - 1;
-        const item = next[lastIdx];
-        if (item) {
-          next[lastIdx] = {
-            ...item,
-            role: 'assistant',
-            content: (item.content ?? '') + event.chunk,
-            isStreaming: true,
-            model: defaultModel,
-            timestamp: item.timestamp ?? '',
-          };
+        const prevItem = next[lastIdx];
+        if (!prevItem) return m;
+
+        const item: MessageItem = {
+          role: prevItem.role,
+          content: prevItem.content ?? '',
+          isStreaming: prevItem.isStreaming ?? false,
+          model: prevItem.model,
+          timestamp: prevItem.timestamp,
+          toolHints: prevItem.toolHints,
+          reasoning: prevItem.reasoning,
+          toolCalls: prevItem.toolCalls ?? [],
+          steps: prevItem.steps ?? [],
+        };
+
+        switch (part.type) {
+          case 'text-delta':
+            item.content = (item.content ?? '') + part.text;
+            break;
+          case 'reasoning-start':
+            item.reasoning = { content: '', duration: 0 };
+            break;
+          case 'reasoning-delta':
+            if (item.reasoning) {
+              item.reasoning.content += part.text;
+            }
+            break;
+          case 'tool-input-start':
+            if (!item.toolCalls) item.toolCalls = [];
+            item.toolCalls.push({
+              name: part.toolName,
+              status: 'running',
+            });
+            break;
+          case 'tool-result':
+            const tool = item.toolCalls?.find(t => t.name === part.toolName);
+            if (tool) {
+              tool.status = part.isError ? 'error' : 'success';
+              tool.result = part.result;
+            }
+            break;
+          case 'tool-error':
+            const errTool = item.toolCalls?.find(t => t.name === part.toolName);
+            if (errTool) {
+              errTool.status = 'error';
+              errTool.error = part.error;
+            }
+            break;
+          case 'finish':
+            item.isStreaming = false;
+            if (typeof part.assistantContent === 'string' && part.assistantContent.length > 0) {
+              item.content = part.assistantContent;
+            }
+            setStatus('idle');
+            setInputDisabled(false);
+            break;
+          case 'error':
+            item.isStreaming = false;
+            setStatus('idle');
+            setInputDisabled(false);
+            break;
+          case 'abort':
+            item.isStreaming = false;
+            setStatus('idle');
+            setInputDisabled(false);
+            break;
         }
+
+        next[lastIdx] = item;
         return next;
       });
     };
 
-    const toolHintHandler = (_event: { channel: string; chatId: string; content: string }) => {
-      // 预留：在对应消息下方显示工具提示
+    const stepHandler = (event: StepEvent) => {
+      if (event.channel !== 'cli') return;
+
+      setMessages(m => {
+        const last = m[m.length - 1];
+        if (!last || last.role !== 'assistant') return m;
+
+        const next = [...m];
+        const lastIdx = next.length - 1;
+        const prevItem = next[lastIdx];
+        if (!prevItem) return m;
+
+        const item: MessageItem = {
+          role: prevItem.role,
+          content: prevItem.content ?? '',
+          isStreaming: prevItem.isStreaming ?? false,
+          model: prevItem.model,
+          timestamp: prevItem.timestamp,
+          toolHints: prevItem.toolHints,
+          reasoning: prevItem.reasoning,
+          toolCalls: prevItem.toolCalls ?? [],
+          steps: prevItem.steps ?? [],
+        };
+
+        if (!item.steps) item.steps = [];
+        item.steps.push({
+          stepIndex: event.stepIndex,
+          text: event.step.text || '',
+        });
+
+        next[lastIdx] = item;
+        return next;
+      });
     };
 
     const questionHandler = (event: QuestionEvent) => {
@@ -135,9 +224,6 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
 
     const approvalHandler = (event: ApprovalEvent) => {
       if (event.channel !== 'cli' || event.type !== 'approval.asked') return;
-
-      // 存储当前的 approval requestID
-      setPendingApprovalRequestID(event.requestID);
 
       const paramsDisplay = Object.entries(event.params)
         .map(([key, value]) => {
@@ -165,6 +251,8 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
           metadata: { approvalRequestID: event.requestID },
         },
       ]);
+
+      setPendingApprovalRequestID(event.requestID);
     };
 
     const outboundHandler = (msg: OutboundMessage) => {
@@ -197,15 +285,15 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
       });
     };
 
-    runtime.bus.on('stream-text', streamTextHandler);
-    runtime.bus.on('tool-hint', toolHintHandler);
+    runtime.bus.on('stream-part', streamPartHandler);
+    runtime.bus.on('step', stepHandler);
     runtime.bus.on('question', questionHandler);
     runtime.bus.on('approval', approvalHandler);
     runtime.bus.on('outbound', outboundHandler);
 
     return () => {
-      runtime.bus.off('stream-text', streamTextHandler);
-      runtime.bus.off('tool-hint', toolHintHandler);
+      runtime.bus.off('stream-part', streamPartHandler);
+      runtime.bus.off('step', stepHandler);
       runtime.bus.off('question', questionHandler);
       runtime.bus.off('approval', approvalHandler);
       runtime.bus.off('outbound', outboundHandler);
@@ -265,32 +353,28 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
       timestamp: new Date(),
       metadata: pendingApprovalRequestID ? { approvalRequestID: pendingApprovalRequestID } : {},
     });
-    // 清除 pending approval
     setPendingApprovalRequestID(null);
   };
 
   const handleCancel = async () => {
-    // 取消当前会话的最近一个任务，sessionKey 取 cli:direct
-    try {
-      const currentSessionKey = getSessionKey({ channel: 'cli', chatId: 'direct' });
-      // 取消当前会话中由用户发起的最近一个任务
-      taskCancellation.cancelCurrentTask(currentSessionKey, 'user');
+    const currentSessionKey = getSessionKey({
+      channel: 'cli',
+      chatId: 'direct',
+      sessionKeyOverride: undefined,
+    });
+    taskCancellation.cancelCurrentTask(currentSessionKey, 'user');
 
-      // 同时取消所有正在运行的 subagent 任务
-      const allTaskStatuses = runtime?.subagentManager?.getAllTaskStatuses();
-      if (allTaskStatuses) {
-        for (const [taskId, status] of allTaskStatuses) {
-          if (status === 'running' || status === 'pending') {
-            try {
-              await runtime?.subagentManager?.cancel(taskId);
-            } catch (error) {
-              console.error(`Failed to cancel subagent task ${taskId}:`, error);
-            }
+    const allTaskStatuses = runtime?.subagentManager?.getAllTaskStatuses();
+    if (allTaskStatuses) {
+      for (const [taskId, taskStatus] of allTaskStatuses) {
+        if (taskStatus === 'running' || taskStatus === 'pending') {
+          try {
+            await runtime?.subagentManager?.cancel(taskId);
+          } catch (error) {
+            console.error(`Failed to cancel subagent task ${taskId}:`, error);
           }
         }
       }
-    } catch {
-      // ignore
     }
     setInputDisabled(false);
     setMessages(m => [

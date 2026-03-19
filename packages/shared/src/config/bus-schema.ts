@@ -5,8 +5,6 @@
  */
 
 import { z } from 'zod';
-import { ToolCallSchema } from './tool-schema';
-
 /**
  * 入站消息 - 从聊天渠道接收到的消息
  */
@@ -72,77 +70,6 @@ export const OutboundMessageSchema = z.object({
 });
 
 /**
- * LLM 响应
- * 从 LLM 提供商获取的响应
- */
-export const LLMResponseSchema = z.object({
-  /** 响应内容 (文本) */
-  content: z.string(),
-
-  /** 是否有工具调用 */
-  hasToolCalls: z.boolean(),
-
-  /** 工具调用列表 */
-  toolCalls: z.array(ToolCallSchema),
-
-  /** 使用统计 (可选) */
-  usage: z
-    .object({
-      /** 提示词 Token 数 */
-      promptTokens: z.number().int().positive(),
-
-      /** 完成 Token 数 */
-      completionTokens: z.number().int().positive(),
-
-      /** 总 Token 数 */
-      totalTokens: z.number().int().positive(),
-    })
-    .optional(),
-});
-
-/**
- * 流式文本事件
- * 用于消息总线的流式输出事件
- */
-export const StreamTextEventSchema = z.object({
-  /** 目标渠道 */
-  channel: z.string(),
-
-  /** 聊天标识 */
-  chatId: z.string(),
-
-  /** 文本块内容 */
-  chunk: z.string(),
-
-  /** 渠道特定的元数据 */
-  metadata: z.record(z.string(), z.unknown()).optional(),
-});
-
-/**
- * 工具提示事件
- * 用于消息总线的工具执行提示事件
- */
-export const ToolHintEventSchema = z.object({
-  /** 目标渠道 */
-  channel: z.string(),
-
-  /** 聊天标识 */
-  chatId: z.string(),
-
-  /** 提示内容 */
-  content: z.string(),
-});
-
-/**
- * 进度选项
- * 用于 onProgress 回调的额外选项
- */
-export const ProgressOptionsSchema = z.object({
-  /** 工具提示 (是否为工具调用提示) */
-  toolHint: z.boolean().optional(),
-});
-
-/**
  * 入站消息
  */
 export type InboundMessage = z.infer<typeof InboundMessageSchema>;
@@ -152,45 +79,12 @@ export type InboundMessage = z.infer<typeof InboundMessageSchema>;
  */
 export type OutboundMessage = z.infer<typeof OutboundMessageSchema>;
 
-/**
- * LLM 响应
- * 从 LLM 提供商获取的响应
- */
-export type LLMResponse = z.infer<typeof LLMResponseSchema>;
-
-/**
- * 流式文本事件
- * 用于消息总线的流式输出事件
- */
-export type StreamTextEvent = z.infer<typeof StreamTextEventSchema>;
-
-/**
- * 工具提示事件
- * 用于消息总线的工具执行提示事件
- */
-export type ToolHintEvent = z.infer<typeof ToolHintEventSchema>;
-
-/**
- * 进度选项
- * 用于 onProgress 回调的额外选项
- */
-export type ProgressOptions = z.infer<typeof ProgressOptionsSchema>;
-
-/**
- * 消息总线队列状态（用于调试与健康检查）
- */
-export interface MessageBusStatus {
-  inboundQueueLength: number;
-  outboundQueueLength: number;
-  inboundConsumersLength: number;
-  outboundConsumersLength: number;
-}
 
 /**
  * 消息总线接口
  *
  * 供 ChannelManager、渠道、ApprovalManager、QuestionManager 等组件使用，解耦具体实现。
- * 入站/出站消息为队列语义；流式、工具提示、审批、提问为事件广播语义。
+ * 入站/出站消息为队列语义；流式部分、完成、工具提示、审批、提问为事件广播语义。
  */
 export interface IMessageBus {
   /** 发布入站消息 */
@@ -209,5 +103,10 @@ export interface IMessageBus {
   addInboundFilter(filter: (msg: InboundMessage) => boolean): void;
 
   /** 获取队列状态（用于调试与健康检查） */
-  getStatus(): MessageBusStatus;
+  getStatus(): {
+    inboundQueueLength: number;
+    outboundQueueLength: number;
+    inboundConsumersLength: number;
+    outboundConsumersLength: number;
+  };
 }

@@ -6,14 +6,14 @@
 
 import type { SubagentTask, SubagentResult, SubagentWorkerConfig } from './types';
 import type { ToolSet } from '@nanobot/shared';
-import { LLMProvider } from '@nanobot/providers';
+import { LLMProviderImpl } from '@nanobot/providers';
 import type { ToolRegistry } from '../../tools/registry';
 import type { Config } from '@nanobot/shared';
 import { logger } from '@nanobot/logger';
 import { withTimeout } from '@nanobot/utils';
 
 export class SubagentWorker {
-  private provider: LLMProvider;
+  private provider: LLMProviderImpl;
   private tools: ToolRegistry;
   private workspace: string;
   private maxIterations: number;
@@ -97,7 +97,7 @@ export class SubagentWorker {
     ];
 
     try {
-      const response = await this.provider.chat({
+      const response = await this.provider.streamChat({
         messages,
         tools: toolDefinitions,
         model: this.config.agents.defaults.model,
@@ -118,7 +118,7 @@ export class SubagentWorker {
         },
       });
 
-      const finalResult = response.content ?? '';
+      const finalResult = (await response.text) ?? '';
 
       return finalResult;
     } catch (error) {
