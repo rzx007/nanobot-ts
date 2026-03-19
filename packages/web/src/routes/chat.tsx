@@ -1,7 +1,8 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createFileRoute } from "@tanstack/react-router"
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input"
 import type { ToolUIPart } from "ai"
-import type { QuestionEvent, ApprovalEvent } from "@nanobot/shared"
+import type { QuestionEvent, ApprovalEvent, StreamPartPayload, StreamFinishEvent } from "@nanobot/shared"
 
 import {
   Attachment,
@@ -9,6 +10,7 @@ import {
   AttachmentRemove,
   Attachments,
 } from "@/components/ai-elements/attachments"
+import type { AttachmentData } from "@/components/ai-elements/attachments"
 import {
   sendMessage,
   getChatHistory,
@@ -75,7 +77,7 @@ import { SpeechInput } from "@/components/ai-elements/speech-input"
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion"
 import { CheckIcon, GlobeIcon } from "lucide-react"
 import { nanoid } from "nanoid"
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 export const Route = createFileRoute("/chat")({
   component: ChatPage,
@@ -95,9 +97,9 @@ interface MessageType {
   }
   tools?: {
     name: string
-    description: string
+    description?: string
     status: ToolUIPart["state"]
-    parameters: Record<string, unknown>
+    parameters?: Record<string, unknown>
     result: string | undefined
     error: string | undefined
   }[]
@@ -154,13 +156,13 @@ const suggestions = [
 
 const chefs = ["OpenAI", "Anthropic", "Google"]
 
-const AttachmentItem = ({
+function AttachmentItem({
   attachment,
   onRemove,
 }: {
-  attachment: { id: string; name: string; type: string; url: string }
+  attachment: AttachmentData
   onRemove: (id: string) => void
-}) => {
+}) {
   const handleRemove = useCallback(() => {
     onRemove(attachment.id)
   }, [onRemove, attachment.id])
@@ -173,7 +175,7 @@ const AttachmentItem = ({
   )
 }
 
-const PromptInputAttachmentsDisplay = () => {
+function PromptInputAttachmentsDisplay() {
   const attachments = usePromptInputAttachments()
 
   const handleRemove = useCallback(
@@ -200,13 +202,13 @@ const PromptInputAttachmentsDisplay = () => {
   )
 }
 
-const SuggestionItem = ({
+function SuggestionItem({
   suggestion,
   onClick,
 }: {
   suggestion: string
   onClick: (suggestion: string) => void
-}) => {
+}) {
   const handleClick = useCallback(() => {
     onClick(suggestion)
   }, [onClick, suggestion])
@@ -214,7 +216,7 @@ const SuggestionItem = ({
   return <Suggestion onClick={handleClick} suggestion={suggestion} />
 }
 
-const ModelItem = ({
+function ModelItem({
   m,
   isSelected,
   onSelect,
@@ -222,7 +224,7 @@ const ModelItem = ({
   m: (typeof models)[0]
   isSelected: boolean
   onSelect: (id: string) => void
-}) => {
+}) {
   const handleSelect = useCallback(() => {
     onSelect(m.id)
   }, [onSelect, m.id])
@@ -245,7 +247,7 @@ const ModelItem = ({
   )
 }
 
-const ChatPage = () => {
+function ChatPage() {
   const [model, setModel] = useState<string>(models[0].id)
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false)
   const [text, setText] = useState<string>("")
@@ -264,11 +266,40 @@ const ChatPage = () => {
   const [questionEvent, setQuestionEvent] = useState<QuestionEvent | null>(null)
   const [approvalEvent, setApprovalEvent] = useState<ApprovalEvent | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   const selectedModelData = useMemo(
     () => models.find((m) => m.id === model),
     [model]
   )
+
+  useEffect(() => {
+    let cancelled = false
+    const loadHistory = async () => {
+      setHistoryLoading(true)
+      try {
+        const history = await getChatHistory(chatId)
+        if (cancelled) return
+        const historyMessages: MessageType[] = history
+          .filter((item) => item.role === "user" || item.role === "assistant")
+          .map((item) => ({
+            from: item.role,
+            key: `${item.role}-${nanoid()}`,
+            versions: [{ id: nanoid(), content: item.content }],
+          }))
+        setMessages(historyMessages)
+      } catch (error) {
+        console.error("Failed to load chat history:", error)
+        toast.error("加载聊天历史失败")
+      } finally {
+        if (!cancelled) setHistoryLoading(false)
+      }
+    }
+    void loadHistory()
+    return () => {
+      cancelled = true
+    }
+  }, [chatId])
 
   const updateMessageContent = useCallback(
     (messageId: string, newContent: string) => {
@@ -289,6 +320,15 @@ const ChatPage = () => {
     []
   )
 
+  const updateMessageByKey = useCallback(
+    (messageKey: string, updater: (message: MessageType) => MessageType) => {
+      setMessages((prev) =>
+        prev.map((msg) => (msg.key === messageKey ? updater(msg) : msg))
+      )
+    },
+    []
+  )
+
   const addUserMessage = useCallback(
     async (content: string) => {
       const userMessage: MessageType = {
@@ -304,10 +344,11 @@ const ChatPage = () => {
 
       setMessages((prev) => [...prev, userMessage])
 
-      const assistantMessageId = `assistant-${Date.now()}`
+      const assistantMessageKey = `assistant-${Date.now()}`
+      const assistantMessageId = `${assistantMessageKey}-v1`
       const assistantMessage: MessageType = {
         from: "assistant",
-        key: `assistant-${Date.now()}`,
+        key: assistantMessageKey,
         versions: [
           {
             content: "",
@@ -323,9 +364,95 @@ const ChatPage = () => {
 
       try {
         await sendMessage(content, chatId, {
-          onChunk: (chunk) => {
-            fullContent += chunk
-            updateMessageContent(assistantMessageId, fullContent)
+          onPart: (part: StreamPartPayload) => {
+            if (part.type === "text-delta") {
+              fullContent += part.text
+              updateMessageContent(assistantMessageId, fullContent)
+              return
+            }
+            if (part.type === "reasoning-start") {
+              updateMessageByKey(assistantMessageKey, (msg) => ({
+                ...msg,
+                reasoning: { content: "", duration: 0 },
+              }))
+              return
+            }
+            if (part.type === "reasoning-delta") {
+              updateMessageByKey(assistantMessageKey, (msg) => ({
+                ...msg,
+                reasoning: {
+                  content: `${msg.reasoning?.content ?? ""}${part.text}`,
+                  duration: msg.reasoning?.duration ?? 0,
+                },
+              }))
+              return
+            }
+            if (part.type === "tool-input-start") {
+              updateMessageByKey(assistantMessageKey, (msg) => ({
+                ...msg,
+                tools: [
+                  ...(msg.tools ?? []),
+                  {
+                    name: part.toolName,
+                    description: `工具 ${part.toolName} 执行中`,
+                    status: "input-available",
+                    parameters: {},
+                    result: undefined,
+                    error: undefined,
+                  },
+                ],
+              }))
+              return
+            }
+            if (part.type === "tool-result") {
+              updateMessageByKey(assistantMessageKey, (msg) => ({
+                ...msg,
+                tools: (msg.tools ?? []).map((tool) =>
+                  tool.name === part.toolName
+                    ? {
+                      ...tool,
+                      status: "output-available",
+                      result: String(("output" in part ? part.output : "") ?? ""),
+                    }
+                    : tool
+                ),
+              }))
+              return
+            }
+            if (part.type === "tool-error") {
+              updateMessageByKey(assistantMessageKey, (msg) => ({
+                ...msg,
+                tools: (msg.tools ?? []).map((tool) =>
+                  tool.name === part.toolName
+                    ? {
+                      ...tool,
+                      status: "output-error",
+                      error: String(("error" in part ? part.error : "") ?? ""),
+                    }
+                    : tool
+                ),
+              }))
+              return
+            }
+            if (part.type === "error") {
+              updateMessageContent(
+                assistantMessageId,
+                fullContent + "\n\n[错误: 流处理失败]"
+              )
+              setIsStreaming(false)
+              setStatus("error")
+              return
+            }
+            if (part.type === "abort") {
+              setIsStreaming(false)
+              setStatus("ready")
+            }
+          },
+          onFinish: (event: StreamFinishEvent) => {
+            if (event.part?.assistantContent) {
+              fullContent = event.part.assistantContent
+              // updateMessageContent(assistantMessageId, fullContent)
+            }
           },
           onDone: () => {
             setIsStreaming(false)
@@ -357,7 +484,7 @@ const ChatPage = () => {
         setStatus("error")
       }
     },
-    [chatId, updateMessageContent]
+    [chatId, updateMessageContent, updateMessageByKey]
   )
 
   const handleSubmit = useCallback(
@@ -415,6 +542,17 @@ const ChatPage = () => {
     setModelSelectorOpen(false)
   }, [])
 
+  const handleClearHistory = useCallback(async () => {
+    try {
+      await clearChatHistory(chatId)
+      setMessages([])
+      toast.success("已清空会话历史")
+    } catch (error) {
+      console.error("Failed to clear chat history:", error)
+      toast.error("清空会话历史失败")
+    }
+  }, [chatId])
+
   const isSubmitDisabled = useMemo(
     () => !text.trim() || isStreaming,
     [text, isStreaming]
@@ -424,6 +562,9 @@ const ChatPage = () => {
     <div className="relative flex h-full flex-col divide-y">
       <Conversation className="h-full flex-1 overflow-hidden">
         <ConversationContent className="h-full overflow-auto">
+          {historyLoading && messages.length === 0 && (
+            <div className="px-4 py-2 text-sm text-muted-foreground">加载历史消息中...</div>
+          )}
           {messages.map(({ versions, ...message }) => (
             <MessageBranch defaultBranch={0} key={message.key}>
               <MessageBranchContent>
@@ -458,6 +599,27 @@ const ChatPage = () => {
                       <MessageContent>
                         <MessageResponse>{version.content}</MessageResponse>
                       </MessageContent>
+                      {message.tools && message.tools.length > 0 && (
+                        <div className="mt-2 space-y-1 rounded-md border bg-muted/30 p-2 text-xs">
+                          {message.tools.map((tool, index) => (
+                            <div className="space-y-1" key={`${tool.name}-${index}`}>
+                              <div className="font-medium">
+                                工具: {tool.name} ({tool.status})
+                              </div>
+                              {tool.result && (
+                                <div className="text-muted-foreground whitespace-pre-wrap">
+                                  结果: {tool.result}
+                                </div>
+                              )}
+                              {tool.error && (
+                                <div className="text-red-500 whitespace-pre-wrap">
+                                  错误: {tool.error}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </Message>
                 ))}
@@ -485,6 +647,16 @@ const ChatPage = () => {
           ))}
         </Suggestions>
         <div className="w-full px-4 pb-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-muted-foreground">会话ID: {chatId}</div>
+            <button
+              className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              onClick={handleClearHistory}
+              type="button"
+            >
+              清空历史
+            </button>
+          </div>
           {questionEvent && (
             <QuestionDialog
               questionEvent={questionEvent}

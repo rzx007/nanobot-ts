@@ -8,7 +8,7 @@ import { z } from 'zod';
 import type { AppContext } from '../types';
 import type { MessageBus } from '@nanobot/main';
 import { ValidationError } from '../types';
-import type { ApprovalEvent, } from '@nanobot/shared';
+import type { ApprovalEvent, QuestionEvent, StreamFinishEvent, StreamPartEvent, } from '@nanobot/shared';
 
 const app = new Hono<AppContext>();
 
@@ -49,7 +49,7 @@ app.post('/messages', async c => {
   if (enableStream) {
     return streamSSE(c, async (stream) => {
       // 流式部分监听器
-      const streamPartListener = (event: any) => {
+      const streamPartListener = (event: StreamPartEvent) => {
         if (event.channel === 'http' && event.chatId === chatId) {
           stream.writeSSE({
             event: 'part',
@@ -58,7 +58,7 @@ app.post('/messages', async c => {
         }
       };
       // 完成事件监听器
-      const streamFinishListener = (event: any) => {
+      const streamFinishListener = (event: StreamFinishEvent) => {
         if (event.channel === 'http' && event.chatId === chatId) {
           stream.writeSSE({
             event: 'finish',
@@ -72,7 +72,7 @@ app.post('/messages', async c => {
       };
 
       // 问题监听器
-      const questionListener = (event: any) => {
+      const questionListener = (event: QuestionEvent) => {
         if (event.channel === 'http' && event.chatId === chatId) {
           stream.writeSSE({
             event: 'question',

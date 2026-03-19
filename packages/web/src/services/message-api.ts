@@ -1,5 +1,10 @@
 import { request } from '@/lib/request';
-import type { QuestionEvent, ApprovalEvent } from '@nanobot/shared';
+import type {
+  QuestionEvent,
+  ApprovalEvent,
+  StreamPartPayload,
+  StreamFinishEvent,
+} from '@nanobot/shared';
 
 export interface ChatHistoryItem {
   role: 'user' | 'assistant';
@@ -8,7 +13,9 @@ export interface ChatHistoryItem {
 }
 
 export interface MessageStreamCallbacks {
+  onPart?: (part: StreamPartPayload) => void;
   onChunk?: (chunk: string) => void;
+  onFinish?: (event: StreamFinishEvent) => void;
   onDone?: () => void;
   onQuestion?: (event: QuestionEvent) => void;
   onApproval?: (event: ApprovalEvent) => void;
@@ -37,40 +44,69 @@ export async function sendMessage(
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const reader = response.body!.getReader();
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('No response body for SSE stream');
+    }
     const decoder = new TextDecoder();
 
-    let currentEvent: string | null = null;
+    let buffer = '';
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
+      buffer += decoder.decode(value, { stream: true });
+      buffer = buffer.replace(/\r\n/g, '\n');
+      const events = buffer.split('\n\n');
+      buffer = events.pop() ?? '';
 
-      for (const line of lines) {
-        const trimmedLine = line.trim();
+      for (const rawEvent of events) {
+        const lines = rawEvent.split('\n');
+        let currentEvent: string | null = null;
+        const dataLines: string[] = [];
 
-        if (trimmedLine.startsWith('event: ')) {
-          currentEvent = trimmedLine.slice(7);
-        } else if (trimmedLine.startsWith('data: ')) {
-          const data = trimmedLine.slice(6);
-
-          if (data === '[DONE]') {
-            callbacks.onDone?.();
-            return;
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (trimmedLine.startsWith('event: ')) {
+            currentEvent = trimmedLine.slice(7);
+          } else if (trimmedLine.startsWith('data: ')) {
+            dataLines.push(trimmedLine.slice(6));
           }
+        }
 
-          if (currentEvent === 'question') {
-            const questionEvent = JSON.parse(data) as QuestionEvent;
-            callbacks.onQuestion?.(questionEvent);
-          } else if (currentEvent === 'approval') {
-            const approvalEvent = JSON.parse(data) as ApprovalEvent;
-            callbacks.onApproval?.(approvalEvent);
-          } else if (currentEvent === 'stream-text') {
-            callbacks.onChunk?.(data);
+        const data = dataLines.join('\n');
+        if (!data) continue;
+
+        if (data === '[DONE]' || currentEvent === 'done') {
+          callbacks.onDone?.();
+          return;
+        }
+
+        if (currentEvent === 'part') {
+          const part = JSON.parse(data) as StreamPartPayload;
+          callbacks.onPart?.(part);
+          if (part.type === 'text-delta') {
+            callbacks.onChunk?.(part.text);
           }
+          continue;
+        }
+
+        if (currentEvent === 'finish') {
+          const finishEvent = JSON.parse(data) as StreamFinishEvent;
+          callbacks.onFinish?.(finishEvent);
+          continue;
+        }
+
+        if (currentEvent === 'question') {
+          const questionEvent = JSON.parse(data) as QuestionEvent;
+          callbacks.onQuestion?.(questionEvent);
+          continue;
+        }
+
+        if (currentEvent === 'approval') {
+          const approvalEvent = JSON.parse(data) as ApprovalEvent;
+          callbacks.onApproval?.(approvalEvent);
         }
       }
     }

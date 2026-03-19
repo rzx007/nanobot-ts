@@ -4,3 +4,4 @@
 
 export * from './question';
 export * from './approval';
+export * from './stream';

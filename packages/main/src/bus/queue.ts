@@ -11,8 +11,9 @@ import type {
   IMessageBus,
   InboundMessage,
   OutboundMessage,
-
   QuestionEvent,
+  StreamPartEvent,
+  StreamFinishEvent,
 } from '@nanobot/shared';
 import { createLogger } from '@nanobot/logger';
 
@@ -22,8 +23,8 @@ import { createLogger } from '@nanobot/logger';
 interface MessageBusEvents {
   inbound: (msg: InboundMessage) => void;
   outbound: (msg: OutboundMessage) => void;
-  'stream-part': (event: any) => void;
-  'stream-finish': (event: any) => void;
+  'stream-part': (event: StreamPartEvent) => void;
+  'stream-finish': (event: StreamFinishEvent) => void;
 
   question: (event: QuestionEvent) => void;
   approval: (event: ApprovalEvent) => void;
@@ -147,12 +148,12 @@ export class MessageBus extends EventEmitter<MessageBusEvents> implements IMessa
   /**
    * 获取队列状态（用于调试与健康检查）
    */
-  getStatus(): MessageBusStatus {
+  getStatus() {
     return {
-      inboundQueueLength: this.inboundQueue.length,
-      outboundQueueLength: this.outboundQueue.length,
-      inboundConsumersLength: this.inboundConsumers.length,
-      outboundConsumersLength: this.outboundConsumers.length,
+      inboundQueueLength: this.inboundQueue.length ?? 0,
+      outboundQueueLength: this.outboundQueue.length ?? 0,
+      inboundConsumersLength: this.inboundConsumers.length ?? 0,
+      outboundConsumersLength: this.outboundConsumers.length ?? 0,
     };
   }
 }
