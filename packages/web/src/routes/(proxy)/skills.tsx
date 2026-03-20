@@ -10,24 +10,24 @@ import { BookOpen, CheckCircle, XCircle, Info } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface SkillInfo {
-  name: string
-  path: string
-  content: string
-  description?: string
-  version?: string
-  author?: string
-  triggers?: string[]
-  available?: boolean
-  _frontmatter?: Record<string, unknown>
+    name: string
+    path: string
+    content: string
+    description?: string
+    part?: string
+    author?: string
+    triggers?: string[]
+    available?: boolean
+    _frontmatter?: Record<string, unknown>
 }
 
 interface SkillsResponse {
-  code: number
-  message: string
-  data: {
-    skills: SkillInfo[]
-    total: number
-  }
+    code: number
+    message: string
+    data: {
+        skills: SkillInfo[]
+        total: number
+    }
 }
 
 export const Route = createFileRoute("/(proxy)/skills")({
@@ -139,9 +139,9 @@ function SkillCard({ skill, onView }: SkillCardProps) {
                             作者: {skill.author}
                         </div>
                     )}
-                    {skill.version && (
+                    {skill.part && (
                         <div className="text-xs text-muted-foreground">
-                            版本: {skill.version}
+                            版本: {skill.part}
                         </div>
                     )}
                     {skill.triggers && skill.triggers.length > 0 && (
@@ -210,11 +210,11 @@ function SkillDetailDialog({ skill, open, onOpenChange }: SkillDetailDialogProps
                         )}
 
                         <div className="grid grid-cols-2 gap-4">
-                            {skill.version && (
+                            {skill.part && (
                                 <div>
                                     <h3 className="text-sm font-semibold mb-2">版本</h3>
                                     <p className="text-sm text-muted-foreground">
-                                        {skill.version}
+                                        {skill.part}
                                     </p>
                                 </div>
                             )}

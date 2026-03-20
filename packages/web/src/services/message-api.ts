@@ -86,9 +86,6 @@ export async function sendMessage(
         if (currentEvent === 'part') {
           const part = JSON.parse(data) as StreamPartPayload;
           callbacks.onPart?.(part);
-          if (part.type === 'text-delta') {
-            callbacks.onChunk?.(part.text);
-          }
           continue;
         }
 
