@@ -6,10 +6,10 @@
 
 import type {
   LanguageModel,
-  TextStreamPart,
   OnFinishEvent,
   StepResult,
   StreamTextResult,
+  UIMessageChunk,
 } from 'ai';
 import type { ToolSet } from '@nanobot/shared';
 
@@ -25,14 +25,14 @@ export type ProviderRegistry = Map<string, ModelFactory>;
 
 /**
  * 统一流事件类型：
- * - chunk: 流式分片（由 chunk.type 区分 text/tool/reasoning 等）
- * - finish/error/abort: 终态事件，便于统一落库与渠道分发
+ * - chunk: AI SDK UI 的 UIMessageChunk（与 streamText().toUIMessageStream() 一致）
+ * - finish/error/nanobot-abort: 终态或扩展事件，便于落库与渠道分发
  */
 export type OnChunkResult<TOOLS extends ToolSet = ToolSet> =
-  | { type: 'chunk'; chunk: TextStreamPart<TOOLS> }
+  | { type: 'chunk'; chunk: UIMessageChunk }
   | { type: 'finish'; finish: OnFinishEvent<TOOLS>; assistantContent: string }
   | { type: 'error'; error: Error }
-  | { type: 'abort'; steps: StepResult<TOOLS>[] };
+  | { type: 'nanobot-abort'; steps: StepResult<TOOLS>[] };
 
 export interface StreamChatParams<TOOLS extends ToolSet> {
   messages: Array<{ role: string; content: unknown; timestamp?: string }>;

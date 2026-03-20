@@ -9,6 +9,13 @@ export type {
   OnChunkResult,
   StreamChatParams,
 } from './types';
+export type {
+  StreamFinishEvent,
+  StreamFinishPart,
+  StreamNanobotAbortPart,
+  StreamPartEvent,
+  StreamPartPayload,
+} from './stream-types';
 export type { ProviderAdapterDefinition } from './catalog/types';
 export type { ProviderId, ProviderSetupOption } from './adapters';
 export {

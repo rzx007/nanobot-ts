@@ -8,7 +8,8 @@ import { z } from 'zod';
 import type { AppContext } from '../types';
 import type { MessageBus } from '@nanobot/main';
 import { ValidationError } from '../types';
-import type { ApprovalEvent, QuestionEvent, StreamFinishEvent, StreamPartEvent, } from '@nanobot/shared';
+import type { StreamFinishEvent, StreamPartEvent } from '@nanobot/providers';
+import type { ApprovalEvent, QuestionEvent } from '@nanobot/shared';
 
 const app = new Hono<AppContext>();
 

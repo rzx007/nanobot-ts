@@ -1,8 +1,8 @@
 /**
  * LLM Provider 实现
  *
- * 使用 Vercel AI SDK 的 streamText，通过适配器注册表调用各供应商。
- * 参考: https://sdk.vercel.ai/docs/ai-sdk-core/generating-text
+ * 使用 Vercel AI SDK 的 streamText，通过适配器注册表调用各供应商；
+ * 流式输出经 toUIMessageStream() 转为 UIMessageChunk，与 useChat / AI SDK UI 协议对齐。
  */
 
 import {
@@ -10,7 +10,6 @@ import {
   stepCountIs,
   type LanguageModel,
   type ModelMessage,
-  type TextStreamPart,
   type OnFinishEvent,
   type StepResult,
   type StreamTextResult,
@@ -133,11 +132,6 @@ export class LLMProviderImpl implements LLMProvider {
 
       const callbacks: Record<string, Function> = {};
 
-      callbacks.onChunk = ({ chunk }: { chunk: TextStreamPart<TOOLS> }) => {
-        if (chunk.type === 'text-delta') assistantContent += chunk.text;
-        onChunk?.({ type: 'chunk', chunk } as OnChunkResult<TOOLS>);
-      };
-
       callbacks.onFinish = (event: OnFinishEvent<TOOLS>) => {
         const finalText = typeof (event as { text?: unknown }).text === 'string'
           ? String((event as { text?: unknown }).text)
@@ -149,14 +143,12 @@ export class LLMProviderImpl implements LLMProvider {
 
       callbacks.onError = ({ error }: { error: unknown }) => {
         const err = error instanceof Error ? error : new Error(String(error));
-        const errorMsg = `LLM stream call failed: ${err.message}`;
-        logger.error(errorMsg);
         onChunk?.({ type: 'error', error: err });
         onError?.(err);
       };
 
       callbacks.onAbort = ({ steps }: { steps: StepResult<TOOLS>[] }) => {
-        onChunk?.({ type: 'abort', steps });
+        onChunk?.({ type: 'nanobot-abort', steps });
         onAbort?.({ steps });
       };
 
@@ -175,6 +167,22 @@ export class LLMProviderImpl implements LLMProvider {
         `LLM call: ${provider}:${modelName}`,
         this.retryState,
       );
+
+      void (async () => {
+        try {
+          for await (const chunk of result.toUIMessageStream()) {
+            if (chunk.type === 'text-delta') {
+              assistantContent += chunk.delta;
+            }
+            onChunk?.({ type: 'chunk', chunk } as OnChunkResult<TOOLS>);
+          }
+        } catch (e) {
+          const err = e instanceof Error ? e : new Error(String(e));
+          logger.error(`UI message stream failed: ${err.message}`);
+          onChunk?.({ type: 'error', error: err });
+          onError?.(err);
+        }
+      })();
 
       return result;
     } catch (error) {

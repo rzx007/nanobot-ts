@@ -30,7 +30,6 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "ai": "^6.0.116",
     "bun-types": "latest",
     "typescript": "^5.9.3"
   }

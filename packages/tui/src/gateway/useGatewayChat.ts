@@ -12,6 +12,7 @@ import { taskCancellation } from '@nanobot/main';
 import { buildSlashCommandContext } from './slashCommandContext';
 import { sessionToMessageItems } from './sessionUtils';
 import type { Runtime } from '@nanobot/main';
+import type { StreamPartEvent } from '@nanobot/providers';
 import type { Config, QuestionEvent, ApprovalEvent } from '@nanobot/shared';
 import type { ViewMode } from '../context';
 import type { DialogContextValue } from '../components/Dialog';
@@ -19,7 +20,6 @@ import type { ChatInputHandle } from '../components/ChatInput';
 import { useKeyboard } from '@opentui/react';
 
 type OutboundMessage = { channel: string; chatId: string; content: string };
-type StreamPartEvent = { channel: string; chatId: string; part: any };
 
 export interface UseGatewayChatParams {
   runtime: Runtime | null;
@@ -125,14 +125,14 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
 
         switch (part.type) {
           case 'text-delta':
-            item.content = (item.content ?? '') + part.text;
+            item.content = (item.content ?? '') + part.delta;
             break;
           case 'reasoning-start':
             item.reasoning = { content: '', duration: 0 };
             break;
           case 'reasoning-delta':
             if (item.reasoning) {
-              item.reasoning.content += part.text;
+              item.reasoning.content += part.delta;
             }
             break;
           case 'tool-input-start':
@@ -142,25 +142,39 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
               status: 'running',
             });
             break;
-          case 'tool-result':
-            const tool = item.toolCalls?.find(t => t.name === part.toolName);
-            if (tool) {
-              tool.status = part.isError ? 'error' : 'success';
-              tool.result = part.result;
+          case 'tool-output-available': {
+            const calls = item.toolCalls;
+            if (calls) {
+              for (let i = calls.length - 1; i >= 0; i--) {
+                const t = calls[i];
+                if (t && t.status === 'running') {
+                  t.status = 'success';
+                  t.result =
+                    typeof part.output === 'string'
+                      ? part.output
+                      : JSON.stringify(part.output);
+                  break;
+                }
+              }
             }
             break;
-          case 'tool-error':
-            const errTool = item.toolCalls?.find(t => t.name === part.toolName);
-            if (errTool) {
-              errTool.status = 'error';
-              errTool.error = part.error;
+          }
+          case 'tool-output-error': {
+            const calls = item.toolCalls;
+            if (calls) {
+              for (let i = calls.length - 1; i >= 0; i--) {
+                const t = calls[i];
+                if (t && t.status === 'running') {
+                  t.status = 'error';
+                  t.error = part.errorText;
+                  break;
+                }
+              }
             }
             break;
+          }
           case 'finish':
             item.isStreaming = false;
-            if (typeof part.assistantContent === 'string' && part.assistantContent.length > 0) {
-              item.content = part.assistantContent;
-            }
             setStatus('idle');
             setInputDisabled(false);
             break;
@@ -170,6 +184,7 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
             setInputDisabled(false);
             break;
           case 'abort':
+          case 'nanobot-abort':
             item.isStreaming = false;
             setStatus('idle');
             setInputDisabled(false);

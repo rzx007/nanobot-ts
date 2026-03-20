@@ -27,6 +27,7 @@
     "@nanobot/cli": "workspace:*",
     "@nanobot/logger": "workspace:*",
     "@nanobot/main": "workspace:*",
+    "@nanobot/providers": "workspace:*",
     "@nanobot/shared": "workspace:*",
     "@nanobot/utils": "workspace:*",
     "hono": "^4.12.5",

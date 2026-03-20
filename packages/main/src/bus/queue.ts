@@ -6,14 +6,13 @@
  */
 
 import { EventEmitter } from 'eventemitter3';
+import type { StreamFinishEvent, StreamPartEvent } from '@nanobot/providers';
 import type {
   ApprovalEvent,
   IMessageBus,
   InboundMessage,
   OutboundMessage,
   QuestionEvent,
-  StreamPartEvent,
-  StreamFinishEvent,
 } from '@nanobot/shared';
 import { createLogger } from '@nanobot/logger';
 

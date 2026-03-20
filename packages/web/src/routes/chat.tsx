@@ -2,7 +2,8 @@
 import { createFileRoute } from "@tanstack/react-router"
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input"
 import type { ToolUIPart } from "ai"
-import type { QuestionEvent, ApprovalEvent, StreamPartPayload } from "@nanobot/shared"
+import type { StreamPartPayload } from "@nanobot/providers"
+import type { QuestionEvent, ApprovalEvent } from "@nanobot/shared"
 
 import {
   Attachment,
@@ -382,44 +383,69 @@ function ChatPage() {
       setMessages((prev) => [...prev, assistantMessage])
 
       setIsStreaming(true)
-      let streamingTextPartId: string | null = assistantMessageId
 
       try {
         await sendMessage(content, chatId, {
           onPart: (part: StreamPartPayload) => {
+            if (
+              part.type === "start" ||
+              part.type === "finish" ||
+              part.type === "start-step" ||
+              part.type === "finish-step" ||
+              part.type === "message-metadata"
+            ) {
+              return
+            }
+
+            if (part.type === "text-start") {
+              updateMessageByKey(assistantMessageKey, (msg) => {
+                const nextParts = [...msg.parts]
+                const onlyEmptyPlaceholder =
+                  nextParts.length === 1 &&
+                  nextParts[0]?.kind === "text" &&
+                  (nextParts[0] as MessageTextPart).content === ""
+                if (onlyEmptyPlaceholder && nextParts[0]) {
+                  const tp = nextParts[0] as MessageTextPart
+                  nextParts[0] = { ...tp, id: part.id, content: "" }
+                  return { ...msg, parts: nextParts }
+                }
+                if (
+                  !nextParts.some((p) => p.kind === "text" && p.id === part.id)
+                ) {
+                  nextParts.push({
+                    kind: "text",
+                    id: part.id,
+                    content: "",
+                  })
+                }
+                return { ...msg, parts: nextParts }
+              })
+              return
+            }
             if (part.type === "text-delta") {
               updateMessageByKey(assistantMessageKey, (msg) => {
                 const nextParts = [...msg.parts]
-                if (streamingTextPartId === null) {
-                  const newId = nanoid()
-                  nextParts.push({
-                    kind: "text",
-                    id: newId,
-                    content: part.text,
-                  })
-                  streamingTextPartId = newId
-                  return { ...msg, parts: nextParts }
-                }
                 const idx = nextParts.findIndex(
-                  (p) => p.kind === "text" && p.id === streamingTextPartId
+                  (p) => p.kind === "text" && p.id === part.id
                 )
                 if (idx === -1) {
-                  const newId = nanoid()
                   nextParts.push({
                     kind: "text",
-                    id: newId,
-                    content: part.text,
+                    id: part.id,
+                    content: part.delta,
                   })
-                  streamingTextPartId = newId
                   return { ...msg, parts: nextParts }
                 }
                 const tp = nextParts[idx] as MessageTextPart
                 nextParts[idx] = {
                   ...tp,
-                  content: tp.content + part.text,
+                  content: tp.content + part.delta,
                 }
                 return { ...msg, parts: nextParts }
               })
+              return
+            }
+            if (part.type === "text-end") {
               return
             }
             if (part.type === "reasoning-start") {
@@ -433,27 +459,18 @@ function ChatPage() {
               updateMessageByKey(assistantMessageKey, (msg) => ({
                 ...msg,
                 reasoning: {
-                  content: `${msg.reasoning?.content ?? ""}${part.text}`,
+                  content: `${msg.reasoning?.content ?? ""}${part.delta}`,
                   duration: msg.reasoning?.duration ?? 0,
                 },
               }))
               return
             }
+            if (part.type === "reasoning-end") {
+              return
+            }
             if (part.type === "tool-input-start") {
               const toolCallId =
-                "toolCallId" in part &&
-                typeof (part as { toolCallId?: unknown }).toolCallId ===
-                  "string" &&
-                (part as { toolCallId: string }).toolCallId.length > 0
-                  ? (part as { toolCallId: string }).toolCallId
-                  : nanoid()
-              const toolInput =
-                "input" in part &&
-                part.input != null &&
-                typeof part.input === "object" &&
-                !Array.isArray(part.input)
-                  ? (part.input as Record<string, unknown>)
-                  : undefined
+                part.toolCallId.length > 0 ? part.toolCallId : nanoid()
               updateMessageByKey(assistantMessageKey, (msg) => ({
                 ...msg,
                 parts: [
@@ -463,108 +480,83 @@ function ChatPage() {
                     id: `tool-${toolCallId}`,
                     toolCallId,
                     toolName: part.toolName,
-                    status: "input-available",
+                    status: "input-streaming",
                     description: `工具 ${part.toolName} 执行中`,
-                    input: toolInput,
                   },
                 ],
               }))
-              streamingTextPartId = null
               return
             }
-            if (part.type === "tool-result") {
-              const toolCallId =
-                "toolCallId" in part &&
-                typeof (part as { toolCallId?: unknown }).toolCallId ===
-                  "string"
-                  ? (part as { toolCallId: string }).toolCallId
-                  : ""
-              const rawOut =
-                "output" in part
-                  ? (part as { output?: unknown }).output
-                  : "result" in part
-                    ? (part as { result?: unknown }).result
-                    : undefined
-              const resultStr = stringifyToolOutput(rawOut)
+            if (part.type === "tool-input-available") {
+              const inputObj =
+                part.input != null &&
+                typeof part.input === "object" &&
+                !Array.isArray(part.input)
+                  ? (part.input as Record<string, unknown>)
+                  : undefined
               updateMessageByKey(assistantMessageKey, (msg) => {
                 const nextParts = [...msg.parts]
-                if (toolCallId.length > 0) {
-                  const tIdx = nextParts.findIndex(
-                    (p) =>
-                      p.kind === "tool" && p.toolCallId === toolCallId
-                  )
-                  if (tIdx >= 0) {
-                    const tp = nextParts[tIdx] as MessageToolPart
-                    nextParts[tIdx] = {
-                      ...tp,
-                      status: "output-available",
-                      result: resultStr,
-                    }
-                    return { ...msg, parts: nextParts }
+                const tIdx = nextParts.findIndex(
+                  (p) =>
+                    p.kind === "tool" && p.toolCallId === part.toolCallId
+                )
+                if (tIdx >= 0) {
+                  const tp = nextParts[tIdx] as MessageToolPart
+                  nextParts[tIdx] = {
+                    ...tp,
+                    toolName: part.toolName,
+                    status: "input-available",
+                    input: inputObj ?? tp.input,
                   }
+                  return { ...msg, parts: nextParts }
                 }
-                for (let i = nextParts.length - 1; i >= 0; i--) {
-                  const p = nextParts[i]
-                  if (
-                    p?.kind === "tool" &&
-                    p.toolName === part.toolName &&
-                    (p.status === "input-available" ||
-                      p.status === "input-streaming")
-                  ) {
-                    nextParts[i] = {
-                      ...p,
-                      status: "output-available",
-                      result: resultStr,
-                    }
-                    break
+                nextParts.push({
+                  kind: "tool",
+                  id: `tool-${part.toolCallId}`,
+                  toolCallId: part.toolCallId,
+                  toolName: part.toolName,
+                  status: "input-available",
+                  description: `工具 ${part.toolName} 执行中`,
+                  input: inputObj,
+                })
+                return { ...msg, parts: nextParts }
+              })
+              return
+            }
+            if (part.type === "tool-output-available") {
+              const resultStr = stringifyToolOutput(part.output)
+              updateMessageByKey(assistantMessageKey, (msg) => {
+                const nextParts = [...msg.parts]
+                const tIdx = nextParts.findIndex(
+                  (p) =>
+                    p.kind === "tool" && p.toolCallId === part.toolCallId
+                )
+                if (tIdx >= 0) {
+                  const tp = nextParts[tIdx] as MessageToolPart
+                  nextParts[tIdx] = {
+                    ...tp,
+                    status: "output-available",
+                    result: resultStr,
                   }
                 }
                 return { ...msg, parts: nextParts }
               })
               return
             }
-            if (part.type === "tool-error") {
-              const toolCallId =
-                "toolCallId" in part &&
-                typeof (part as { toolCallId?: unknown }).toolCallId ===
-                  "string"
-                  ? (part as { toolCallId: string }).toolCallId
-                  : ""
-              const errStr = String(
-                ("error" in part ? (part as { error?: unknown }).error : "") ??
-                  ""
-              )
+            if (part.type === "tool-output-error") {
+              const errStr = part.errorText
               updateMessageByKey(assistantMessageKey, (msg) => {
                 const nextParts = [...msg.parts]
-                if (toolCallId.length > 0) {
-                  const tIdx = nextParts.findIndex(
-                    (p) =>
-                      p.kind === "tool" && p.toolCallId === toolCallId
-                  )
-                  if (tIdx >= 0) {
-                    const tp = nextParts[tIdx] as MessageToolPart
-                    nextParts[tIdx] = {
-                      ...tp,
-                      status: "output-error",
-                      error: errStr,
-                    }
-                    return { ...msg, parts: nextParts }
-                  }
-                }
-                for (let i = nextParts.length - 1; i >= 0; i--) {
-                  const p = nextParts[i]
-                  if (
-                    p?.kind === "tool" &&
-                    p.toolName === part.toolName &&
-                    (p.status === "input-available" ||
-                      p.status === "input-streaming")
-                  ) {
-                    nextParts[i] = {
-                      ...p,
-                      status: "output-error",
-                      error: errStr,
-                    }
-                    break
+                const tIdx = nextParts.findIndex(
+                  (p) =>
+                    p.kind === "tool" && p.toolCallId === part.toolCallId
+                )
+                if (tIdx >= 0) {
+                  const tp = nextParts[tIdx] as MessageToolPart
+                  nextParts[tIdx] = {
+                    ...tp,
+                    status: "output-error",
+                    error: errStr,
                   }
                 }
                 return { ...msg, parts: nextParts }
@@ -572,15 +564,24 @@ function ChatPage() {
               return
             }
             if (part.type === "error") {
+              const detail =
+                typeof part.errorText === "string" && part.errorText.length > 0
+                  ? part.errorText
+                  : "流处理失败"
               appendToAssistantLastText(
                 assistantMessageKey,
-                "\n\n[错误: 流处理失败]"
+                `\n\n[错误: ${detail}]`
               )
               setIsStreaming(false)
               setStatus("error")
               return
             }
             if (part.type === "abort") {
+              setIsStreaming(false)
+              setStatus("ready")
+              return
+            }
+            if (part.type === "nanobot-abort") {
               setIsStreaming(false)
               setStatus("ready")
             }

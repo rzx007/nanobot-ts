@@ -7,7 +7,7 @@ import { error, info } from '../ui';
 import { loadConfig } from '@nanobot/shared';
 import { createRuntime } from '@nanobot/main';
 import { logger } from '@nanobot/logger';
-import type { StreamPartEvent } from '@nanobot/shared';
+import type { StreamPartEvent } from '@nanobot/providers';
 
 export function registerChatCommand(program: Command): void {
   program
@@ -63,7 +63,7 @@ async function runChat(promptArg: string | undefined, interactive?: boolean): Pr
       if (event.channel === 'cli') {
         const part = event.part;
         if (part.type === 'text-delta') {
-          process.stdout.write(part.text);
+          process.stdout.write(part.delta);
         }
       }
     });
@@ -122,7 +122,7 @@ async function runChat(promptArg: string | undefined, interactive?: boolean): Pr
     if (event.channel === 'cli') {
       const part = event.part;
       if (part.type === 'text-delta') {
-        process.stdout.write(part.text);
+        process.stdout.write(part.delta);
       }
     }
   });

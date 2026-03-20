@@ -1,7 +1,11 @@
-import { logger } from '@nanobot/logger';
-import type { LLMProvider, OnChunkResult } from '@nanobot/providers';
+import type {
+  LLMProvider,
+  OnChunkResult,
+  StreamFinishPart,
+  StreamPartPayload,
+} from '@nanobot/providers';
 import type { MessageBus } from '../../bus';
-import type { ToolSet, StreamFinishPart, StreamPartPayload } from '@nanobot/shared';
+import type { ToolSet } from '@nanobot/shared';
 
 export interface StreamBridgeDeps {
   provider: LLMProvider;
@@ -22,7 +26,7 @@ export interface StreamBridgeRunOptions<TOOLS extends ToolSet> {
 }
 
 export class StreamBridge {
-  constructor(private readonly deps: StreamBridgeDeps) {}
+  constructor(private readonly deps: StreamBridgeDeps) { }
 
   async streamAndEmit<TOOLS extends ToolSet>(
     options: StreamBridgeRunOptions<TOOLS>,
@@ -70,25 +74,20 @@ export class StreamBridge {
           this.deps.bus.emit('stream-part', {
             channel,
             chatId,
-            part: { type: 'error', error: event.error.message },
+            part: { type: 'error', errorText: event.error.message },
           });
-          logger.error(`LLM stream error: ${event.error.message}`);
           return;
         }
-        if (event.type === 'abort') {
-          const abortPart: StreamPartPayload = {
-            type: 'abort',
-            steps: event.steps as any,
-          };
+        if (event.type === 'nanobot-abort') {
           this.deps.bus.emit('stream-part', {
             channel,
             chatId,
-            part: abortPart,
+            part: {
+              type: 'nanobot-abort',
+              steps: event.steps,
+            } as unknown as StreamPartPayload,
           });
         }
-      },
-      onError: (error: Error) => {
-        logger.error(`LLM stream error: ${error.message}`);
       },
     });
 

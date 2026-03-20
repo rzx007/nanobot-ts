@@ -1,10 +1,6 @@
 import { request } from '@/lib/request';
-import type {
-  QuestionEvent,
-  ApprovalEvent,
-  StreamPartPayload,
-  StreamFinishEvent,
-} from '@nanobot/shared';
+import type { StreamFinishEvent, StreamPartPayload } from '@nanobot/providers';
+import type { QuestionEvent, ApprovalEvent } from '@nanobot/shared';
 
 export interface ChatHistoryItem {
   role: 'user' | 'assistant';

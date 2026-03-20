@@ -1,10 +1,20 @@
-import type { TextStreamPart, OnFinishEvent, StepResult } from 'ai';
-import type { ToolSet } from '../config/mcp-schema';
+import type { OnFinishEvent, StepResult, UIMessageChunk } from 'ai';
+import type { ToolSet } from '@nanobot/shared';
 
+/**
+ * Core `onAbort` 携带 steps，与 UIMessageChunk 的 `abort`（仅 reason）区分。
+ */
+export type StreamNanobotAbortPart<TOOLS extends ToolSet = ToolSet> = {
+  type: 'nanobot-abort';
+  steps: StepResult<TOOLS>[];
+};
+
+/**
+ * SSE / 总线流式分片：对齐 AI SDK UI 的 UIMessageChunk，外加 nanobot 扩展。
+ */
 export type StreamPartPayload<TOOLS extends ToolSet = ToolSet> =
-  | TextStreamPart<TOOLS>
-  | { type: 'error'; error: string }
-  | { type: 'abort'; steps: StepResult<TOOLS>[] };
+  | UIMessageChunk
+  | StreamNanobotAbortPart<TOOLS>;
 
 export interface StreamPartEvent<TOOLS extends ToolSet = ToolSet> {
   channel: string;
