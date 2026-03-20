@@ -26,6 +26,7 @@
     "@nanobot/cli": "workspace:*",
     "@nanobot/logger": "workspace:*",
     "@nanobot/main": "workspace:*",
+    "@nanobot/providers": "workspace:*",
     "@nanobot/shared": "workspace:*",
     "@nanobot/utils": "workspace:*",
     "@opentui/core": "^0.1.87",

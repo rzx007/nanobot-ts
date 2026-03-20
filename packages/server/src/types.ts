@@ -47,7 +47,7 @@ export interface ApiErrorResponse {
   error: {
     code: number;
     message: string;
-    data?: T;
+    data?: unknown;
     details?: unknown;
   }
 }

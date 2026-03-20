@@ -31,6 +31,9 @@ export const configSchema = z.object({
     openrouter: z.object({
       apiBase: z.string().url().optional(),
     }),
+    zhipu: z.object({
+      apiBase: z.string().url().optional(),
+    }).optional(),
   }),
   tools: z.object({
     restrictToWorkspace: z.boolean(),

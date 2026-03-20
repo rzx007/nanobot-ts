@@ -20,7 +20,6 @@ import { useKeyboard } from '@opentui/react';
 
 type OutboundMessage = { channel: string; chatId: string; content: string };
 type StreamPartEvent = { channel: string; chatId: string; part: any };
-type StepEvent = { channel: string; chatId: string; stepIndex: number; step: any };
 
 export interface UseGatewayChatParams {
   runtime: Runtime | null;
@@ -182,41 +181,6 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
       });
     };
 
-    const stepHandler = (event: StepEvent) => {
-      if (event.channel !== 'cli') return;
-
-      setMessages(m => {
-        const last = m[m.length - 1];
-        if (!last || last.role !== 'assistant') return m;
-
-        const next = [...m];
-        const lastIdx = next.length - 1;
-        const prevItem = next[lastIdx];
-        if (!prevItem) return m;
-
-        const item: MessageItem = {
-          role: prevItem.role,
-          content: prevItem.content ?? '',
-          isStreaming: prevItem.isStreaming ?? false,
-          model: prevItem.model,
-          timestamp: prevItem.timestamp,
-          toolHints: prevItem.toolHints,
-          reasoning: prevItem.reasoning,
-          toolCalls: prevItem.toolCalls ?? [],
-          steps: prevItem.steps ?? [],
-        };
-
-        if (!item.steps) item.steps = [];
-        item.steps.push({
-          stepIndex: event.stepIndex,
-          text: event.step.text || '',
-        });
-
-        next[lastIdx] = item;
-        return next;
-      });
-    };
-
     const questionHandler = (event: QuestionEvent) => {
       if (event.channel !== 'cli') return;
       setMessages(m => [...m, { role: 'assistant', content: event.questions.map(q => q.question).join('\n'), timestamp: new Date().toISOString() }]);
@@ -286,14 +250,12 @@ export function useGatewayChat(params: UseGatewayChatParams): UseGatewayChatResu
     };
 
     runtime.bus.on('stream-part', streamPartHandler);
-    runtime.bus.on('step', stepHandler);
     runtime.bus.on('question', questionHandler);
     runtime.bus.on('approval', approvalHandler);
     runtime.bus.on('outbound', outboundHandler);
 
     return () => {
       runtime.bus.off('stream-part', streamPartHandler);
-      runtime.bus.off('step', stepHandler);
       runtime.bus.off('question', questionHandler);
       runtime.bus.off('approval', approvalHandler);
       runtime.bus.off('outbound', outboundHandler);

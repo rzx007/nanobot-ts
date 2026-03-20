@@ -100,7 +100,7 @@ export function MessageList({ messages }: MessageListProps) {
             {msg.reasoning && (
               <box flexDirection="column" paddingTop={1}>
                 <text fg={theme.textMuted}>
-                  🤔 <text bold>Thinking</text>
+                  🤔 <text>Thinking</text>
                 </text>
                 <box paddingLeft={2}>
                   <text fg={theme.textMuted}>{msg.reasoning.content.slice(0, 300)}</text>

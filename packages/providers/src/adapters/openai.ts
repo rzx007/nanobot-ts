@@ -5,9 +5,12 @@
 
 import { createOpenAI } from '@ai-sdk/openai';
 import type { ModelFactory } from '../types';
-import type { ProviderConfig } from '@nanobot/shared';
+import type { ProviderConfig } from '../config/schemas';
+import type { ProviderAdapterDefinition } from '../catalog/types';
 
 export const PROVIDER_ID = 'openai';
+
+const DEFAULT_API_BASE = 'https://api.openai.com/v1';
 
 export function createOpenAIAdapter(config: ProviderConfig): ModelFactory | null {
   if (!config?.apiKey) return null;
@@ -17,3 +20,14 @@ export function createOpenAIAdapter(config: ProviderConfig): ModelFactory | null
   });
   return (modelName: string) => client(modelName);
 }
+
+export const openaiProviderDefinition = {
+  id: 'openai',
+  configKey: 'openai',
+  label: 'OpenAI',
+  defaultModel: 'gpt-4o',
+  defaultApiBase: DEFAULT_API_BASE,
+  suggestedModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
+  apiKeyPlaceholder: 'sk-...',
+  create: createOpenAIAdapter,
+} as const satisfies ProviderAdapterDefinition;

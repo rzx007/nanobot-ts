@@ -2,30 +2,14 @@
  * Provider 适配器注册
  *
  * 从配置创建各供应商的 ModelFactory 并填入注册表。
- * 新增供应商时：1) 在 adapters 下新增 xxx.ts  2) 在本文件注册
+ * 新增供应商：在 adapters/<name>.ts 增加 definition 并加入 definitions.ts 列表。
  */
 
 import type { Config } from '@nanobot/shared';
-import type { ModelFactory, ProviderRegistry } from '../types';
-import { createOpenAIAdapter } from './openai';
-import { createAnthropicAdapter } from './anthropic';
-import { createDeepSeekAdapter } from './deepseek';
-import { createOpenRouterAdapter } from './openrouter';
-import { createGroqAdapter } from './groq';
+import type { ProviderConfig } from '../config/schemas';
+import type { ProviderRegistry } from '../types';
+import { LLM_ADAPTER_DEFINITIONS } from './definitions';
 import { logger } from '@nanobot/logger';
-
-/** 适配器列表：id -> (config) => ModelFactory | null */
-const ADAPTERS: Array<{
-  id: string;
-  create: (config: unknown) => ModelFactory | null;
-  configKey: keyof Config['providers'];
-}> = [
-  { id: 'openai', create: createOpenAIAdapter as (c: unknown) => ModelFactory | null, configKey: 'openai' },
-  { id: 'anthropic', create: createAnthropicAdapter as (c: unknown) => ModelFactory | null, configKey: 'anthropic' },
-  { id: 'deepseek', create: createDeepSeekAdapter as (c: unknown) => ModelFactory | null, configKey: 'deepseek' },
-  { id: 'openrouter', create: createOpenRouterAdapter as (c: unknown) => ModelFactory | null, configKey: 'openrouter' },
-  { id: 'groq', create: createGroqAdapter as (c: unknown) => ModelFactory | null, configKey: 'groq' },
-];
 
 /**
  * 根据配置创建 Provider 注册表
@@ -33,19 +17,32 @@ const ADAPTERS: Array<{
  */
 export function createProviderRegistry(config: Config): ProviderRegistry {
   const registry: ProviderRegistry = new Map();
-  for (const { id, create, configKey } of ADAPTERS) {
-    const providerConfig = config.providers[configKey];
-    const factory = create(providerConfig);
+  const providers = config.providers as Record<string, ProviderConfig | undefined>;
+  for (const def of LLM_ADAPTER_DEFINITIONS) {
+    const providerConfig = providers[def.configKey];
+    const factory = def.create(providerConfig ?? { apiKey: '' });
     if (factory) {
-      registry.set(id, factory);
-      logger.info(`${id} Provider initialized`);
+      registry.set(def.id, factory);
+      logger.info(`${def.id} Provider initialized`);
     }
   }
   return registry;
 }
+
+export { LLM_ADAPTER_DEFINITIONS } from './definitions';
+export type { ProviderId, ProviderSetupOption } from './definitions';
+export {
+  PROVIDER_IDS,
+  PROVIDER_SETUP_OPTIONS,
+  PROVIDER_DEFAULTS,
+  PROVIDER_MODELS,
+  API_KEY_PLACEHOLDERS,
+  getDefaultRegisteredProviders,
+} from './definitions';
 
 export { createOpenAIAdapter } from './openai';
 export { createAnthropicAdapter } from './anthropic';
 export { createDeepSeekAdapter } from './deepseek';
 export { createOpenRouterAdapter } from './openrouter';
 export { createGroqAdapter } from './groq';
+export { createZhipuAdapter } from './zhipu';

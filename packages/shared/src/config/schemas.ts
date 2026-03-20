@@ -4,6 +4,7 @@
 
 import { z } from 'zod';
 import { ApprovalConfigSchema } from './approval-schema';
+import { ProviderConfigSchema, ProvidersConfigSchema } from '@nanobot/providers/config';
 
 export const AgentDefaultsSchema = z.object({
   /** 工作区路径 */
@@ -128,37 +129,6 @@ export const ChannelsConfigSchema = z.object({
 
   /** CLI 配置 */
   cli: CLIConfigSchema,
-});
-
-export const ProviderConfigSchema = z.object({
-  /** API 密钥 */
-  apiKey: z.string().min(1),
-
-  /** API 基础 URL */
-  apiBase: z.string().url().optional(),
-
-  /** 额外的请求头 */
-  extraHeaders: z.record(z.string(), z.string()).optional(),
-});
-
-export const ProvidersConfigSchema = z.object({
-  /** OpenAI 配置 */
-  openai: ProviderConfigSchema,
-
-  /** Anthropic 配置 */
-  anthropic: ProviderConfigSchema,
-
-  /** OpenRouter 配置 */
-  openrouter: ProviderConfigSchema,
-
-  /** Google 配置 */
-  google: ProviderConfigSchema.optional(),
-
-  /** DeepSeek 配置 */
-  deepseek: ProviderConfigSchema,
-
-  /** Groq 配置 */
-  groq: ProviderConfigSchema.optional(),
 });
 
 /**

@@ -38,6 +38,7 @@ const initialDefaults = {
     deepseek: { apiBase: 'https://api.deepseek.com' },
     groq: { apiBase: 'https://api.groq.com/openai/v1' },
     openrouter: { apiBase: 'https://openrouter.ai/api/v1' },
+    zhipu: { apiBase: 'https://open.bigmodel.cn/api/paas/v4' },
   },
   tools: {
     restrictToWorkspace: false,
@@ -135,6 +136,7 @@ function ConfigPage() {
                           </SelectItem>
                           <SelectItem value="google:gemini-2.0-flash">Google Gemini 2.0 Flash</SelectItem>
                           <SelectItem value="deepseek:deepseek-chat">DeepSeek Chat</SelectItem>
+                          <SelectItem value="zhipu:glm-4.7">智谱 GLM-4.7</SelectItem>
                           <SelectItem value="groq:gemma2-9b-it">Groq Gemma 2 9B</SelectItem>
                           <SelectItem value="openrouter:meta-llama-3.1-70b-instruct">
                             OpenRouter Llama 3.1 70B
@@ -325,6 +327,11 @@ function ConfigPage() {
                   ['providers.deepseek.apiBase', 'DeepSeek API 基础 URL', 'https://api.deepseek.com'],
                   ['providers.groq.apiBase', 'Groq API 基础 URL', 'https://api.groq.com/openai/v1'],
                   ['providers.openrouter.apiBase', 'OpenRouter API 基础 URL', 'https://openrouter.ai/api/v1'],
+                  [
+                    'providers.zhipu.apiBase',
+                    '智谱 API 基础 URL',
+                    'https://open.bigmodel.cn/api/paas/v4',
+                  ],
                 ] as const
               ).map(([name, label, placeholder]) => (
                 <form.Field

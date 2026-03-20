@@ -2,6 +2,8 @@
  * Setup相关类型定义
  */
 
+import type { ProviderId } from '@nanobot/providers';
+
 export interface CheckResult {
   name: string;
   status: 'running' | 'done' | 'error';
@@ -18,7 +20,8 @@ export interface SelfCheckResult {
   canProceed: boolean;
 }
 
-export type ProviderType = 'openai' | 'anthropic' | 'openrouter' | 'deepseek' | 'groq' | 'google';
+/** 与 @nanobot/providers 已注册 LLM 适配器 id 一致（无独立 adapter 的供应商不在此列） */
+export type ProviderType = ProviderId;
 
 export interface ProviderConfig {
   type: ProviderType;

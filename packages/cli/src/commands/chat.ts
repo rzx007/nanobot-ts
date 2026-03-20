@@ -7,7 +7,7 @@ import { error, info } from '../ui';
 import { loadConfig } from '@nanobot/shared';
 import { createRuntime } from '@nanobot/main';
 import { logger } from '@nanobot/logger';
-import type { StreamPartEvent, ToolHintEvent } from '@nanobot/shared';
+import type { StreamPartEvent } from '@nanobot/shared';
 
 export function registerChatCommand(program: Command): void {
   program
@@ -65,11 +65,6 @@ async function runChat(promptArg: string | undefined, interactive?: boolean): Pr
         if (part.type === 'text-delta') {
           process.stdout.write(part.text);
         }
-      }
-    });
-    bus.on('tool-hint', (event: ToolHintEvent) => {
-      if (event.channel === 'cli') {
-        process.stdout.write(`\n  [tools: ${event.content}]\n`);
       }
     });
 

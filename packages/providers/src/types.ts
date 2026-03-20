@@ -14,13 +14,6 @@ import type {
 import type { ToolSet } from '@nanobot/shared';
 
 /**
- * 支持的 Provider 名称（与 parseModelString 的 provider 及配置 key 一致）
- */
-export const PROVIDER_IDS = ['openai', 'anthropic', 'deepseek', 'openrouter', 'groq'] as const;
-
-export type ProviderId = (typeof PROVIDER_IDS)[number];
-
-/**
  * 模型工厂：根据模型名返回 AI SDK 的 LanguageModel
  */
 export type ModelFactory = (modelName: string) => LanguageModel;

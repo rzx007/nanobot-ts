@@ -8,6 +8,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import { cosmiconfig } from 'cosmiconfig';
 import type { Config } from './config';
+import { getDefaultRegisteredProviders } from '@nanobot/providers';
 
 const NANOBOT_HOME =
   process.env.NANOBOT_HOME ??
@@ -115,6 +116,14 @@ export function getChannelsFromConfig(config: Config | null): ChannelsEnabledMap
  * @returns 默认配置对象
  */
 export function createDefaultConfig(): Config {
+  const providers: Config['providers'] = {
+    ...getDefaultRegisteredProviders(),
+    google: {
+      apiKey: '',
+      apiBase: 'https://generativelanguage.googleapis.com',
+    },
+  };
+
   return {
     agents: {
       defaults: {
@@ -127,31 +136,7 @@ export function createDefaultConfig(): Config {
         streaming: true,
       },
     },
-    providers: {
-      openai: {
-        apiKey: '',
-        apiBase: 'https://api.openai.com/v1',
-      },
-      anthropic: {
-        apiKey: '',
-      },
-      openrouter: {
-        apiKey: '',
-        apiBase: 'https://openrouter.ai/api/v1',
-      },
-      deepseek: {
-        apiKey: '',
-        apiBase: 'https://api.deepseek.com/v1',
-      },
-      groq: {
-        apiKey: '',
-        apiBase: 'https://api.groq.com/openai/v1',
-      },
-      google: {
-        apiKey: '',
-        apiBase: 'https://generativelanguage.googleapis.com',
-      },
-    },
+    providers,
     channels: {
       whatsapp: {
         enabled: false,
