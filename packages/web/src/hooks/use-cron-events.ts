@@ -7,6 +7,7 @@ interface CronMessage {
   role: 'assistant';
   parts: Array<{ type: string; text?: string }>;
   createdAt: number;
+  metadata?: { messageFrom?: string };
   status: 'pending' | 'ready';
 }
 
@@ -37,6 +38,7 @@ export function useCronEvents(chatId: string) {
               parts: [],
               createdAt: Date.now(),
               status: 'pending',
+              metadata: {messageFrom: 'cron'},
             };
             next.set(messageId, newMessage);
           }

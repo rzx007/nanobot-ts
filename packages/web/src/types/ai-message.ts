@@ -10,6 +10,7 @@ import type { UIMessage, UIDataTypes } from 'ai';
  * 包含 token 使用情况、工具调用等信息
  */
 export interface NanobotMessageMetadata {
+
   assistantContent?: string;
   usage?: {
     inputTokens: number;
@@ -20,6 +21,8 @@ export interface NanobotMessageMetadata {
     totalTokens: number;
   };
   toolCalls?: unknown[];
+  messageFrom?: 'cron' | string;
+  [key: string]: unknown;
 }
 
 /**

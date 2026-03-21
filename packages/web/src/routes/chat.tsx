@@ -16,6 +16,7 @@ import {
 import type { AttachmentData } from "@/components/ai-elements/attachments"
 import { QuestionDialog } from "@/components/question-dialog"
 import { ApprovalDialog } from "@/components/approval-dialog"
+import { CronMessageCard } from "@/components/cron-message-card"
 import {
   Conversation,
   ConversationContent,
@@ -382,6 +383,23 @@ function ChatPage() {
       <Conversation className="h-full flex-1 overflow-hidden">
         <ConversationContent className="h-full overflow-auto">
           {allMessages.map((message) => {
+            const isCronMessage = message?.metadata?.messageFrom==='cron'
+
+            if (isCronMessage) {
+              const content = message.parts
+                .filter((p) => p.type === 'text')
+                .map((p) => (p as { type: 'text'; text: string }).text)
+                .join('') || ''
+
+              return (
+                <CronMessageCard
+                  key={message.id}
+                  content={content}
+                  timestamp={564564634654}
+                />
+              )
+            }
+
             const showBranchChrome =
               message.parts.length > 1 && message.parts.every((p) => p.type === 'text')
 
@@ -397,42 +415,6 @@ function ChatPage() {
                               <MessageResponse>{part.text}</MessageResponse>
                             </MessageContent>
                           )
-                        }
-
-                        if (part.type.startsWith('data-')) {
-                          if (part.type === 'data-question' && questionEvent && part.data === questionEvent) {
-                            return (
-                              <div key={`${message.id}-question-${partIndex}`} className="mt-1 space-y-1 rounded-md border bg-muted/30 p-2 text-xs">
-                                <div className="font-medium">问题</div>
-                                {part.data.questions.map((q, qIdx) => (
-                                  <div key={qIdx}>
-                                    <p>{q.question}</p>
-                                    <ul>
-                                      {q.options.map((opt, optIdx) => (
-                                        <li key={optIdx}>
-                                          {opt.label}: {opt.description}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                ))}
-                              </div>
-                            )
-                          }
-
-                          if (part.type === 'data-approval' && approvalEvent && part.data === approvalEvent) {
-                            return (
-                              <div key={`${message.id}-approval-${partIndex}`} className="mt-1 space-y-1 rounded-md border bg-muted/30 p-2 text-xs">
-                                <div className="font-medium">审批请求</div>
-                                <p>工具: {part.data.toolName}</p>
-                                <div className="whitespace-pre-wrap text-muted-foreground">
-                                  参数: {JSON.stringify(part.data.params, null, 2)}
-                                </div>
-                              </div>
-                            )
-                          }
-
-                          return null
                         }
 
                         if (part.type.startsWith('tool-') && 'toolCallId' in part) {
