@@ -289,12 +289,14 @@ function ChatPage() {
               id: item.id || nanoid(),
               role,
               parts: [{ type: "text", text: item.content }],
+              metadata: item.metadata,
             } as NanobotUIMessage
           }
           return {
             id: item.id || nanoid(),
             role,
             parts: Array.isArray(item.parts) ? (item.parts as NanobotUIMessage["parts"]) : [],
+            metadata: item.metadata,
           } as NanobotUIMessage
         })
         console.log('加载历史消息:', mapped)

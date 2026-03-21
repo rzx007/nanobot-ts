@@ -53,7 +53,7 @@ export function CronMessageCard({
       data-slot="card"
       size="sm"
       className={cn(
-        "w-full max-w-2xl mx-auto my-2",
+        "w-full max-w-2xl my-2 overflow-visible",
         status === 'pending' && "opacity-70",
         className
       )}
@@ -81,9 +81,9 @@ export function CronMessageCard({
           </time>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="h-auto">
         <div className="prose prose-sm dark:prose-invert max-w-none">
-          <p className="whitespace-pre-wrap break-words leading-relaxed">
+          <p className="whitespace-pre-wrap wrap-break-words leading-relaxed">
             {content}
           </p>
           {status === 'pending' && (
