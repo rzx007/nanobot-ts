@@ -49,9 +49,22 @@ app.post('/messages', async c => {
 
   if (enableStream) {
     return streamSSE(c, async (stream) => {
+      let closed = false;
+      let resolveDone: (() => void) | undefined;
+
+      const done = new Promise<void>((resolve) => {
+        resolveDone = () => {
+          if (closed) {
+            return;
+          }
+          closed = true;
+          resolve();
+        };
+      });
+
       // 流式部分监听器：直接输出 UIMessageChunk（AI SDK 标准格式）
       const streamPartListener = (event: StreamPartEvent) => {
-        if (event.channel === 'http' && event.chatId === chatId) {
+        if (!closed && event.channel === 'http' && event.chatId === chatId) {
           stream.writeSSE({
             data: JSON.stringify(event.part),
           });
@@ -60,7 +73,7 @@ app.post('/messages', async c => {
 
       // 完成事件监听器：输出标准 finish 类型
       const streamFinishListener = (event: StreamFinishEvent) => {
-        if (event.channel === 'http' && event.chatId === chatId) {
+        if (!closed && event.channel === 'http' && event.chatId === chatId) {
           stream.writeSSE({
             data: JSON.stringify({
               type: 'finish',
@@ -76,12 +89,13 @@ app.post('/messages', async c => {
           stream.writeSSE({
             data: '[DONE]',
           });
+          resolveDone?.();
         }
       };
 
       // 问题监听器：转换为 data-question 格式（AI SDK 标准）
       const questionListener = (event: QuestionEvent) => {
-        if (event.channel === 'http' && event.chatId === chatId) {
+        if (!closed && event.channel === 'http' && event.chatId === chatId) {
           stream.writeSSE({
             data: JSON.stringify({
               type: 'data-question',
@@ -98,7 +112,7 @@ app.post('/messages', async c => {
 
       // 审批监听器：转换为 data-approval 格式（AI SDK 标准）
       const approvalListener = (event: ApprovalEvent) => {
-        if (event.channel === 'http' && event.chatId === chatId) {
+        if (!closed && event.channel === 'http' && event.chatId === chatId) {
           stream.writeSSE({
             data: JSON.stringify({
               type: 'data-approval',
@@ -123,23 +137,25 @@ app.post('/messages', async c => {
 
       // 心跳保持连接活跃（每30秒）
       const heartbeat = setInterval(() => {
-        stream.writeSSE({
-          event: 'heartbeat',
-          data: JSON.stringify({ timestamp: Date.now() }),
-        });
+        if (!closed) {
+          stream.writeSSE({
+            event: 'heartbeat',
+            data: JSON.stringify({ timestamp: Date.now() }),
+          });
+        }
       }, 30_000);
 
-      // 保持连接直到客户端断开
-      await new Promise<void>((resolve) => {
-        stream.onAbort(() => {
-          clearInterval(heartbeat);
-          bus.off('stream-part', streamPartListener);
-          bus.off('stream-finish', streamFinishListener);
-          bus.off('question', questionListener);
-          bus.off('approval', approvalListener);
-          resolve();
-        });
+      stream.onAbort(() => {
+        resolveDone?.();
       });
+
+      await done;
+      // 等待 resolveDone() 执行
+      clearInterval(heartbeat);
+      bus.off('stream-part', streamPartListener);
+      bus.off('stream-finish', streamFinishListener);
+      bus.off('question', questionListener);
+      bus.off('approval', approvalListener);
     });
   }
 
