@@ -8,52 +8,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import { expandHome, ensureDir, safeFilename } from '@nanobot/utils';
 import { logger } from '@nanobot/logger';
-
-/**
- * 会话消息
- */
-export interface SessionMessage {
-  /** 角色 (user/assistant/system) */
-  role: 'user' | 'assistant' | 'system';
-
-  /** 消息内容 */
-  content: string;
-
-  /** 时间戳 */
-  timestamp: string;
-
-  /** 工具调用信息 */
-  toolCalls?: unknown;
-
-  /** 工具调用 ID */
-  toolCallId?: string;
-  /** 模型名称 */
-  model?: string;
-}
-
-/**
- * 会话
- */
-export interface Session {
-  /** 会话密钥 */
-  key: string;
-
-  /** 消息列表 */
-  messages: SessionMessage[];
-
-  /** 已整合到长期记忆的消息数量 (用于增量整合) */
-  lastConsolidated: number;
-
-  /** 创建时间 */
-  createdAt: string;
-
-  /** 更新时间 */
-  updatedAt: string;
-
-  /** 元数据 */
-  metadata: Record<string, unknown>;
-}
-
+import type { SessionMessage, Session } from '@nanobot/shared';
 /**
  * 会话管理器
  * 
@@ -116,7 +71,6 @@ export class SessionManager {
         lastConsolidated: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        metadata: {},
       };
       await this.save(session);
       logger.info(`Created new session: ${key}`);
@@ -150,8 +104,8 @@ export class SessionManager {
    */
   async getHistory(
     key: string,
-    maxMessages: number = 100
-  ): Promise<Array<{ role: string; content: string }>> {
+    maxMessages: number = 100,
+  ): Promise<Array<{ role: string; content: string; [x: string]: unknown }>> {
     const session = await this.getOrCreate(key);
     const lastConsolidated = session.lastConsolidated ?? 0;
 
@@ -159,10 +113,10 @@ export class SessionManager {
     const unconsolidated = session.messages.slice(lastConsolidated);
 
     // 过滤并转换，跳过孤儿 tool 消息
-    const out: Array<{ role: string; content: string }> = [];
+    const out: Array<{ role: string; content: string; [x: string]: unknown }> = [];
     for (const msg of unconsolidated) {
       if (msg.toolCalls || msg.toolCallId) continue;
-      out.push({ role: msg.role, content: msg.content ?? '' });
+      out.push({ role: msg.role, content: msg.content, parts: msg.parts ?? [] });
     }
 
     return out.slice(-maxMessages);

@@ -7,7 +7,7 @@
 
 import path from 'path';
 import os from 'os';
-import type { SessionMessage } from '../storage';
+import type { SessionMessage } from '@nanobot/shared';
 import type { SkillInfo } from '../skills/skills';
 import { expandHome } from '@nanobot/utils';
 

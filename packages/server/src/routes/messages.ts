@@ -49,45 +49,68 @@ app.post('/messages', async c => {
 
   if (enableStream) {
     return streamSSE(c, async (stream) => {
-      // 流式部分监听器
+      // 流式部分监听器：直接输出 UIMessageChunk（AI SDK 标准格式）
       const streamPartListener = (event: StreamPartEvent) => {
         if (event.channel === 'http' && event.chatId === chatId) {
           stream.writeSSE({
-            event: 'part',
             data: JSON.stringify(event.part),
           });
         }
       };
-      // 完成事件监听器
+
+      // 完成事件监听器：输出标准 finish 类型
       const streamFinishListener = (event: StreamFinishEvent) => {
         if (event.channel === 'http' && event.chatId === chatId) {
           stream.writeSSE({
-            event: 'finish',
-            data: JSON.stringify(event),
+            data: JSON.stringify({
+              type: 'finish',
+              finishReason: event.part.finishReason,
+              messageMetadata: {
+                assistantContent: event.part.assistantContent,
+                usage: event.part.usage,
+                totalUsage: event.part.totalUsage,
+                toolCalls: event.part.toolCalls,
+              },
+            }),
           });
           stream.writeSSE({
-            event: 'done',
             data: '[DONE]',
           });
         }
       };
 
-      // 问题监听器
+      // 问题监听器：转换为 data-question 格式（AI SDK 标准）
       const questionListener = (event: QuestionEvent) => {
         if (event.channel === 'http' && event.chatId === chatId) {
           stream.writeSSE({
-            event: 'question',
-            data: JSON.stringify(event),
+            data: JSON.stringify({
+              type: 'data-question',
+              data: {
+                type: event.type,
+                requestID: event.requestID,
+                questions: event.questions,
+                timestamp: event.timestamp.getTime(),
+              },
+            }),
           });
         }
       };
 
-      // 审批监听器
+      // 审批监听器：转换为 data-approval 格式（AI SDK 标准）
       const approvalListener = (event: ApprovalEvent) => {
         if (event.channel === 'http' && event.chatId === chatId) {
           stream.writeSSE({
-            event: 'approval',
-            data: JSON.stringify(event),
+            data: JSON.stringify({
+              type: 'data-approval',
+              data: {
+                type: event.type,
+                requestID: event.requestID,
+                toolName: event.toolName,
+                params: event.params,
+                timeout: event.timeout,
+                timestamp: event.timestamp.getTime(),
+              },
+            }),
           });
         }
       };

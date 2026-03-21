@@ -251,7 +251,7 @@ export class AgentLoop {
       });
 
       // 流式输出助手消息
-      const { assistantContent: rawAssistantContent } = await this.streamBridge.streamAndEmit({
+      const { assistantContent: rawAssistantContent, finalUIMessage } = await this.streamBridge.streamAndEmit({
         channel,
         chatId,
         messages,
@@ -266,8 +266,12 @@ export class AgentLoop {
       });
 
       const finalAssistantContent = AgentLoop._stripThink(rawAssistantContent);
-      // 保存助手消息到会话
-      await this.sessionOrchestrator.appendAssistantMessage(sessionKey, finalAssistantContent);
+      // 保存助手消息到会话（包含完整的 UIMessage parts）
+      await this.sessionOrchestrator.appendAssistantMessage(
+        sessionKey,
+        finalAssistantContent,
+        finalUIMessage,  // 完整的 UIMessage（包含所有 parts 结构）
+      );
       // 可能整合长期记忆
       await this.sessionOrchestrator.maybeConsolidate(sessionKey);
 

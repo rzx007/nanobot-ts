@@ -5,16 +5,25 @@ export const SessionMessageSchema = z.object({
     /** 角色 (user/assistant/system) */
     role: z.enum(['user', 'assistant', 'system']),
 
-    /** 消息内容 */
+    /** 消息内容 (向后兼容，新版本优先使用 parts) */
     content: z.string(),
 
     /** 时间戳 */
     timestamp: z.string(),
 
-    /** 工具调用信息 */
+    /** 消息唯一标识 (UIMessage id) */
+    id: z.string().optional(),
+
+    /** 完整的消息 parts (UIMessagePart[]) */
+    parts: z.array(z.record(z.any())).optional(),
+
+    /** 消息元数据 */
+    metadata: z.any().optional(),
+
+    /** 工具调用信息 (废弃，保留向后兼容) */
     toolCalls: z.array(ToolCallSchema).optional(),
 
-    /** 工具调用 ID */
+    /** 工具调用 ID (废弃，保留向后兼容) */
     toolCallId: z.string().optional(),
 
     /** 模型名称 */

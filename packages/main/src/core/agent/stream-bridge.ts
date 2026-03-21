@@ -6,6 +6,8 @@ import type {
 } from '@nanobot/providers';
 import type { MessageBus } from '../../bus';
 import type { ToolSet } from '@nanobot/shared';
+import type { UIMessage, UIMessageChunk } from 'ai';
+import { readUIMessageStream } from 'ai';
 
 export interface StreamBridgeDeps {
   provider: LLMProvider;
@@ -25,12 +27,18 @@ export interface StreamBridgeRunOptions<TOOLS extends ToolSet> {
   executeTool: (name: string, args: Record<string, unknown>) => Promise<string>;
 }
 
+export interface StreamBridgeResult<TOOLS extends ToolSet> {
+  assistantContent: string;
+  parts: UIMessageChunk[];
+  finalUIMessage?: UIMessage;
+}
+
 export class StreamBridge {
   constructor(private readonly deps: StreamBridgeDeps) { }
 
   async streamAndEmit<TOOLS extends ToolSet>(
     options: StreamBridgeRunOptions<TOOLS>,
-  ): Promise<{ assistantContent: string }> {
+  ): Promise<StreamBridgeResult<TOOLS>> {
     const { channel, chatId } = options;
 
     let fallbackFinishReason: StreamFinishPart<TOOLS>['finishReason'] | undefined;
@@ -38,6 +46,9 @@ export class StreamBridge {
     let fallbackTotalUsage: StreamFinishPart<TOOLS>['totalUsage'] | undefined;
     let fallbackToolCalls: StreamFinishPart<TOOLS>['toolCalls'] | undefined;
     let finishEmitted = false;
+
+    const parts: UIMessageChunk[] = [];
+    let finalUIMessage: UIMessage | undefined;
 
     const streamResult = await this.deps.provider.streamChat({
       messages: options.messages,
@@ -50,6 +61,7 @@ export class StreamBridge {
       executeTool: options.executeTool,
       onChunk: (event: OnChunkResult<TOOLS>) => {
         if (event.type === 'chunk') {
+          parts.push(event.chunk);
           this.deps.bus.emit('stream-part', { channel, chatId, part: event.chunk });
           return;
         }
@@ -91,6 +103,18 @@ export class StreamBridge {
       },
     });
 
+    // 使用 readUIMessageStream 收集最终的完整 UIMessage
+    try {
+      for await (const uiMessage of readUIMessageStream({
+        stream: streamResult.toUIMessageStream(),
+      })) {
+        // 最后一个 uiMessage 就是完整的 UIMessage
+        finalUIMessage = uiMessage;
+      }
+    } catch (e) {
+      console.error('[StreamBridge] Failed to read UIMessage stream:', e);
+    }
+
     const streamedText = await streamResult.text;
     const assistantContent = typeof streamedText === 'string' ? streamedText : '';
 
@@ -110,6 +134,6 @@ export class StreamBridge {
       });
     }
 
-    return { assistantContent };
+    return { assistantContent, parts, finalUIMessage };
   }
 }

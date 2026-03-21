@@ -6,6 +6,9 @@ export interface ChatHistoryItem {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  id?: string;
+  parts?: unknown[];
+  metadata?: unknown;
 }
 
 export interface MessageStreamCallbacks {
@@ -20,6 +23,8 @@ export interface MessageStreamCallbacks {
 
 /**
  * 发送消息并接收SSE流
+ *
+ * @deprecated 推荐使用 @/hooks/use-chat
  */
 export async function sendMessage(
   content: string,
@@ -59,47 +64,83 @@ export async function sendMessage(
 
       for (const rawEvent of events) {
         const lines = rawEvent.split('\n');
-        let currentEvent: string | null = null;
         const dataLines: string[] = [];
 
         for (const line of lines) {
           const trimmedLine = line.trim();
           if (trimmedLine.startsWith('event: ')) {
-            currentEvent = trimmedLine.slice(7);
+            continue;
           } else if (trimmedLine.startsWith('data: ')) {
             dataLines.push(trimmedLine.slice(6));
           }
         }
 
-        const data = dataLines.join('\n');
+        const data = dataLines.join('\n').trim();
         if (!data) continue;
 
-        if (data === '[DONE]' || currentEvent === 'done') {
+        if (data === '[DONE]') {
           callbacks.onDone?.();
           return;
         }
 
-        if (currentEvent === 'part') {
-          const part = JSON.parse(data) as StreamPartPayload;
-          callbacks.onPart?.(part);
-          continue;
-        }
+        try {
+          const parsed = JSON.parse(data);
 
-        if (currentEvent === 'finish') {
-          const finishEvent = JSON.parse(data) as StreamFinishEvent;
-          callbacks.onFinish?.(finishEvent);
-          continue;
-        }
+          // 根据类型区分事件
+          if (parsed.type === 'finish' && callbacks.onFinish) {
+            // 新格式：finish 数据在 messageMetadata 中
+            const finishEvent: StreamFinishEvent = {
+              channel: 'http',
+              chatId: '',
+              part: {
+                type: 'finish',
+                finishReason: parsed.finishReason,
+                assistantContent: parsed.messageMetadata?.assistantContent,
+                usage: parsed.messageMetadata?.usage,
+                totalUsage: parsed.messageMetadata?.totalUsage,
+                toolCalls: parsed.messageMetadata?.toolCalls,
+              },
+            };
+            callbacks.onFinish(finishEvent);
+            continue;
+          }
 
-        if (currentEvent === 'question') {
-          const questionEvent = JSON.parse(data) as QuestionEvent;
-          callbacks.onQuestion?.(questionEvent);
-          continue;
-        }
+          if (parsed.type === 'data-question' && callbacks.onQuestion) {
+            // 新格式：data-question
+            const questionEvent: QuestionEvent = {
+              type: parsed.data.type,
+              requestID: parsed.data.requestID,
+              channel: 'http',
+              chatId: chatId,
+              questions: parsed.data.questions,
+              timestamp: new Date(parsed.data.timestamp),
+            };
+            callbacks.onQuestion?.(questionEvent);
+            continue;
+          }
 
-        if (currentEvent === 'approval') {
-          const approvalEvent = JSON.parse(data) as ApprovalEvent;
-          callbacks.onApproval?.(approvalEvent);
+          if (parsed.type === 'data-approval' && callbacks.onApproval) {
+            // 新格式：data-approval
+            const approvalEvent: ApprovalEvent = {
+              type: parsed.data.type,
+              requestID: parsed.data.requestID,
+              channel: 'http',
+              chatId: chatId,
+              toolName: parsed.data.toolName,
+              params: parsed.data.params,
+              timeout: parsed.data.timeout,
+              timestamp: new Date(parsed.data.timestamp),
+            };
+            callbacks.onApproval?.(approvalEvent);
+            continue;
+          }
+
+          // 默认为 UIMessageChunk
+          if (callbacks.onPart) {
+            callbacks.onPart(parsed as StreamPartPayload);
+          }
+        } catch (e) {
+          console.error('[sendMessage] Parse SSE error:', e);
         }
       }
     }

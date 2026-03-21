@@ -3,6 +3,7 @@ import { getSessionKey } from '@nanobot/shared';
 import { ContextBuilder } from '../context';
 import type { SessionManager } from '../../storage';
 import type { SkillInfo } from '../../skills/skills';
+import type { UIMessage } from 'ai';
 
 type SkillLoaderLike = {
   getAlwaysSkills(): SkillInfo[];
@@ -38,18 +39,30 @@ export class SessionOrchestrator {
     });
   }
 
-  async appendAssistantMessage(sessionKey: string, content: string): Promise<void> {
+  async appendAssistantMessage(
+    sessionKey: string,
+    content: string,
+    uiMessage?: UIMessage,
+  ): Promise<void> {
     if (!content) return;
     await this.deps.sessions.addMessage(sessionKey, {
       role: 'assistant',
       content,
       timestamp: new Date().toISOString(),
+      id: uiMessage?.id,
+      parts: uiMessage?.parts,
       model: this.deps.config.agents.defaults.model,
     } as any);
   }
 
   async buildPromptMessages(channel: string, chatId: string, content: string, sessionKey: string) {
-    const history = await this.deps.sessions.getHistory(sessionKey, this.deps.memoryWindow);
+    const rawHistory = await this.deps.sessions.getHistory(sessionKey, this.deps.memoryWindow);
+
+    const history = rawHistory.map(msg => ({
+      role: msg.role,
+      content: msg.content ?? '' as string,
+    }));
+
     const memoryContext = this.deps.memory ? await this.deps.memory.readLongTerm() : '';
 
     const buildOpts: import('../context').BuildSystemPromptOptions = {
