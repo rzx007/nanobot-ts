@@ -64,7 +64,7 @@ app.post('/messages', async c => {
 
       // 流式部分监听器：直接输出 UIMessageChunk（AI SDK 标准格式）
       const streamPartListener = (event: StreamPartEvent) => {
-        if (!closed && event.channel === 'http' && event.chatId === chatId) {
+        if (!closed && event.channel === 'http' && event.chatId === chatId && event.senderId !== 'cron') {
           stream.writeSSE({
             data: JSON.stringify(event.part),
           });
@@ -73,7 +73,7 @@ app.post('/messages', async c => {
 
       // 完成事件监听器：输出标准 finish 类型
       const streamFinishListener = (event: StreamFinishEvent) => {
-        if (!closed && event.channel === 'http' && event.chatId === chatId) {
+        if (!closed && event.channel === 'http' && event.chatId === chatId && event.senderId !== 'cron') {
           stream.writeSSE({
             data: JSON.stringify({
               type: 'finish',
@@ -166,6 +166,78 @@ app.post('/messages', async c => {
       chatId,
       sessionId,
     },
+  });
+});
+
+/**
+ * GET /api/v1/events/:chatId - 持久化 SSE 事件监听（定时任务、系统消息）
+ */
+app.get('/events/:chatId', async c => {
+  const chatId = c.req.param('chatId');
+  const bus = c.get('bus') as MessageBus;
+
+  return streamSSE(c, async (stream) => {
+    let closed = false;
+    let resolveDone: (() => void) | undefined;
+
+    const done = new Promise<void>((resolve) => {
+      resolveDone = () => {
+        if (closed) {
+          return;
+        }
+        closed = true;
+        resolve();
+      };
+    });
+
+    const streamPartListener = (event: StreamPartEvent) => {
+      if (!closed && event.channel === 'http' && event.chatId === chatId && event.senderId === 'cron') {
+        stream.writeSSE({
+          data: JSON.stringify(event.part),
+        });
+      }
+    };
+
+    const streamFinishListener = (event: StreamFinishEvent) => {
+      if (!closed && event.channel === 'http' && event.chatId === chatId && event.senderId === 'cron') {
+        stream.writeSSE({
+          data: JSON.stringify({
+            type: 'finish',
+            finishReason: event.part.finishReason,
+            messageMetadata: {
+              assistantContent: event.part.assistantContent,
+              usage: event.part.usage,
+              totalUsage: event.part.totalUsage,
+              toolCalls: event.part.toolCalls,
+            },
+          }),
+        });
+        stream.writeSSE({
+          data: '[DONE]',
+        });
+      }
+    };
+
+    bus.on('stream-part', streamPartListener);
+    bus.on('stream-finish', streamFinishListener);
+
+    const heartbeat = setInterval(() => {
+      if (!closed) {
+        stream.writeSSE({
+          event: 'heartbeat',
+          data: JSON.stringify({ timestamp: Date.now() }),
+        });
+      }
+    }, 30_000);
+
+    stream.onAbort(() => {
+      resolveDone?.();
+    });
+
+    await done;
+    clearInterval(heartbeat);
+    bus.off('stream-part', streamPartListener);
+    bus.off('stream-finish', streamFinishListener);
   });
 });
 

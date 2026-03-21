@@ -209,11 +209,11 @@ export class AgentLoop {
    * @returns 出站消息
    */
   private async _processMessage(msg: InboundMessage): Promise<OutboundMessage> {
-    const { channel, chatId, content } = msg;
+    const { channel, chatId, content, senderId } = msg;
     const sessionKey = this.sessionOrchestrator.getSessionKey(msg);
 
     // 处理 subagent 结果消息
-    if (msg.senderId === 'subagent') {
+    if (senderId === 'subagent') {
       return await this.router.handleSubagentResult(msg);
     }
 
@@ -231,7 +231,11 @@ export class AgentLoop {
       this.toolRuntime.applyChatContext(channel, chatId);
 
       // 添加用户消息到会话
-      await this.sessionOrchestrator.appendUserMessage(sessionKey, content);
+      await this.sessionOrchestrator.appendUserMessage(sessionKey, {
+        role: senderId === 'cron' ? 'system' : 'user',
+        content,
+        timestamp: new Date().toISOString(),
+      });
       const messages = await this.sessionOrchestrator.buildPromptMessages(
         channel,
         chatId,
@@ -263,14 +267,22 @@ export class AgentLoop {
         maxSteps: this.maxIterations,
         executeTool: (name: string, args: Record<string, unknown>) =>
           this.toolRuntime.executeTool(name, args, { channel, chatId }),
+        senderId,
       });
 
       const finalAssistantContent = AgentLoop._stripThink(rawAssistantContent);
       // 保存助手消息到会话（包含完整的 UIMessage parts）
       await this.sessionOrchestrator.appendAssistantMessage(
         sessionKey,
-        finalAssistantContent,
-        finalUIMessage,  // 完整的 UIMessage（包含所有 parts 结构）
+        {
+          role: 'assistant',
+          content: finalAssistantContent,
+          timestamp: new Date().toISOString(),
+          id: finalUIMessage?.id,
+          parts: finalUIMessage?.parts,
+          model: this.config.agents.defaults.model,
+          metadata: {messageFrom: senderId}
+        }
       );
       // 可能整合长期记忆
       await this.sessionOrchestrator.maybeConsolidate(sessionKey);

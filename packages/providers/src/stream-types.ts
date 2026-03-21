@@ -20,6 +20,7 @@ export interface StreamPartEvent<TOOLS extends ToolSet = ToolSet> {
   channel: string;
   chatId: string;
   part: StreamPartPayload<TOOLS>;
+  senderId?: string;
 }
 
 export type StreamFinishPart<TOOLS extends ToolSet = ToolSet> = {
@@ -31,4 +32,5 @@ export interface StreamFinishEvent<TOOLS extends ToolSet = ToolSet> {
   channel: string;
   chatId: string;
   part: StreamFinishPart<TOOLS>;
+  senderId?: string;
 }

@@ -2,6 +2,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input"
 import { useChat } from "@/hooks/use-chat"
+import { useCronEvents } from "@/hooks/use-cron-events"
 import type { NanobotUIMessage, InferUIMessageData } from "@/types/ai-message"
 import { clearChatHistory, getChatHistory } from "@/services/message-api"
 import type { ToolUIPart } from "ai"
@@ -267,6 +268,12 @@ function ChatPage() {
     },
   })
 
+  const { messages: cronMessages } = useCronEvents(chatId)
+
+  const allMessages = useMemo(() => {
+    return [...cronMessages, ...messages]
+  }, [cronMessages, messages])
+
   useEffect(() => {
     let cancelled = false
     const loadHistory = async () => {
@@ -374,7 +381,7 @@ function ChatPage() {
     <div className="relative flex h-full flex-col divide-y">
       <Conversation className="h-full flex-1 overflow-hidden">
         <ConversationContent className="h-full overflow-auto">
-          {messages.map((message) => {
+          {allMessages.map((message) => {
             const showBranchChrome =
               message.parts.length > 1 && message.parts.every((p) => p.type === 'text')
 

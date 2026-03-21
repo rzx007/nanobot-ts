@@ -25,6 +25,7 @@ export interface StreamBridgeRunOptions<TOOLS extends ToolSet> {
   abortSignal: AbortSignal;
   maxSteps: number;
   executeTool: (name: string, args: Record<string, unknown>) => Promise<string>;
+  senderId?: string;
 }
 
 export interface StreamBridgeResult<TOOLS extends ToolSet> {
@@ -39,7 +40,7 @@ export class StreamBridge {
   async streamAndEmit<TOOLS extends ToolSet>(
     options: StreamBridgeRunOptions<TOOLS>,
   ): Promise<StreamBridgeResult<TOOLS>> {
-    const { channel, chatId } = options;
+    const { channel, chatId, senderId } = options;
 
     let fallbackFinishReason: StreamFinishPart<TOOLS>['finishReason'] | undefined;
     let fallbackUsage: StreamFinishPart<TOOLS>['usage'] | undefined;
@@ -62,7 +63,7 @@ export class StreamBridge {
       onChunk: (event: OnChunkResult<TOOLS>) => {
         if (event.type === 'chunk') {
           parts.push(event.chunk);
-          this.deps.bus.emit('stream-part', { channel, chatId, part: event.chunk });
+          this.deps.bus.emit('stream-part', { channel, chatId, part: event.chunk, senderId });
           return;
         }
         if (event.type === 'finish') {
@@ -78,7 +79,7 @@ export class StreamBridge {
           fallbackUsage = part.usage;
           fallbackTotalUsage = part.totalUsage;
           fallbackToolCalls = part.toolCalls;
-          this.deps.bus.emit('stream-finish', { channel, chatId, part });
+          this.deps.bus.emit('stream-finish', { channel, chatId, part, senderId });
           finishEmitted = true;
           return;
         }
@@ -87,6 +88,7 @@ export class StreamBridge {
             channel,
             chatId,
             part: { type: 'error', errorText: event.error.message },
+            senderId,
           });
           return;
         }
@@ -98,6 +100,7 @@ export class StreamBridge {
               type: 'nanobot-abort',
               steps: event.steps,
             } as unknown as StreamPartPayload,
+            senderId,
           });
         }
       },
@@ -131,6 +134,7 @@ export class StreamBridge {
         channel,
         chatId,
         part: fallbackPart,
+        senderId,
       });
     }
 

@@ -102,6 +102,7 @@ export class SessionManager {
    * @param maxMessages - 最大消息数
    * @returns 消息列表
    */
+
   async getHistory(
     key: string,
     maxMessages: number = 100,
@@ -116,7 +117,7 @@ export class SessionManager {
     const out: Array<{ role: string; content: string; [x: string]: unknown }> = [];
     for (const msg of unconsolidated) {
       if (msg.toolCalls || msg.toolCallId) continue;
-      out.push({ role: msg.role, content: msg.content, parts: msg.parts ?? [] });
+      out.push({ role: msg.role, content: msg.content, parts: msg.parts ?? [], metadata: msg.metadata ?? {} });
     }
 
     return out.slice(-maxMessages);

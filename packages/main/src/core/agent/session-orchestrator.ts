@@ -1,4 +1,4 @@
-import type { Config, InboundMessage } from '@nanobot/shared';
+import type { Config, InboundMessage, SessionMessage } from '@nanobot/shared';
 import { getSessionKey } from '@nanobot/shared';
 import { ContextBuilder } from '../context';
 import type { SessionManager } from '../../storage';
@@ -31,28 +31,16 @@ export class SessionOrchestrator {
     return getSessionKey(msg);
   }
 
-  async appendUserMessage(sessionKey: string, content: string): Promise<void> {
-    await this.deps.sessions.addMessage(sessionKey, {
-      role: 'user',
-      content,
-      timestamp: new Date().toISOString(),
-    });
+  async appendUserMessage(sessionKey: string, sessionMessage: SessionMessage ): Promise<void> {
+    await this.deps.sessions.addMessage(sessionKey, sessionMessage);
   }
 
   async appendAssistantMessage(
     sessionKey: string,
-    content: string,
-    uiMessage?: UIMessage,
+    sessionMessage: SessionMessage,
   ): Promise<void> {
-    if (!content) return;
-    await this.deps.sessions.addMessage(sessionKey, {
-      role: 'assistant',
-      content,
-      timestamp: new Date().toISOString(),
-      id: uiMessage?.id,
-      parts: uiMessage?.parts,
-      model: this.deps.config.agents.defaults.model,
-    } as any);
+    if (!sessionMessage?.content) return;
+    await this.deps.sessions.addMessage(sessionKey, sessionMessage);
   }
 
   async buildPromptMessages(channel: string, chatId: string, content: string, sessionKey: string) {
