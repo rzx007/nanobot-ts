@@ -272,8 +272,11 @@ function ChatPage() {
   const { messages: cronMessages } = useCronEvents(chatId)
 
   const allMessages = useMemo(() => {
-    return [...cronMessages, ...messages]
-  }, [cronMessages, messages])
+    const uniqueCronMessages = cronMessages.filter((msg, index, self) =>
+      index === self.findIndex(m => m.id === msg.id)
+    )
+    return [...messages, ...uniqueCronMessages]
+  }, [messages, cronMessages])
 
   useEffect(() => {
     let cancelled = false
@@ -384,6 +387,7 @@ function ChatPage() {
     <div className="relative flex h-full flex-col divide-y">
       <Conversation className="h-full flex-1 overflow-hidden">
         <ConversationContent className="h-full overflow-auto">
+        {JSON.stringify(allMessages)}
           {allMessages.map((message) => {
             const isCronMessage = message?.metadata?.messageFrom==='cron'
 
