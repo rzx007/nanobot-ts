@@ -15,7 +15,7 @@ export const SessionMessageSchema = z.object({
     id: z.string().optional(),
 
     /** 完整的消息 parts (UIMessagePart[]) */
-    parts: z.array(z.record(z.any())).optional(),
+    parts: z.array(z.record(z.string(), z.any())).optional(),
 
     /** 消息元数据 */
     metadata: z.any().optional(),

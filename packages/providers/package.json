@@ -30,7 +30,7 @@
     "@nanobot/shared": "workspace:*",
     "@nanobot/logger": "workspace:*",
     "@nanobot/utils": "workspace:*",
-    "ai": "^6.0.99",
+    "ai": "catalog:",
     "@ai-sdk/anthropic": "^2.0.67",
     "@ai-sdk/deepseek": "^2.0.20",
     "@ai-sdk/google": "^3.0.31",

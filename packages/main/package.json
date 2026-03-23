@@ -33,7 +33,7 @@
     "@nanobot/shared": "workspace:*",
     "@nanobot/utils": "workspace:*",
     "agent-browser": "^0.16.3",
-    "ai": "^6.0.99",
+    "ai": "catalog:",
     "bunqueue": "^2.6.5",
     "cheerio": "^1.2.0",
     "cosmiconfig": "^9.0.0",
