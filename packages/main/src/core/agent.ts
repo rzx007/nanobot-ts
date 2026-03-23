@@ -18,6 +18,18 @@ import {
   StreamBridge,
   ToolRuntime,
 } from './agent/index';
+import { ConcurrentSessionManager } from './concurrent-session-manager';
+
+/**
+ * 并发配置选项
+ */
+export interface ConcurrentOptions {
+  /** 是否启用并发模式 */
+  enabled: boolean;
+
+  /** 最大并发数（默认 5） */
+  maxConcurrency?: number;
+}
 
 /**
  * Agent 配置选项
@@ -43,6 +55,9 @@ export interface AgentOptions {
 
   /** 技能加载器 (可选，用于系统提示词中的技能) */
   skills?: import('../skills/skills').SkillLoader;
+
+  /** 并发配置选项 */
+  concurrent?: ConcurrentOptions;
 }
 
 /**
@@ -90,6 +105,11 @@ export class AgentLoop {
   private readonly toolRuntime: ToolRuntime;
   private readonly streamBridge: StreamBridge;
   private readonly cancellationScope: CancellationScope;
+  private readonly concurrentSessionManager: ConcurrentSessionManager | null;
+
+  /** 并发模式配置 */
+  private readonly concurrentEnabled: boolean;
+  private readonly maxConcurrency: number;
 
   /**
    * 构造函数
@@ -107,6 +127,9 @@ export class AgentLoop {
     // 配置
     this.maxIterations = this.config.agents.defaults.maxIterations;
     this.memoryWindow = this.config.agents.defaults.memoryWindow;
+    // 并发配置
+    this.concurrentEnabled = options.concurrent?.enabled ?? false;
+    this.maxConcurrency = options.concurrent?.maxConcurrency ?? 5;
     // 消息路由器
     this.router = new MessageRouter({
       sessions: this.sessions,
@@ -132,6 +155,23 @@ export class AgentLoop {
     });
     // 取消管理器
     this.cancellationScope = new CancellationScope();
+
+    // 并发会话管理器（仅在启用并发模式时创建）
+    this.concurrentSessionManager = this.concurrentEnabled
+      ? new ConcurrentSessionManager({
+          sessionOrchestrator: this.sessionOrchestrator,
+          streamBridge: this.streamBridge,
+          toolRuntime: this.toolRuntime,
+          config: this.config,
+        })
+      : null;
+
+    if (this.concurrentEnabled) {
+      logger.info(
+        { maxConcurrency: this.maxConcurrency },
+        'Agent initialized with concurrent mode',
+      );
+    }
   }
 
   /**
@@ -144,22 +184,22 @@ export class AgentLoop {
     }
 
     this.running = true;
-    logger.info('Agent main loop started');
+    logger.info(
+      {
+        mode: this.concurrentEnabled ? 'concurrent' : 'sequential',
+        maxConcurrency: this.maxConcurrency,
+      },
+      'Agent main loop started',
+    );
 
     void (async () => {
       try {
-        while (this.running) {
-          try {
-            const msg = await this.bus.consumeInbound();
-
-            logger.info({ channel: msg.channel, chatId: msg.chatId }, '🐞 Processing inbound message');
-
-            const response = await this._processMessage(msg);
-
-            if (response) await this.bus.publishOutbound(response);
-          } catch (rawErr) {
-            logger.error({ rawErr }, 'Agent main loop error');
-          }
+        if (this.concurrentEnabled) {
+          // 并发模式：启动多个 worker 并发处理消息
+          await this.runConcurrent();
+        } else {
+          // 串行模式：原有的处理逻辑
+          await this.runSequential();
         }
       } catch (err) {
         logger.error({ err }, 'Agent main loop error');
@@ -171,10 +211,121 @@ export class AgentLoop {
   }
 
   /**
+   * 串行模式运行（原有逻辑）
+   */
+  private async runSequential(): Promise<void> {
+    while (this.running) {
+      try {
+        const msg = await this.bus.consumeInbound();
+
+        logger.info({ channel: msg.channel, chatId: msg.chatId }, '🐞 Processing inbound message');
+
+        const response = await this._processMessage(msg);
+
+        if (response) await this.bus.publishOutbound(response);
+      } catch (rawErr) {
+        logger.error({ rawErr }, 'Agent main loop error');
+      }
+    }
+  }
+
+  /**
+   * 并发模式运行
+   */
+  private async runConcurrent(): Promise<void> {
+    if (!this.concurrentSessionManager) {
+      throw new Error('ConcurrentSessionManager not initialized');
+    }
+
+    // 创建 worker 池
+    const workers = Array.from({ length: this.maxConcurrency }, (_, index) => ({
+      id: index,
+      worker: this.processSingleMessage.bind(this),
+    }));
+
+    logger.info(
+      {
+        workerCount: workers.length,
+      },
+      'Started concurrent worker pool',
+    );
+
+    // 并发处理消息
+    const workerPromises = workers.map(async ({ id, worker }) => {
+      while (this.running) {
+        try {
+          await worker();
+        } catch (error) {
+          logger.error({ workerId: id, error }, 'Worker error');
+          // Worker 出错后继续运行
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+    });
+
+    await Promise.all(workerPromises);
+  }
+
+  /**
+   * 处理单条消息（并发模式）
+   */
+  private async processSingleMessage(): Promise<void> {
+    if (!this.concurrentSessionManager) {
+      throw new Error('ConcurrentSessionManager not initialized');
+    }
+
+    const msg = await this.bus.consumeInbound();
+    if (!msg) return;
+
+    const { channel, chatId, content, senderId } = msg;
+    const sessionKey = this.sessionOrchestrator.getSessionKey(msg);
+
+    logger.info(
+      { channel, chatId, sessionKey },
+      'Processing message in concurrent mode',
+    );
+
+    // 处理 subagent 结果消息（不通过并发管理器）
+    if (senderId === 'subagent') {
+      const response = await this.router.handleSubagentResult(msg);
+      if (response) await this.bus.publishOutbound(response);
+      return;
+    }
+
+    // 处理会话命令
+    const trimmed = content.trim();
+    const commandResult = await this.router.handleCommand(trimmed, sessionKey, channel, chatId);
+    if (commandResult) {
+      await this.bus.publishOutbound(commandResult);
+      return;
+    }
+
+    // 通过并发管理器处理消息
+    try {
+      const response = await this.concurrentSessionManager.process(sessionKey, msg);
+      if (response) await this.bus.publishOutbound(response);
+    } catch (error) {
+      logger.error({ sessionKey, error }, 'Failed to process message in concurrent mode');
+      // 发送错误消息
+      await this.bus.publishOutbound({
+        channel,
+        chatId,
+        content: `Error: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    }
+  }
+
+  /**
    * 停止主循环
    */
   stop(): void {
     this.running = false;
+
+    // 清理并发会话管理器
+    if (this.concurrentSessionManager) {
+      this.concurrentSessionManager.clearAll();
+    }
+
     logger.info('Agent stopping...');
   }
 

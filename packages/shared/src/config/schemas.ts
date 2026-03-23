@@ -29,6 +29,17 @@ export const AgentDefaultsSchema = z.object({
   streaming: z.boolean().default(true),
 });
 
+/**
+ * 并发配置
+ */
+export const ConcurrentConfigSchema = z.object({
+  /** 是否启用并发模式 */
+  enabled: z.boolean().default(false),
+
+  /** 最大并发数 */
+  maxConcurrency: z.number().int().positive().default(5),
+});
+
 export const AgentConfigSchema = z.object({
   /** 默认配置 */
   defaults: AgentDefaultsSchema,
@@ -261,6 +272,9 @@ export const ConfigSchema = z.object({
 
   /** Subagent 配置 */
   subagent: SubagentConfigSchema,
+
+  /** 并发配置 */
+  concurrent: ConcurrentConfigSchema,
 });
 
 // 导出类型
@@ -279,5 +293,6 @@ export type ApprovalConfig = z.infer<typeof ApprovalConfigSchema>;
 export type ToolsConfig = z.infer<typeof ToolsConfigSchema>;
 export type SubagentConfig = z.infer<typeof SubagentConfigSchema>;
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;
+export type ConcurrentConfig = z.infer<typeof ConcurrentConfigSchema>;
 export type Config = z.infer<typeof ConfigSchema>;
 export { ApprovalConfigSchema };

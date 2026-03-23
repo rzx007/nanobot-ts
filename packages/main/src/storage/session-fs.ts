@@ -74,6 +74,12 @@ export class FileSessionManager {
         lastConsolidated: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        metadata: {
+          tags: [],
+          archived: false,
+          messageCount: 0,
+          pinned: false,
+        },
       };
       await this.save(session);
       logger.info(`Created new session: ${key}`);

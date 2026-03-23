@@ -9,7 +9,7 @@ import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { eq, and, desc, gt, sql, count } from 'drizzle-orm';
 import * as schema from './schema/schema';
-import type { Session as SharedSession, SessionMessage as SharedSessionMessage } from '@nanobot/shared';
+import type { Session as SharedSession, SessionMessage as SharedSessionMessage, SessionMetadata } from '@nanobot/shared';
 import { logger } from '@nanobot/logger';
 import { ensureDir } from '@nanobot/utils';
 
@@ -23,6 +23,7 @@ export interface SessionInfo {
   messageCount: number;
   lastMessageAt?: string | null;
   updatedAt: string;
+  metadata?: SessionMetadata;
 }
 
 /**
@@ -147,6 +148,16 @@ export class DrizzleSessionManager {
         lastConsolidated: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        // 元数据字段
+        name: null,
+        title: null,
+        tags: '[]',
+        archived: 0,
+        archivedAt: null,
+        model: null,
+        messageCount: 0,
+        lastActiveAt: new Date().toISOString(),
+        pinned: 0,
       };
 
       await this.db.insert(schema.sessions).values(newSession);
@@ -163,12 +174,28 @@ export class DrizzleSessionManager {
       .orderBy(schema.sessionMessages.timestamp)
       .all();
 
+    // 解析元数据
+    const metadata: SessionMetadata = {
+      name: result.name || undefined,
+      title: result.title || undefined,
+      tags: result.tags ? JSON.parse(result.tags) : [],
+      archived: Boolean(result.archived),
+      archivedAt: result.archivedAt || undefined,
+      model: result.model || undefined,
+      messageCount: result.messageCount || 0,
+      channel: result.channel || undefined,
+      chatId: result.chatId || undefined,
+      lastActiveAt: result.lastActiveAt || result.updatedAt,
+      pinned: Boolean(result.pinned),
+    };
+
     const session: SharedSession = {
       key: result.key,
       messages: messages.map(this.deserializeMessage),
       lastConsolidated: result.lastConsolidated,
       createdAt: result.createdAt,
       updatedAt: result.updatedAt,
+      metadata,
     };
 
     // 缓存会话
@@ -198,9 +225,14 @@ export class DrizzleSessionManager {
         model: message.model || null,
       });
 
-      // 更新会话时间戳
+      // 更新会话时间戳和消息计数
+      const now = new Date().toISOString();
       await tx.update(schema.sessions)
-        .set({ updatedAt: new Date().toISOString() })
+        .set({
+          updatedAt: now,
+          lastActiveAt: now,
+          messageCount: sql`message_count + 1`,
+        })
         .where(eq(schema.sessions.key, key));
     });
 
@@ -346,44 +378,6 @@ export class DrizzleSessionManager {
   }
 
   /**
-   * 【新增】获取活跃会话（N 天内有消息的会话）
-   */
-  async getActiveSessions(days = 7): Promise<SessionInfo[]> {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - days);
-
-    const results = await this.db
-      .select({
-        key: schema.sessions.key,
-        channel: schema.sessions.channel,
-        chatId: schema.sessions.chatId,
-        messageCount: count(schema.sessionMessages.id).mapWith(Number),
-        lastMessageAt: sql<string>`max(${schema.sessionMessages.timestamp})`,
-        updatedAt: schema.sessions.updatedAt,
-      })
-      .from(schema.sessions)
-      .innerJoin(
-        schema.sessionMessages,
-        and(
-          eq(schema.sessions.key, schema.sessionMessages.sessionKey),
-          gt(schema.sessionMessages.timestamp, cutoffDate.toISOString())
-        )
-      )
-      .groupBy(schema.sessions.key)
-      .orderBy(desc(sql`max(${schema.sessionMessages.timestamp})`))
-      .all();
-
-    return results.map(r => ({
-      key: r.key,
-      channel: r.channel,
-      chatId: r.chatId,
-      messageCount: r.messageCount,
-      lastMessageAt: r.lastMessageAt,
-      updatedAt: r.updatedAt,
-    }));
-  }
-
-  /**
    * 【新增】获取各渠道统计信息
    */
   async getChannelStats(): Promise<ChannelStats[]> {
@@ -445,5 +439,233 @@ export class DrizzleSessionManager {
       toolCallId: row.toolCallId || undefined,
       model: row.model || undefined,
     };
+  }
+
+  /**
+   * 更新会话元数据
+   *
+   * @param key - 会话键
+   * @param metadata - 元数据
+   */
+  async updateMetadata(key: string, metadata: Partial<SessionMetadata>): Promise<void> {
+    const updateData: Record<string, unknown> = {
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (metadata.name !== undefined) {
+      updateData.name = metadata.name;
+    }
+    if (metadata.title !== undefined) {
+      updateData.title = metadata.title;
+    }
+    if (metadata.tags !== undefined) {
+      updateData.tags = JSON.stringify(metadata.tags);
+    }
+    if (metadata.archived !== undefined) {
+      updateData.archived = Number(metadata.archived);
+      updateData.archivedAt = metadata.archived ? new Date().toISOString() : null;
+    }
+    if (metadata.model !== undefined) {
+      updateData.model = metadata.model;
+    }
+    if (metadata.pinned !== undefined) {
+      updateData.pinned = Number(metadata.pinned);
+    }
+
+    await this.db
+      .update(schema.sessions)
+      .set(updateData)
+      .where(eq(schema.sessions.key, key));
+
+    this.invalidate(key);
+    logger.debug({ key, metadata }, 'Session metadata updated');
+  }
+
+  /**
+   * 设置会话标题
+   *
+   * @param key - 会话键
+   * @param title - 标题
+   */
+  async setTitle(key: string, title: string): Promise<void> {
+    await this.updateMetadata(key, { title });
+  }
+
+  /**
+   * 设置会话名称
+   *
+   * @param key - 会话键
+   * @param name - 名称
+   */
+  async setName(key: string, name: string): Promise<void> {
+    await this.updateMetadata(key, { name });
+  }
+
+  /**
+   * 更新会话标签
+   *
+   * @param key - 会话键
+   * @param tags - 标签列表
+   */
+  async setTags(key: string, tags: string[]): Promise<void> {
+    await this.updateMetadata(key, { tags });
+  }
+
+  /**
+   * 归档会话
+   *
+   * @param key - 会话键
+   * @param archived - 是否归档
+   */
+  async setArchived(key: string, archived: boolean): Promise<void> {
+    await this.updateMetadata(key, { archived });
+  }
+
+  /**
+   * 置顶会话
+   *
+   * @param key - 会话键
+   * @param pinned - 是否置顶
+   */
+  async setPinned(key: string, pinned: boolean): Promise<void> {
+    await this.updateMetadata(key, { pinned });
+  }
+
+  /**
+   * 搜索会话
+   *
+   * @param options - 搜索选项
+   * @returns 会话列表
+   */
+  async searchSessions(options: {
+    query?: string;
+    channel?: string;
+    archived?: boolean;
+    limit?: number;
+  }): Promise<SessionInfo[]> {
+    const conditions = [];
+
+    if (options.channel) {
+      conditions.push(eq(schema.sessions.channel, options.channel));
+    }
+
+    if (options.archived !== undefined) {
+      if (options.archived) {
+        conditions.push(sql`${schema.sessions.archived} = 1`);
+      } else {
+        conditions.push(sql`${schema.sessions.archived} = 0`);
+      }
+    }
+
+    if (options.query) {
+      const searchTerm = `%${options.query}%`;
+      conditions.push(
+        sql`(${schema.sessions.title} LIKE ${searchTerm} OR ${schema.sessions.name} LIKE ${searchTerm})`,
+      );
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const results = await this.db
+      .select({
+        key: schema.sessions.key,
+        channel: schema.sessions.channel,
+        chatId: schema.sessions.chatId,
+        messageCount: count(schema.sessionMessages.id).mapWith(Number),
+        lastMessageAt: sql<string>`max(${schema.sessionMessages.timestamp})`,
+        updatedAt: schema.sessions.updatedAt,
+        name: schema.sessions.name,
+        title: schema.sessions.title,
+        tags: schema.sessions.tags,
+        archived: schema.sessions.archived,
+        pinned: schema.sessions.pinned,
+        lastActiveAt: schema.sessions.lastActiveAt,
+      })
+      .from(schema.sessions)
+      .leftJoin(schema.sessionMessages, eq(schema.sessions.key, schema.sessionMessages.sessionKey))
+      .where(whereClause)
+      .groupBy(schema.sessions.key)
+      .orderBy(
+        desc(schema.sessions.pinned),
+        desc(schema.sessions.lastActiveAt),
+      )
+      .limit(options.limit || 50)
+      .all();
+
+    return results.map((r) => ({
+      key: r.key,
+      channel: r.channel || undefined,
+      chatId: r.chatId || undefined,
+      messageCount: r.messageCount,
+      lastMessageAt: r.lastMessageAt,
+      updatedAt: r.updatedAt,
+      metadata: {
+        name: r.name || undefined,
+        title: r.title || undefined,
+        tags: r.tags ? JSON.parse(r.tags) : [],
+        archived: Boolean(r.archived),
+        archivedAt: undefined,
+        model: undefined,
+        messageCount: r.messageCount,
+        channel: r.channel || undefined,
+        chatId: r.chatId || undefined,
+        lastActiveAt: r.lastActiveAt || r.updatedAt,
+        pinned: Boolean(r.pinned),
+      },
+    }));
+  }
+
+  /**
+   * 获取活跃会话
+   *
+   * @param days - 最近活跃天数（默认 7 天）
+   * @returns 会话列表
+   */
+  async getActiveSessions(days: number = 7): Promise<SessionInfo[]> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    const results = await this.db
+      .select({
+        key: schema.sessions.key,
+        channel: schema.sessions.channel,
+        chatId: schema.sessions.chatId,
+        messageCount: count(schema.sessionMessages.id).mapWith(Number),
+        lastMessageAt: sql<string>`max(${schema.sessionMessages.timestamp})`,
+        updatedAt: schema.sessions.updatedAt,
+        lastActiveAt: schema.sessions.lastActiveAt,
+        pinned: schema.sessions.pinned,
+      })
+      .from(schema.sessions)
+      .leftJoin(schema.sessionMessages, eq(schema.sessions.key, schema.sessionMessages.sessionKey))
+      .where(
+        and(
+          eq(schema.sessions.archived, 0),
+          gt(schema.sessions.lastActiveAt, cutoffDate.toISOString()),
+        ),
+      )
+      .groupBy(schema.sessions.key)
+      .orderBy(desc(schema.sessions.pinned), desc(schema.sessions.lastActiveAt))
+      .all();
+
+    return results.map((r) => ({
+      key: r.key,
+      channel: r.channel || undefined,
+      chatId: r.chatId || undefined,
+      messageCount: r.messageCount,
+      lastMessageAt: r.lastMessageAt,
+      updatedAt: r.updatedAt,
+      metadata: {
+        name: undefined,
+        title: undefined,
+        tags: [],
+        archived: false,
+        messageCount: r.messageCount,
+        channel: r.channel || undefined,
+        chatId: r.chatId || undefined,
+        lastActiveAt: r.lastActiveAt || r.updatedAt,
+        pinned: Boolean(r.pinned),
+      },
+    }));
   }
 }

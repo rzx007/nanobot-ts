@@ -14,6 +14,7 @@ import approvalsRouter from './approvals';
 import healthRouter from './health';
 import logsRouter from './logs';
 import skillsRouter from './skills';
+import sessionsRouter from './sessions';
 import { authMiddleware } from '../middleware/auth';
 import { errorMiddleware } from '../middleware/error';
 import { loggerMiddleware } from '../middleware/logger';
@@ -48,5 +49,6 @@ app.route('/api/v1', questionsRouter);
 app.route('/api/v1', approvalsRouter);
 app.route('/api/v1', logsRouter);
 app.route('/api/v1', skillsRouter);
+app.route('/api/v1', sessionsRouter);
 
 export default app;

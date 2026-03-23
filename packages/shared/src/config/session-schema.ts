@@ -1,6 +1,54 @@
 import { z } from 'zod';
 import { ToolCallSchema } from './tool-schema';
 
+/**
+ * 会话元数据
+ */
+export const SessionMetadataSchema = z.object({
+  /** 用户自定义名称 */
+  name: z.string().optional(),
+
+  /** 自动生成的标题 */
+  title: z.string().optional(),
+
+  /** 标签列表 */
+  tags: z.array(z.string()).default([]),
+
+  /** 是否归档 */
+  archived: z.boolean().default(false),
+
+  /** 归档时间 */
+  archivedAt: z.string().optional(),
+
+  /** 使用的模型 */
+  model: z.string().optional(),
+
+  /** 消息总数 */
+  messageCount: z.number().default(0),
+
+  /** 所属渠道 */
+  channel: z.string().optional(),
+
+  /** 所属会话 ID */
+  chatId: z.string().optional(),
+
+  /** 最后活跃时间 */
+  lastActiveAt: z.string().optional(),
+
+  /** 是否置顶 */
+  pinned: z.boolean().default(false),
+});
+
+/**
+ * 默认会话元数据
+ */
+export const defaultSessionMetadata = {
+  tags: [],
+  archived: false,
+  messageCount: 0,
+  pinned: false,
+};
+
 export const SessionMessageSchema = z.object({
     /** 角色 (user/assistant/system) */
     role: z.enum(['user', 'assistant', 'system']),
@@ -45,7 +93,11 @@ export const SessionSchema = z.object({
 
     /** 更新时间 */
     updatedAt: z.string(),
+
+    /** 会话元数据 */
+    metadata: SessionMetadataSchema.optional(),
 });
 
 export type SessionMessage = z.infer<typeof SessionMessageSchema>;
 export type Session = z.infer<typeof SessionSchema>;
+export type SessionMetadata = z.infer<typeof SessionMetadataSchema>;

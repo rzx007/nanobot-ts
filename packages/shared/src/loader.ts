@@ -218,5 +218,9 @@ export function createDefaultConfig(): Config {
         Math.floor(Math.random() * 16).toString(16),
       ).join('')}`,
     },
+    concurrent: {
+      enabled: false,
+      maxConcurrency: 5,
+    },
   };
 }

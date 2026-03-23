@@ -6,7 +6,6 @@
 
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
-import type { SessionMessage } from '@nanobot/shared';
 
 /**
  * 会话表
@@ -23,6 +22,17 @@ export const sessions = sqliteTable('sessions', {
   // 会话状态
   lastConsolidated: integer('last_consolidated').notNull().default(0),
 
+  // 会话元数据
+  name: text('name'),                // 用户自定义名称
+  title: text('title'),              // 自动生成的标题
+  tags: text('tags'),                // 标签（JSON 字符串）
+  archived: integer('archived').notNull().default(0),      // 是否归档
+  archivedAt: text('archived_at'),   // 归档时间
+  model: text('model'),              // 使用的模型
+  messageCount: integer('message_count').notNull().default(0), // 消息总数
+  lastActiveAt: text('last_active_at').notNull().default(sql`CURRENT_TIMESTAMP`), // 最后活跃时间
+  pinned: integer('pinned').notNull().default(0),        // 是否置顶
+
   // 时间戳
   createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -38,6 +48,11 @@ export const sessions = sqliteTable('sessions', {
 
   // 按更新时间查询的索引（用于排序）
   updatedAtIdx: index('sessions_updated_at_idx').on(table.updatedAt),
+
+  // 元数据查询索引
+  archivedIdx: index('sessions_archived_idx').on(table.archived, table.lastActiveAt),
+  pinnedIdx: index('sessions_pinned_idx').on(table.pinned, table.lastActiveAt),
+  modelIdx: index('sessions_model_idx').on(table.model),
 }));
 
 /**

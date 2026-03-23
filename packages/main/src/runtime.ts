@@ -11,6 +11,7 @@ import { MessageBus } from './bus';
 import { SessionManager } from './storage';
 import { MemoryConsolidator } from './core/memory';
 import { AgentLoop } from './core/agent';
+import { ConcurrentSessionManager } from './core/concurrent-session-manager';
 import { ApprovalManager } from './approval';
 import { SubagentManager } from './core/subagent';
 import { SkillLoader } from './skills/skills';
@@ -51,6 +52,7 @@ export interface Runtime {
 
   // agent
   agent: AgentLoop;
+  concurrentSessionManager: ConcurrentSessionManager | null;
 
   // 工具
   approvalManager: ApprovalManager;
@@ -87,6 +89,7 @@ class RuntimeImpl implements Runtime {
   isChannelsRunning = false;
   private outboundLoopRunning = false;
   private _agentLoop: AgentLoop | null = null;
+  private _concurrentSessionManager: ConcurrentSessionManager | null = null;
 
   constructor(
     public config: Config,
@@ -117,6 +120,18 @@ class RuntimeImpl implements Runtime {
       });
     }
     return this._agentLoop;
+  }
+
+  public get concurrentSessionManager(): ConcurrentSessionManager | null {
+    if (!this._concurrentSessionManager && this.config.concurrent?.enabled) {
+      this._concurrentSessionManager = new ConcurrentSessionManager({
+        sessionOrchestrator: (this._agentLoop as any).sessionOrchestrator,
+        streamBridge: (this._agentLoop as any).streamBridge,
+        toolRuntime: (this._agentLoop as any).toolRuntime,
+        config: this.config,
+      });
+    }
+    return this._concurrentSessionManager;
   }
 
   public get agent(): AgentLoop {
@@ -163,6 +178,12 @@ class RuntimeImpl implements Runtime {
       await this.channelManager.stop();
       this.isChannelsRunning = false;
       logger.info('Channels stopped');
+    }
+
+    // 停止 concurrent session manager
+    if (this._concurrentSessionManager) {
+      this._concurrentSessionManager.clearAll();
+      logger.info('Concurrent sessions stopped');
     }
 
     // 停止 subagent manager
