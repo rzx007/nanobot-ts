@@ -13,7 +13,8 @@ export interface UseChatOptions {
 }
 
 export function useChat(options: UseChatOptions = {}) {
-  const { api = '/nanobot/api/v1/messages', chatId, messages, onQuestion, onApproval, onFinish } = options;
+  const baseUrl = import.meta.env.DEV ? '/nanobot' : '';
+  const { api = `${baseUrl}/api/v1/messages`, chatId, messages, onQuestion, onApproval, onFinish } = options;
 
   return useAiChat<NanobotUIMessage>({
     messages: messages ?? [],

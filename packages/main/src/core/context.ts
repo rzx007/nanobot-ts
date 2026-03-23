@@ -82,21 +82,21 @@ ${runtime}
 ## Workspace
 Your workspace is at: ${ws}
 - Long-term memory: ${ws}/memory/MEMORY.md
-- History log: ${ws}/memory/HISTORY.md (grep-searchable)
+- Conversation history: SQLite database (searchable with search_history tool)
 - Custom skills: ${ws}/skills/{skill-name}/SKILL.md
 
 Reply directly with text for conversations. Only use 'message' tool to send to a specific chat channel.
 
 ## Tool Call Guidelines
 - Before calling tools, you may briefly state your intent, but NEVER predict or describe expected result before receiving it.
-- Before modifying a file, read it first to confirm its current content.
+- Before modifying files, read it first to confirm its current content.
 - Do not assume a file or directory exists — use list_dir or read_file to verify.
 - After writing or editing a file, re-read it if accuracy matters.
 - If a tool call fails, analyze the error before retrying with a different approach.
 
 ## Memory
 - Remember important facts: write to ${ws}/memory/MEMORY.md
-- Recall past events: grep ${ws}/memory/HISTORY.md`;
+- Recall past events: use search_history tool`;
   }
 
   /**

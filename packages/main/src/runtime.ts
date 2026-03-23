@@ -28,6 +28,7 @@ import { CronService } from './cron';
 import { BrowserOpenTool, BrowserCloseTool, BrowserSnapshotTool, BrowserClickTool, BrowserFillTool, BrowserTypeTool, BrowserScreenshotTool, BrowserWaitTool, BrowserGetTool, BrowserEvalTool, BrowserPressTool, BrowserSelectTool, BrowserCheckTool, BrowserUncheckTool, BrowserScrollTool, BrowserBackTool, BrowserForwardTool, BrowserReloadTool, BrowserPdfTool } from './tools/browser';
 import { ReadFileTool, WriteFileTool, CreateFileTool, EditFileTool, DeleteFileTool, ListDirTool } from './tools/filesystem';
 import { HotNewsTool } from './tools/hotnews';
+import { SearchHistoryTool } from './tools/memory';
 import { MessageTool } from './tools/message';
 import { ExecTool } from './tools/shell';
 import { LoadSkillTool, MatchSkillTool } from './tools/skill';
@@ -278,6 +279,10 @@ export async function createRuntime(options: CreateRuntimeOptions): Promise<Runt
   tools.register(new WebFetchTool());
   tools.register(new HotNewsTool());
   tools.register(new MessageTool(config, bus));
+
+  const searchHistoryTool = new SearchHistoryTool();
+  searchHistoryTool.setSessionManager(sessions);
+  tools.register(searchHistoryTool);
 
   // 10. Subagent 工具
   if (subagentManager) {

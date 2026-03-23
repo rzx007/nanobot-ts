@@ -121,7 +121,7 @@ describe('MemoryConsolidator', () => {
   });
 
   describe('consolidate', () => {
-    it('should create memory and history files when consolidating', async () => {
+    it('should create memory file when consolidating', async () => {
       const session = createSession({
         key: 'test-session',
         messages: [
@@ -137,12 +137,12 @@ describe('MemoryConsolidator', () => {
       const historyPath = path.join(testWorkspace, 'memory', 'HISTORY.md');
 
       const memoryContent = await fs.readFile(memoryPath, 'utf-8');
-      const historyContent = await fs.readFile(historyPath, 'utf-8');
 
       expect(memoryContent).toContain('会话摘要');
       expect(memoryContent).toContain('test-session');
-      expect(historyContent).toContain('test-session');
-      expect(historyContent).toContain('Hello');
+
+      const historyExists = await fs.access(historyPath).then(() => true).catch(() => false);
+      expect(historyExists).toBe(false);
     });
 
     it('should update lastConsolidated after consolidation', async () => {
@@ -202,36 +202,6 @@ describe('MemoryConsolidator', () => {
       const result = await memory.getMemoryContext();
       expect(result).toContain('Long-term Memory');
       expect(result).toContain('Test content');
-    });
-  });
-
-  describe('search', () => {
-    it('should return message when keyword found', async () => {
-      const historyPath = path.join(testWorkspace, 'memory', 'HISTORY.md');
-      const content = `## 2024-01-01 - test
-**user**: Hello world
-
----
-## 2024-01-02 - test2
-**user**: Goodbye
-`;
-      await fs.writeFile(historyPath, content, 'utf-8');
-
-      const result = await memory.search('Hello');
-      expect(result).toContain('Hello world');
-    });
-
-    it('should return not found message when keyword not found', async () => {
-      const historyPath = path.join(testWorkspace, 'memory', 'HISTORY.md');
-      await fs.writeFile(historyPath, '## 2024-01-01 - test\n**user**: Hello\n', 'utf-8');
-
-      const result = await memory.search('nonexistent');
-      expect(result).toContain('未找到');
-    });
-
-    it('should return no history message when file does not exist', async () => {
-      const result = await memory.search('test');
-      expect(result).toContain('暂无历史记录');
     });
   });
 });

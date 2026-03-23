@@ -1,6 +1,6 @@
 ---
 name: memory
-description: Two-layer memory system with grep-based recall.
+description: Two-layer memory system with SQLite-based recall.
 always: true
 ---
 
@@ -9,15 +9,26 @@ always: true
 ## Structure
 
 - `memory/MEMORY.md` — Long-term facts (preferences, project context, relationships). Always loaded into your context.
-- `memory/HISTORY.md` — Append-only event log. NOT loaded into context. Search it with grep. Each entry starts with [YYYY-MM-DD HH:MM].
+- SQLite `session_messages` table — Complete conversation history stored in database.
 
 ## Search Past Events
 
-```bash
-grep -i "keyword" memory/HISTORY.md
+Use the `search_history` tool to search conversation history:
+
+```javascript
+search_history({
+  keyword: "meeting",
+  limit: 20,  // optional, default 20
+  channel: "telegram",  // optional, filter by channel
+  days: 7  // optional, search last N days, default 30
+})
 ```
 
-Use the `exec` tool to run grep. Combine patterns: `grep -iE "meeting|deadline" memory/HISTORY.md`
+Supported filters:
+- `keyword`: Search keyword (required, fuzzy match)
+- `channel`: Filter by channel (cli, telegram, discord, web, etc.)
+- `days`: Time range in days (default 30)
+- `limit`: Result count limit (default 20)
 
 ## When to Update MEMORY.md
 
@@ -28,4 +39,4 @@ Write important facts immediately using `edit_file` or `write_file`:
 
 ## Auto-consolidation
 
-Old conversations are automatically summarized and appended to HISTORY.md when the session grows large. Long-term facts are extracted to MEMORY.md. You don't need to manage this.
+Old conversations are automatically summarized and appended to MEMORY.md when the session grows large. Long-term facts are extracted to MEMORY.md. You don't need to manage this.

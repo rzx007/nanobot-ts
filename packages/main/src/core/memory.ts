@@ -59,10 +59,8 @@ export class MemoryConsolidator {
     try {
       // 读取当前 MEMORY.md
       const memoryPath = path.join(this.workspace, 'memory', 'MEMORY.md');
-      const historyPath = path.join(this.workspace, 'memory', 'HISTORY.md');
 
       let existingMemory = '';
-      let existingHistory = '';
 
       if (
         await fs
@@ -71,15 +69,6 @@ export class MemoryConsolidator {
           .catch(() => false)
       ) {
         existingMemory = await fs.readFile(memoryPath, 'utf-8');
-      }
-
-      if (
-        await fs
-          .pathExists(historyPath)
-          .then(() => true)
-          .catch(() => false)
-      ) {
-        existingHistory = await fs.readFile(historyPath, 'utf-8');
       }
 
       // 生成摘要 (使用简单文本提取)
@@ -104,17 +93,6 @@ ${summary}
 
       const newMemory = existingMemory + memoryContent;
       await fs.writeFile(memoryPath, newMemory, 'utf-8');
-
-      // 追加到 HISTORY.md
-      const historyContent = `
-## ${timestamp} - ${key}
-${toConsolidate.map(msg => `**${msg.role}**: ${msg.content}`).join('\n\n')}
-
----
-`;
-
-      const newHistory = existingHistory + historyContent;
-      await fs.writeFile(historyPath, newHistory, 'utf-8');
 
       // 更新 lastConsolidated
       session.lastConsolidated = archiveAll
@@ -199,44 +177,6 @@ ${toConsolidate.map(msg => `**${msg.role}**: ${msg.content}`).join('\n\n')}
       return content;
     } catch {
       return '';
-    }
-  }
-
-  /**
-   * 在 HISTORY.md 中按关键词搜索历史
-   *
-   * @param keyword - 搜索关键词
-   * @returns 匹配的条目 (格式化的文本)
-   */
-  async search(keyword: string): Promise<string> {
-    const historyPath = path.join(this.workspace, 'memory', 'HISTORY.md');
-    try {
-      const content = await fs.readFile(historyPath, 'utf-8');
-      const lines = content.split('\n');
-      const results: string[] = [];
-      let currentBlock: string[] = [];
-      let inBlock = false;
-
-      for (const line of lines) {
-        if (line.startsWith('## ')) {
-          if (inBlock && currentBlock.some(l => l.toLowerCase().includes(keyword.toLowerCase()))) {
-            results.push(currentBlock.join('\n'));
-          }
-          currentBlock = [line];
-          inBlock = true;
-        } else if (inBlock) {
-          currentBlock.push(line);
-        }
-      }
-      if (inBlock && currentBlock.some(l => l.toLowerCase().includes(keyword.toLowerCase()))) {
-        results.push(currentBlock.join('\n'));
-      }
-
-      return results.length > 0
-        ? results.join('\n\n---\n\n')
-        : `未找到包含「${keyword}」的历史记录`;
-    } catch {
-      return '暂无历史记录';
     }
   }
 }

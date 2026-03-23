@@ -15,7 +15,8 @@ export function useCronEvents(chatId: string) {
   const [messages, setMessages] = useState<CronMessage[]>([]);
   const [pendingMessages, setPendingMessages] = useState<Map<string, CronMessage>>(new Map());
   
-  const eventsUrl = chatId ? `/nanobot/api/v1/events/${chatId}` : null;
+  const baseUrl = import.meta.env.DEV ? '/nanobot' : '';
+  const eventsUrl = chatId ? `${baseUrl}/api/v1/events/${chatId}` : null;
   const eventSource = useEventSource(eventsUrl);
 
   useEffect(() => {
