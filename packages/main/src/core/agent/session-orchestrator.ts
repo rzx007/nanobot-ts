@@ -3,8 +3,6 @@ import { getSessionKey } from '@nanobot/shared';
 import { ContextBuilder } from '../context';
 import type { SessionManager } from '../../storage';
 import type { SkillInfo } from '../../skills/skills';
-import type { UIMessage } from 'ai';
-
 type SkillLoaderLike = {
   getAlwaysSkills(): SkillInfo[];
   buildSkillsSummary(): string;

@@ -12,7 +12,13 @@
       "mcp__zread__get_repo_structure",
       "mcp__zread__read_file",
       "mcp__web-search-prime__web_search_prime",
-      "Bash(bun pm:*)"
+      "Bash(bun pm:*)",
+      "Bash(bun add:*)",
+      "Bash(bun test:*)",
+      "Bash(bun run typecheck)",
+      "Bash(bun:*)",
+      "Bash(node:*)",
+      "Bash(npx drizzle-kit studio:*)"
     ]
   }
 }

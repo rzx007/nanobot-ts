@@ -32,7 +32,8 @@
     "tui": "bun packages/cli/dist/run.js tui",
     "onboard": "bun packages/cli/dist/run.js init",
     "gateway": "bun packages/cli/dist/run.js gateway",
-    "status": "bun packages/cli/dist/run.js status"
+    "status": "bun packages/cli/dist/run.js status",
+    "db:init": "bun packages/main/src/storage/schema/init-db.ts"
   },
   "keywords": [
     "ai",
@@ -63,5 +64,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/rzx007/nanobot-ts.git"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.0"
   }
 }

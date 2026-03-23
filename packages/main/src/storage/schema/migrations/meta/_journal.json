@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1774261699616,
+      "tag": "0000_puzzling_marvel_zombies",
+      "breakpoints": true
+    }
+  ]
+}

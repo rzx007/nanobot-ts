@@ -3,12 +3,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { SessionManager } from '../../../src/storage/session';
-import { Session, SessionMessage } from '../../../src/storage/session';
-import { expandHome } from '../../../src/utils/helpers';
+import { SessionManager, Session, SessionMessage } from '../../../packages/main/src/storage';
 import path from 'path';
 import fs from 'fs/promises';
-import { logger } from '../../../src/utils/logger';
 
 describe('SessionManager', () => {
   let sessionManager: SessionManager;

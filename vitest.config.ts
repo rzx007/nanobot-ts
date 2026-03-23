@@ -5,6 +5,8 @@ export default defineConfig({
     globals: false,
     environment: 'node',
     include: ['**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    fileParallelism: false, // 禁用文件并行
+    maxConcurrency: 1, // 串行运行测试
     coverage: {
       exclude: [
         '**/node_modules/**',
