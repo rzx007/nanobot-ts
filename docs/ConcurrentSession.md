@@ -478,3 +478,273 @@ export interface SessionManagementConfig {
 ---
 
 这个方案完全基于 opencode 的成熟架构，结合了 nanobot 的现有设计。
+
+
+
+## 🔄 多会话并发处理流程图
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         Channel Layer                                │
+│  (WhatsApp, Feishu, Email, CLI, HTTP)                                │
+│                                                                      │
+│  InboundMessage: { channel, chatId, content, ... }                   │
+└────────────────────────────┬────────────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      MessageBus (EventEmitter)                        │
+│                                                                      │
+│  ┌─────────────────┐    ┌──────────────────┐                        │
+│  │ inboundQueue    │    │ outboundQueue   │                        │
+│  │ [msg1, msg2...]│    │ [msg1, msg2...] │                        │
+│  └────────┬────────┘    └────────┬─────────┘                        │
+│           │                      │                                   │
+│           │ emit('inbound')     │ emit('outbound')                  │
+│           ▼                      ▼                                   │
+│    ┌──────────────┐      ┌───────────────┐                          │
+│    │ SSE Stream   │      │  Channels     │                          │
+│    │ (real-time)  │      │  dispatcher   │                          │
+│    └──────────────┘      └───────────────┘                          │
+└────────────────────────────┬────────────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                   ConcurrentSessionManager                             │
+│                                                                      │
+│  processors: Map<sessionKey, SessionProcessor>                      │
+│  state: Map<sessionKey, { abort, callbacks[] }>                     │
+│                                                                      │
+│  ┌──────────────────────────────────────────────────────────┐          │
+│  │  process(sessionKey, message)                         │          │
+│  │                                                      │          │
+│  │  1. Check if session is busy                          │          │
+│  │     └─ Yes: Add to callback queue                     │          │
+│  │     └─ No:  Create new processor state                │          │
+│  │                                                      │          │
+│  │  2. processor.processMessage(message)                  │          │
+│  │     └─ Update SessionStatus: busy                    │          │
+│  │     └─ Append user message to session                 │          │
+│  │     └─ Build prompt messages                         │          │
+│  │     └─ Stream LLM response (with tools)              │          │
+│  │     └─ Append assistant message to session            │          │
+│  │     └─ Maybe consolidate memory                      │          │
+│  │     └─ Update SessionStatus: idle                   │          │
+│  │                                                      │          │
+│  │  3. Trigger callback queue                          │          │
+│  └──────────────────────────────────────────────────────────┘          │
+└──────────────────────────┬─────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      SessionStatus (Map)                               │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────┐           │
+│  │ sessionKey → Status                                   │           │
+│  │                                                         │           │
+│  │ "whatsapp:user123" → { type: "busy" }                │           │
+│  │ "feishu:group456"  → { type: "idle" }                │           │
+│  │ "cli:default"      → { type: "retry", attempt: 2,   │           │
+│  │                        next: 1234567890 }           │           │
+│  └────────────────────────────────────────────────────────┘           │
+│                                                                      │
+│  Events: emit('session-status', { sessionKey, status })              │
+└──────────────────────────┬─────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    SessionProcessor (Per Session)                      │
+│                                                                      │
+│  ┌──────────────────────────────────────────────────────────┐          │
+│  │  processMessage(message)                               │          │
+│  │                                                          │          │
+│  │  ┌─────────────────────────────────────────┐             │          │
+│  │  │ SessionOrchestrator.appendUserMessage() │             │          │
+│  │  │  - Add to session.messages            │             │          │
+│  │  │  - Update session.metadata            │             │          │
+│  │  └─────────────────────────────────────────┘             │          │
+│  │                          │                                  │          │
+│  │                          ▼                                  │          │
+│  │  ┌─────────────────────────────────────────┐             │          │
+│  │  │ SessionOrchestrator.buildPrompt()      │             │          │
+│  │  │  - System prompt (AGENTS.md, etc.)    │             │          │
+│  │  │  - Session history                    │             │          │
+│  │  │  - Current message                    │             │          │
+│  │  └─────────────────────────────────────────┘             │          │
+│  │                          │                                  │          │
+│  │                          ▼                                  │          │
+│  │  ┌─────────────────────────────────────────┐             │          │
+│  │  │ StreamBridge.streamAndEmit()          │             │          │
+│  │  │  ├─ LLM stream (streamText)           │             │          │
+│  │  │  ├─ Tool execution (async)           │             │          │
+│  │  │  └─ Emit events (SSE)                │             │          │
+│  │  └─────────────────────────────────────────┘             │          │
+│  │                          │                                  │          │
+│  │                          ▼                                  │          │
+│  │  ┌─────────────────────────────────────────┐             │          │
+│  │  │ SessionOrchestrator.appendAssistant()  │             │          │
+│  │  │  - Add to session.messages            │             │          │
+│  │  └─────────────────────────────────────────┘             │          │
+│  │                          │                                  │          │
+│  │                          ▼                                  │          │
+│  │  ┌─────────────────────────────────────────┐             │          │
+│  │  │ SessionOrchestrator.maybeConsolidate()│             │          │
+│  │  │  - Check threshold (50 msgs)          │             │          │
+│  │  │  - Summarize to MEMORY.md            │             │          │
+│  │  └─────────────────────────────────────────┘             │          │
+│  │                                                          │          │
+│  │  Return OutboundMessage                                  │          │
+│  └──────────────────────────────────────────────────────────┘          │
+│                                                                      │
+│  AbortController: Can cancel at any time                            │
+└──────────────────────────┬─────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      SessionManager (SQLite)                           │
+│                                                                      │
+│  ┌──────────────────────────────────────────────────────────┐          │
+│  │  getOrCreate(sessionKey)                                 │          │
+│  │  addMessage(sessionKey, message)                           │          │
+│  │  getHistory(sessionKey, maxMessages)                      │          │
+│  │  clear(sessionKey)                                        │          │
+│  │  listSessions()                                            │          │
+│  └──────────────────────────────────────────────────────────┘          │
+│                                                                      │
+│  Database: SQLite (Drizzle ORM)                                    │
+│  Tables: sessions, session_messages                                 │
+└──────────────────────────┬─────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         Web UI (Dashboard)                            │
+│                                                                      │
+│  ┌────────────────┐  ┌──────────────────────────────────────┐        │
+│  │  Session List  │  │   Chat Interface                     │        │
+│  │                │  │                                      │        │
+│  │  ⭐ Project A  │  │  ┌───────────────────────────────┐ │        │
+│  │  💬 Code Review│  │  │ User: Help me refactor...   │ │        │
+│  │  💬 Debug      │  │  │                              │ │        │
+│  │  📦 Archived   │  │  │ Assistant: I'll help you...   │ │        │
+│  │                │  │  │                              │ │        │
+│  │  [+ New Chat]  │  │  │ [Tool: read_file]           │ │        │
+│  └────────────────┘  │  └───────────────────────────────┘ │        │
+│        │             │                                      │        │
+│        │ Switch      │ Status: busy 🔵 / idle ⚪          │        │
+│        └─────────────┴──────────────────────────────────────┘        │
+│                                                                      │
+│  SSE Events: session-status, stream-part, stream-finish                │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📊 并发处理时序图
+
+```
+Time → 
+────────────────────────────────────────────────────────────────────
+
+Session A (WhatsApp):    │      busy     │ busy │ idle │
+                        ├──────────────────────────────►
+                        msg1          msg2
+
+Session B (Feishu):      │     busy     │ idle │
+                        ├─────────────────►
+                        msg1
+
+Session C (CLI):         │ busy │
+                        └──────►
+                        msg1
+
+Worker Pool (5 workers):  │ W1 │ W2 │ W3 │ W4 │ W5 │
+                        └──────────────────────────────►
+                          A1   B1   A2   C1   ...
+
+Message Bus:             ┌───┐   ┌───┐   ┌───┐
+                        │msg1│   │msg2│   │msg3│
+                        └─┬─┘   └─┬─┘   └─┬─┘
+                          ▼       ▼       ▼
+                      ConcurrentSessionManager
+                          │       │       │
+                  ┌───────┼───────┼───────┐
+                  ▼       ▼       ▼       ▼
+              SessionStatus (3 sessions)
+                  │       │       │
+                  ▼       ▼       ▼
+              SessionProcessor (3 instances)
+                  │       │       │
+                  └───────┼───────┘
+                          ▼
+                     OutboundMessages
+                          │
+                          ▼
+                      Channels
+```
+
+---
+
+## 🔑 关键设计要点
+
+### 1. 会话隔离
+- 每个 sessionKey 有独立的 SessionProcessor
+- 每个 Processor 有独立的 AbortController
+- 同一会话的消息串行处理（通过 callback queue）
+- 不同会话的消息并行处理
+
+### 2. 状态管理
+- SessionStatus: 内存 Map，记录所有会话状态
+- ConcurrentSessionManager: 管理 Processor 生命周期
+- SessionManager: 持久化层（SQLite）
+
+### 3. 并发控制
+- Worker Pool 默认 5 个并发
+- 可配置 maxConcurrency
+- 每个会话的 callback queue 保证顺序
+
+### 4. 取消机制
+- AbortController 可以随时取消正在进行的会话
+- SSE 实时推送状态变化
+- 超时自动取消
+
+---
+
+## ✅ 实施检查清单
+
+**Phase 1: 核心架构**
+- [ ] SessionStatus 模块
+- [ ] SessionProcessor 类
+- [ ] ConcurrentSessionManager 类
+- [ ] AgentLoop 改造（并发模式）
+
+**Phase 2: 数据层**
+- [ ] Session 数据模型扩展
+- [ ] 数据库迁移脚本
+- [ ] SessionManager 方法扩展
+- [ ] 会话标题生成器
+
+**Phase 3: API 层**
+- [ ] 会话管理 API
+- [ ] 会话状态 API
+- [ ] SSE 事件流优化
+- [ ] 搜索和过滤 API
+
+**Phase 4: Web UI**
+- [ ] 会话列表侧边栏
+- [ ] 会话切换组件
+- [ ] 会话管理功能
+- [ ] 实时状态显示
+
+**Phase 5: 优化**
+- [ ] 性能监控
+- [ ] 错误处理
+- [ ] 配置选项
+- [ ] 测试覆盖
+
+---
+
+流程图和实施计划都清晰了！如果你确认没有问题，我们就可以开始实施了。请问：
+
+1. **并发数配置**：默认 5 个并发可以吗？还是需要调整？
+2. **会话隔离策略**：同一会话的消息串行处理，不同会话并行处理 - 这样可以吗？
+3. **是否现在开始实施？**
