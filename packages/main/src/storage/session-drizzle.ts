@@ -178,7 +178,7 @@ export class DrizzleSessionManager {
     const metadata: SessionMetadata = {
       name: result.name || undefined,
       title: result.title || undefined,
-      tags: result.tags ? JSON.parse(result.tags) : [],
+      tags: this.parseTags(result.tags),
       archived: Boolean(result.archived),
       archivedAt: result.archivedAt || undefined,
       model: result.model || undefined,
@@ -425,6 +425,27 @@ export class DrizzleSessionManager {
   }
 
   /**
+   * 安全解析标签
+   */
+  private parseTags(tags: string | null | undefined): string[] {
+    if (!tags || tags === 'null') {
+      return [];
+    }
+    
+    // 检查是否是空数组字符串
+    if (tags === '[]') {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(tags);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * 反序列化消息（从数据库）
    */
   private deserializeMessage(row: typeof schema.sessionMessages.$inferSelect): SharedSessionMessage {
@@ -602,7 +623,7 @@ export class DrizzleSessionManager {
       metadata: {
         name: r.name || undefined,
         title: r.title || undefined,
-        tags: r.tags ? JSON.parse(r.tags) : [],
+        tags: this.parseTags(r.tags),
         archived: Boolean(r.archived),
         archivedAt: undefined,
         model: undefined,
