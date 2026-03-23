@@ -387,7 +387,7 @@ function ChatPage() {
     <div className="relative flex h-full flex-col divide-y">
       <Conversation className="h-full flex-1 overflow-hidden">
         <ConversationContent className="h-full overflow-auto">
-        {JSON.stringify(allMessages)}
+        {/* {JSON.stringify(allMessages)} */}
           {allMessages.map((message) => {
             const isCronMessage = message?.metadata?.messageFrom==='cron'
 
