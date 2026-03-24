@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ChatsRouteImport } from './routes/chats'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as settingsLogsRouteImport } from './routes/(settings)/logs'
@@ -24,6 +25,11 @@ import { Route as controlInstancesRouteImport } from './routes/(control)/instanc
 import { Route as controlCronRouteImport } from './routes/(control)/cron'
 import { Route as controlChannelsRouteImport } from './routes/(control)/channels'
 
+const ChatsRoute = ChatsRouteImport.update({
+  id: '/chats',
+  path: '/chats',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
@@ -98,6 +104,7 @@ const controlChannelsRoute = controlChannelsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chat': typeof ChatRoute
+  '/chats': typeof ChatsRoute
   '/channels': typeof controlChannelsRoute
   '/cron': typeof controlCronRoute
   '/instances': typeof controlInstancesRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/chat': typeof ChatRoute
+  '/chats': typeof ChatsRoute
   '/channels': typeof controlChannelsRoute
   '/cron': typeof controlCronRoute
   '/instances': typeof controlInstancesRoute
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/chat': typeof ChatRoute
+  '/chats': typeof ChatsRoute
   '/(control)/channels': typeof controlChannelsRoute
   '/(control)/cron': typeof controlCronRoute
   '/(control)/instances': typeof controlInstancesRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/chat'
+    | '/chats'
     | '/channels'
     | '/cron'
     | '/instances'
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/chat'
+    | '/chats'
     | '/channels'
     | '/cron'
     | '/instances'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/chat'
+    | '/chats'
     | '/(control)/channels'
     | '/(control)/cron'
     | '/(control)/instances'
@@ -198,6 +210,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChatRoute: typeof ChatRoute
+  ChatsRoute: typeof ChatsRoute
   controlChannelsRoute: typeof controlChannelsRoute
   controlCronRoute: typeof controlCronRoute
   controlInstancesRoute: typeof controlInstancesRoute
@@ -214,6 +227,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/chats': {
+      id: '/chats'
+      path: '/chats'
+      fullPath: '/chats'
+      preLoaderRoute: typeof ChatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat': {
       id: '/chat'
       path: '/chat'
@@ -318,6 +338,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChatRoute: ChatRoute,
+  ChatsRoute: ChatsRoute,
   controlChannelsRoute: controlChannelsRoute,
   controlCronRoute: controlCronRoute,
   controlInstancesRoute: controlInstancesRoute,
